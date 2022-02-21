@@ -1,0 +1,10 @@
+name: Bump version and auto-release
+on:
+  push:
+    branches:
+      - main
+jobs:
+  call-run-python-release:
+    uses: openclimatefix/.github/.github/workflows/python-release.yml@main
+    secrets:
+      token: ${{ secrets.PYPI_API_TOKEN }}
