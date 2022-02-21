@@ -7,7 +7,7 @@ Implementation of the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf)
 This library can be installed through
 
 ```bash
-pip install graph_weather
+pip install graph-weather
 ```
 
 ## Pretrained Weights
