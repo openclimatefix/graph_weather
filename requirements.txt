@@ -1,3 +1,5 @@
 torch
 torch-geometric
 h3
+huggingface-hub
+datasets

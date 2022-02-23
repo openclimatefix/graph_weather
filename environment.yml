@@ -1,0 +1,16 @@
+name: graph-weather
+channels:
+  - pyg
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - cudatoolkit
+  - h3-py
+  - pyg
+  - python=3.9.10
+  - pytorch
+  - pytorch-cluster
+  - pytorch-scatter
+  - pytorch-sparse
+  - pytorch-spline-conv
