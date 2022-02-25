@@ -5,7 +5,7 @@ from torch.utils.data import Subset
 
 def get_all_val_attrs(obj):
     def _good(attr):
-        return (not attr.startswith('__')) and (not callable(getattr(obj, attr)))
+        return (not attr.startswith("__")) and (not callable(getattr(obj, attr)))
 
     attrs = [attr for attr in dir(obj) if _good(attr)]
 
@@ -33,7 +33,7 @@ def get_subset(dataset, ratio, attributes=None):
 
     return subset
 
+
 def get_delta_minute(start_time):
     # start_time in seconds
-    return (time.time() - start_time) / 60.
-
+    return (time.time() - start_time) / 60.0
