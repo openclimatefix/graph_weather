@@ -21,21 +21,29 @@ Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. of Ener
 from torch import nn, cat
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
+import torch
 
 
 class MLP(nn.Module):
     # MLP with LayerNorm
-    def __init__(self, in_dim, out_dim=128, hidden_dim=128, hidden_layers=2, norm_type="LayerNorm"):
-
+    def __init__(
+        self,
+        in_dim: int,
+        out_dim: int = 128,
+        hidden_dim: int = 128,
+        hidden_layers: int = 2,
+        norm_type: str = "LayerNorm",
+    ):
         """
         MLP
 
-        in_dim: input dimension
-        out_dim: output dimension
-        hidden_dim: number of nodes in a hidden layer; future work: accept integer array
-        hidden_layers: number of hidden layers
-        normalize_output: if True, normalize output
-        norm_type: normalization type; one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+        Args:
+            in_dim: Input dimension
+            out_dim: Output dimension
+            hidden_dim: Number of nodes in hidden layer
+            hidden_layers: Number of hidden layers
+            norm_type: Normalization type one of 'LayerNorm', 'GraphNorm',
+                'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
 
         super(MLP, self).__init__()
@@ -58,7 +66,7 @@ class MLP(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
 
@@ -72,21 +80,22 @@ class MLP(nn.Module):
 class EdgeProcessor(nn.Module):
     def __init__(
         self,
-        in_dim_node=128,
-        in_dim_edge=128,
-        hidden_dim=128,
-        hidden_layers=2,
-        norm_type="LayerNorm",
+        in_dim_node: int = 128,
+        in_dim_edge: int = 128,
+        hidden_dim: int = 128,
+        hidden_layers: int = 2,
+        norm_type: str = "LayerNorm",
     ):
-
         """
         Edge processor
 
-        in_dim_node: input node feature dimension
-        in_dim_edge: input edge feature dimension
-        hidden_dim: number of nodes in a hidden layer; future work: accept integer array
-        hidden_layers: number of hidden layers
-        norm_type: normalization type; one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+        Args:
+            in_dim_node: Input node feature dimension
+            in_dim_edge: Input edge feature dimension
+            hidden_dim: Number of nodes in hidden layers
+            hidden_layers: Number of hidden layers
+            norm_type: Normalization type
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
 
         super(EdgeProcessor, self).__init__()
@@ -107,21 +116,22 @@ class EdgeProcessor(nn.Module):
 class NodeProcessor(nn.Module):
     def __init__(
         self,
-        in_dim_node=128,
-        in_dim_edge=128,
-        hidden_dim=128,
-        hidden_layers=2,
-        norm_type="LayerNorm",
+        in_dim_node: int = 128,
+        in_dim_edge: int = 128,
+        hidden_dim: int = 128,
+        hidden_layers: int = 2,
+        norm_type: str = "LayerNorm",
     ):
-
         """
-        Node processor
+        Node Processor
 
-        in_dim_node: input node feature dimension
-        in_dim_edge: input edge feature dimension
-        hidden_dim: number of nodes in a hidden layer; future work: accept integer array
-        hidden_layers: number of hidden layers
-        norm_type: normalization type; one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+        Args:
+            in_dim_node: Input node feature dimension
+            in_dim_edge: Input edge feature dimension
+            hidden_dim: Number of nodes in hidden layer
+            hidden_layers: Number of hidden layers
+            norm_type: Normalization type
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
 
         super(NodeProcessor, self).__init__()
@@ -129,7 +139,7 @@ class NodeProcessor(nn.Module):
             in_dim_node + in_dim_edge, in_dim_node, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, x, edge_index, edge_attr, u=None, batch=None):
+    def forward(self, x: torch.Tensor, edge_index, edge_attr, u=None, batch=None) -> torch.Tensor:
         row, col = edge_index
         out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
         out = cat([x, out], dim=-1)
@@ -140,26 +150,28 @@ class NodeProcessor(nn.Module):
 
 
 def build_graph_processor_block(
-    in_dim_node=128,
-    in_dim_edge=128,
-    hidden_dim_node=128,
-    hidden_dim_edge=128,
-    hidden_layers_node=2,
-    hidden_layers_edge=2,
-    norm_type="LayerNorm",
-):
-
+    in_dim_node: int = 128,
+    in_dim_edge: int = 128,
+    hidden_dim_node: int = 128,
+    hidden_dim_edge: int = 128,
+    hidden_layers_node: int = 2,
+    hidden_layers_edge: int = 2,
+    norm_type: str = "LayerNorm",
+) -> torch.nn.Module:
     """
-    Builds a graph processor block
+    Build the Graph Net Block
 
-    in_dim_node: input node feature dimension
-    in_dim_edge: input edge feature dimension
-    hidden_dim_node: number of nodes in a hidden layer for graph node processing
-    hidden_dim_edge: number of nodes in a hidden layer for graph edge processing
-    hidden_layers_node: number of hidden layers for graph node processing
-    hidden_layers_edge: number of hidden layers for graph edge processing
-    norm_type: normalization type; one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
-
+    Args:
+        in_dim_node: Input node feature dimension
+        in_dim_edge: Inpuut edge feature dimension
+        hidden_dim_node: Number of nodes in hidden layer for graph node processing
+        hidden_dim_edge: Number of nodes in hidden layer for graph edge processing
+        hidden_layers_node: Number of hidden layers for node processing
+        hidden_layers_edge: Number of hidden layers for edge processing
+        norm_type: Normalization type
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+    Returns:
+        torch.nn.Module for the graph processing block
     """
 
     return MetaLayer(
@@ -175,28 +187,28 @@ def build_graph_processor_block(
 class GraphProcessor(nn.Module):
     def __init__(
         self,
-        mp_iterations=15,
-        in_dim_node=128,
-        in_dim_edge=128,
-        hidden_dim_node=128,
-        hidden_dim_edge=128,
-        hidden_layers_node=2,
-        hidden_layers_edge=2,
-        norm_type="LayerNorm",
+        mp_iterations: int = 15,
+        in_dim_node: int = 128,
+        in_dim_edge: int = 128,
+        hidden_dim_node: int = 128,
+        hidden_dim_edge: int = 128,
+        hidden_layers_node: int = 2,
+        hidden_layers_edge: int = 2,
+        norm_type: str = "LayerNorm",
     ):
-
         """
-        Graph processor
+        Graph Processor
 
-        mp_iterations: number of message-passing iterations (graph processor blocks)
-        in_dim_node: input node feature dimension
-        in_dim_edge: input edge feature dimension
-        hidden_dim_node: number of nodes in a hidden layer for graph node processing
-        hidden_dim_edge: number of nodes in a hidden layer for graph edge processing
-        hidden_layers_node: number of hidden layers for graph node processing
-        hidden_layers_edge: number of hidden layers for graph edge processing
-        norm_type: normalization type; one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
-
+        Args:
+            mp_iterations: number of message-passing iterations (graph processor blocks)
+            in_dim_node: Input node feature dimension
+            in_dim_edge: Input edge feature dimension
+            hidden_dim_node: Number of nodes in hidden layers for node processing
+            hidden_dim_edge: Number of nodes in hidden layers for edge processing
+            hidden_layers_node: Number of hidden layers for node processing
+            hidden_layers_edge: Number of hidden layers for edge processing
+            norm_type: Normalization type
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
 
         super(GraphProcessor, self).__init__()
@@ -215,7 +227,7 @@ class GraphProcessor(nn.Module):
                 )
             )
 
-    def forward(self, x, edge_index, edge_attr):
+    def forward(self, x: torch.Tensor, edge_index, edge_attr):
         for block in self.blocks:
             x, edge_attr, _ = block(x, edge_index, edge_attr)
 

@@ -8,7 +8,6 @@ import numpy as np
 def process_node_window(
     node_data, node_types, apply_onehot=False, onehot_classes=0, inlet_velocity=None
 ):
-
     """
     Concatenates with node features with one-hot encoding of node types
 
@@ -35,7 +34,18 @@ def process_node_window(
 
 
 def get_sample(dataset, source_node_idx, time_idx, num_prev_velocities=5, noise_sd=None):
+    """
+    Returns input position and
+    Args:
+        dataset:
+        source_node_idx:
+        time_idx:
+        num_prev_velocities:
+        noise_sd:
 
+    Returns:
+
+    """
     """
     Returns input position and velocity data window (with noise) and output acceleration
 
