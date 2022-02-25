@@ -104,7 +104,7 @@ def build_graph_processor_block(
     return MetaLayerMultigraph(edge_models=edge_models, node_model=node_model)
 
 
-class GraphProcessor(Module):
+class MultiGraphBlock(Module):
     def __init__(
         self,
         mp_iterations=15,

@@ -55,7 +55,7 @@ class GraphNetBlock(torch.nn.Module):
         return MultiGraph(new_node_features, new_edge_sets)
 
 
-class EncodeProcessDecode(snt.AbstractModule):
+class EncodeProcessDecode(torch.nn.Module):
     """Encode-Process-Decode GraphNet model."""
 
     def __init__(
@@ -64,9 +64,8 @@ class EncodeProcessDecode(snt.AbstractModule):
         latent_size,
         num_layers,
         message_passing_steps,
-        name="EncodeProcessDecode",
     ):
-        super(EncodeProcessDecode, self).__init__(name=name)
+        super().__init__()
         self._latent_size = latent_size
         self._output_size = output_size
         self._num_layers = num_layers
@@ -77,7 +76,7 @@ class EncodeProcessDecode(snt.AbstractModule):
         widths = [self._latent_size] * self._num_layers + [output_size]
         network = snt.nets.MLP(widths, activate_final=False)
         if layer_norm:
-            network = snt.Sequential([network, snt.LayerNorm()])
+            network = torch.Sequential([network, torch.nn.LayerNorm()])
         return network
 
     def _encoder(self, graph):
