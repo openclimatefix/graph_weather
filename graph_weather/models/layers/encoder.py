@@ -47,10 +47,12 @@ class Encoder(torch.nn.Module):
                 h_index += 1
         # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
         # TODO Add edge features of position of lat/lon nodes to h3 node, which are positions relative to the h3 node
+        # Should have vertical and horizontal difference
         self.h3_distances = []
-        for lat_lon in lat_lons:
-            for h3_point in self.h3_grid:
-                self.h3_distances.append(h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit='rads'))
+        for idx, h3_point in enumerate(self.h3_grid):
+            lat_lon = lat_lons[idx]
+            distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit='rads')
+            self.h3_distances.append([np.sin(distance), np.cos(distance)])
         self.h3_distances = np.asarray(self.h3_distances)
         # Compress to between 0 and 1
 
@@ -58,7 +60,7 @@ class Encoder(torch.nn.Module):
         lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype = torch.float)
         h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
 
-        # Get connections between lat nodes and h3 nodes, graph will have h3 nodes appended after lat_nodes
+        # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
         for node_index, lat_node in enumerate(self.h3_grid):
@@ -73,7 +75,7 @@ class Encoder(torch.nn.Module):
         graph["latlon", "mapped", "iso"].edge_index = edge_index
 
         graph["latlon", "mapped", "iso"].edge_attr = self.h3_distances
-
+        print(graph)
 
         # TODO Add MLP to convert to 256 dim output
         super().__init__()
@@ -92,3 +94,10 @@ class Encoder(torch.nn.Module):
         # TODO Add node features based on the variables desired
 
         return NotImplementedError
+
+lat_lons = []
+for lat in range(-90, 90, 1):
+    for lon in range(0, 360, 1):
+        lat_lons.append((lat, lon))
+print("End create 1 degree grid")
+model = Encoder(lat_lons)
