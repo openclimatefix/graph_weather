@@ -14,24 +14,66 @@ The initial edge features are the positions of the lat/lon nodes connected to ea
 These positions are provided in a local coordinate system that is defined relative
 to each icosahedron node.
 
+In further notes, they notice that there is some hexagon instabilities in long rollouts
+One possible way to change that is to do the additative noise as in the original MeshGraphNet
+or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
+
+
+
 """
 import torch
 import h3
-from torch_geometric.data import Data
+import numpy as np
+from collections import defaultdict
+from torch_geometric.data import Data, HeteroData
 
 class Encoder(torch.nn.Module):
-    def __init__(self, lat_lons: list, resolution: int = 2, output_dim: int = 256):
+    def __init__(self, lat_lons: list, resolution: int = 2, input_dim: int = 78, output_dim: int = 256):
         """
         Encode the lat/lon data onto the icosahedron node graph
 
         Args:
             lat_lons: List of lat/lon pairs
             resolution: Resolution of the h3 grid, int from 0 to 15
+            input_dim: Number of input features for the model
             output_dim: Output dimension of the encoded grid
         """
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
+        self.h3_mapping = defaultdict(int)
+        h_index = 0
+        for h in self.h3_grid:
+            if h not in self.h3_mapping:
+                self.h3_mapping[h] = h_index
+                h_index += 1
         # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
         # TODO Add edge features of position of lat/lon nodes to h3 node, which are positions relative to the h3 node
+        self.h3_distances = []
+        for lat_lon in lat_lons:
+            for h3_point in self.h3_grid:
+                self.h3_distances.append(h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit='rads'))
+        self.h3_distances = np.asarray(self.h3_distances)
+        # Compress to between 0 and 1
+
+        # Build the default graph
+        lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype = torch.float)
+        h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
+
+        # Get connections between lat nodes and h3 nodes, graph will have h3 nodes appended after lat_nodes
+        edge_sources = []
+        edge_targets = []
+        for node_index, lat_node in enumerate(self.h3_grid):
+            edge_sources.append(node_index)
+            edge_targets.append(self.h3_mapping[lat_node])
+        edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
+
+        # Use heterogeneous graph as input and output dims are not same for the encoder
+        graph = HeteroData()
+        graph["latlon"].x = lat_nodes
+        graph["iso"].x = h3_nodes
+        graph["latlon", "mapped", "iso"].edge_index = edge_index
+
+        graph["latlon", "mapped", "iso"].edge_attr = self.h3_distances
+
 
         # TODO Add MLP to convert to 256 dim output
         super().__init__()
