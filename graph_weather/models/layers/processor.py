@@ -7,10 +7,7 @@ The Processor iteratively processes the 256-channel latent feature data on the i
 and its immediate neighbors. There are residual connections between each round of processing.
 
 """
-import h3
-import numpy as np
 import torch
-from torch_geometric.data import Data, HeteroData
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
