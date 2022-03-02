@@ -38,6 +38,7 @@ class Decoder(torch.nn.Module):
             processor_dim: Processor output dim size
             feature_dim: Output dimension of the original graph
         """
+        self.num_latlons = len(lat_lons)
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
         self.index_to_h3 = {}
         h_index = 0
@@ -51,7 +52,8 @@ class Decoder(torch.nn.Module):
 
         # Build the default graph
         nodes = torch.zeros((len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float)
-
+        # Extra starting ones for appending to inputs, could 'learn' good starting points
+        self.latlon_nodes = torch.zeros((len(lat_lons), output_dim), dtype=torch.float)
         # Get connections between lat nodes and h3 nodes
         # TODO Paper makes it seem like the 3 closest iso points map to the lat/lon point
         # Do kring 1 around current h3 cell, and calculate distance between all those points and the lat/lon one, choosing the nearest N (3)
@@ -104,7 +106,11 @@ class Decoder(torch.nn.Module):
         """
 
         edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
-        out, _ = self.graph_processor(processor_features, self.graph.edge_index, edge_attr) # Message Passing
+        # Readd nodes to match graph node number
+        features = torch.cat([self.latlon_nodes, processor_features], dim=-2)
+        out, _ = self.graph_processor(features, self.graph.edge_index, edge_attr) # Message Passing
+        # Remove the h3 nodes now, only want the latlon ones
+        out, _ = torch.split(out, [self.num_latlons, processor_features.shape()[1]], dim=-2)
         out = self.node_decoder(out) # Decode to 78 from 256
         out += start_features
         return out
