@@ -9,6 +9,7 @@ and its immediate neighbors. There are residual connections between each round o
 """
 import h3
 import numpy as np
+from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 import torch
 from torch_geometric.data import Data, HeteroData
 
@@ -17,16 +18,19 @@ class Processor(torch.nn.Module):
     def __init__(
         self,
         input_dim: int = 256,
-        output_dim: int = 256,
+            edge_dim: int = 1,
         num_blocks: int = 9,
+        hidden_dim_processor_node=256,
+        hidden_dim_processor_edge=256,
+        hidden_layers_processor_node=2,
+        hidden_layers_processor_edge=2,
+        mlp_norm_type="LayerNorm",
     ):
         """
-        Process the latent graph multiple times before sending it to the decoder
+        Process the latent graph multiple times
 
         Args:
-            h3_to_latlon: Bipartite mapping from h3 indicies to lat/lon in original grid
-            processor_dim: Processor output dim size
-            feature_dim: Output dimension of the original graph
+
         """
 
         # Build the default graph
@@ -34,17 +38,29 @@ class Processor(torch.nn.Module):
         self.input_dim = input_dim
 
         # TODO Add MLP to convert to 256 dim processor input to the original feature output
+        self.graph_processor = GraphProcessor(
+            num_blocks,
+            input_dim,
+            edge_dim,
+            hidden_dim_processor_node,
+            hidden_dim_processor_edge,
+            hidden_layers_processor_node,
+            hidden_layers_processor_edge,
+            mlp_norm_type,
+            )
         super().__init__()
 
-    def forward(self, graph: Data):
+    def forward(self, x: torch.Tensor, edge_index, edge_attr) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
         Args:
-            features: Array of features in same order as lat_lon
+            x: Torch tensor containing node features
+            edge_index: Connectivity of graph, of shape [2, Num edges] in COO format
+            edge_attr: Edge attribues in [Num edges, Features] shape
 
         Returns:
-
+            torch Tensor containing the values of the nodes of the graph
         """
-        # TODO Process with message passing blocks
-        return NotImplementedError
+        out, _ = self.graph_processor(x, edge_index, edge_attr)
+        return out

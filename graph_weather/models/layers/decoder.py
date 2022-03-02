@@ -17,12 +17,17 @@ import h3
 import numpy as np
 import torch
 from torch_geometric.data import Data, HeteroData
+from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
-from graph_weather.models.layers.encoder import Encoder
 
 
 class Decoder(torch.nn.Module):
-    def __init__(self, lat_lons, resolution: int = 2, input_dim: int = 256, output_dim: int = 78):
+    def __init__(self, lat_lons, resolution: int = 2, input_dim: int = 256, output_dim: int = 78,
+                 hidden_dim_processor_node=256,
+                 hidden_dim_processor_edge=256,
+                 hidden_layers_processor_node=2,
+                 hidden_layers_processor_edge=2,
+                 mlp_norm_type="LayerNorm",):
         """
         Decode the lat/lon data onto the icosahedron node graph
 
@@ -36,18 +41,17 @@ class Decoder(torch.nn.Module):
         h_index = 0
         for h in self.h3_grid:
             if h not in self.index_to_h3:
-                self.index_to_h3[h] = h_index
+                self.index_to_h3[h] = h_index + len(lat_lons)
                 h_index += 1
         self.h3_mapping = {}
         for h, value in enumerate(self.h3_grid):
             self.h3_mapping[h] = value
 
         # Build the default graph
-        lat_nodes = torch.zeros((len(lat_lons), output_dim), dtype=torch.float)
-        h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        nodes = torch.zeros((len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float)
 
         # Get connections between lat nodes and h3 nodes
-        # TODO Paper makes it seem like the 3 closest iso points map to teh lat/lon point
+        # TODO Paper makes it seem like the 3 closest iso points map to the lat/lon point
         # Do kring 1 around current h3 cell, and calculate distance between all those points and the lat/lon one, choosing the nearest N (3)
         # For a bit simpler, just include them all with their distances
         edge_sources = []
@@ -64,32 +68,41 @@ class Decoder(torch.nn.Module):
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
         self.h3_to_lat_distances = np.asarray(self.h3_to_lat_distances)
 
-        # Use heterogeneous graph as input and output dims are not same for the encoder
-        graph = HeteroData()
-        graph["latlon"].x = lat_nodes
-        graph["iso"].x = h3_nodes
-        graph["iso", "mapped", "latlon"].edge_index = edge_index
+        # Use normal graph as its a bit simpler
+        self.graph = Data(x=nodes, edge_index = edge_index, edge_attr = self.h3_to_lat_distances)
 
-        graph["iso", "mapped", "latlon"].edge_attr = self.h3_to_lat_distances
-        print(graph)
-        self.graph = graph
-
-        # TODO Add MLP to convert to 256 dim processor input to the original feature output
+        self.node_encoder = MLP(
+            input_dim, output_dim, 256, 2, mlp_norm_type
+            )
+        self.edge_encoder = MLP(
+            2, 2, 256, 2, mlp_norm_type
+            )
+        self.graph_processor = GraphProcessor(
+            1,
+            output_dim,
+            2,
+            hidden_dim_processor_node,
+            hidden_dim_processor_edge,
+            hidden_layers_processor_node,
+            hidden_layers_processor_edge,
+            mlp_norm_type,
+            )
         super().__init__()
 
-    def forward(self, original_graph, processor_graph):
+    def forward(self, processor_features: torch.Tensor, start_features: torch.Tensor) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
         Args:
-            features: Array of features in same order as lat_lon
+            processor_features: Processed features
+            start_features: Original input features to the encoder
 
         Returns:
-
+            Updated features for model
         """
 
-        # TODO Add node features based on the variables desired
-        out = processor_graph
-        # TODO Have skip connection to original graph
-        out += original_graph
-        return NotImplementedError
+        out = self.node_encoder(processor_features) # Encode to 256 from 78
+        edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
+        out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr) # Message Passing
+        out += start_features
+        return out

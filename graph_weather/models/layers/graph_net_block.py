@@ -163,7 +163,7 @@ def build_graph_processor_block(
 
     Args:
         in_dim_node: Input node feature dimension
-        in_dim_edge: Inpuut edge feature dimension
+        in_dim_edge: Input edge feature dimension
         hidden_dim_node: Number of nodes in hidden layer for graph node processing
         hidden_dim_edge: Number of nodes in hidden layer for graph edge processing
         hidden_layers_node: Number of hidden layers for node processing
@@ -227,7 +227,7 @@ class GraphProcessor(nn.Module):
                 )
             )
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr):
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor):
         for block in self.blocks:
             x, edge_attr, _ = block(x, edge_index, edge_attr)
 
