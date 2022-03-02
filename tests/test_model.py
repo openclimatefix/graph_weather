@@ -45,6 +45,7 @@ def test_decoder():
         x = model(processed, features)
     assert x.size() == (2592, 78)
 
+
 def test_end2end():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -59,4 +60,3 @@ def test_end2end():
         out = processor(x, edge_idx, edge_attr)
         pred = decoder(out, features)
     assert pred.size() == (2592, 78)
-
