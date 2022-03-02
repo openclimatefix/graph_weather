@@ -22,6 +22,7 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 
 """
 import h3
+import einops
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -47,12 +48,14 @@ class Encoder(torch.nn.Module):
             input_dim: Number of input features for the model
             output_dim: Output dimension of the encoded grid
         """
+        super().__init__()
         self.output_dim = output_dim
         self.num_latlons = len(lat_lons)
+        self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_mapping = {}
         h_index = 0
-        for h in self.h3_grid:
+        for h in self.base_h3_grid:
             if h not in self.h3_mapping:
                 self.h3_mapping[h] = h_index + self.num_latlons
                 h_index += 1
@@ -64,7 +67,7 @@ class Encoder(torch.nn.Module):
             lat_lon = lat_lons[idx]
             distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
             self.h3_distances.append([np.sin(distance), np.cos(distance)])
-        self.h3_distances = np.asarray(self.h3_distances)
+        self.h3_distances = torch.tensor(self.h3_distances, dtype=torch.float)
         # Compress to between 0 and 1
 
         # Build the default graph
@@ -104,7 +107,6 @@ class Encoder(torch.nn.Module):
             hidden_layers_processor_edge,
             mlp_norm_type,
             )
-        super().__init__()
 
     def forward(self, features: torch.Tensor):
         """
@@ -119,10 +121,10 @@ class Encoder(torch.nn.Module):
         out = self.node_encoder(features) # Encode to 256 from 78
         edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
-        out = torch.cat([out, self.h3_nodes], dim=-2)
+        out = torch.cat([out, self.h3_nodes], dim=0)
         out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr) # Message Passing
         # Remove the extra nodes (lat/lon) from the output
-        _, out = torch.split(out, [self.num_latlons, len(self.h3_nodes)], dim=-2)
+        _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
         return out, self.latent_graph.edge_index, self.latent_graph.edge_attr # New graph
 
     def create_latent_graph(self) -> Data:
@@ -143,8 +145,8 @@ class Encoder(torch.nn.Module):
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
                 edge_attrs.append(distance)
-                edge_sources.append(self.h3_mapping[h3_index])
-                edge_targets.append(self.h3_mapping[h])
+                edge_sources.append(self.h3_mapping[h3_index] - self.num_latlons)
+                edge_targets.append(self.h3_mapping[h] - self.num_latlons)
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
         edge_attrs = torch.unsqueeze(torch.tensor(edge_attrs, dtype=torch.float), dim=-1)
         # Use heterogeneous graph as input and output dims are not same for the encoder
