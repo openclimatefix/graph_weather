@@ -14,4 +14,4 @@ def test_decoder():
     for lat in range(-90, 90, 1):
         for lon in range(0, 360, 1):
             lat_lons.append((lat, lon))
-    model2 = Decoder(lat_lons)
+    model = Decoder(lat_lons)

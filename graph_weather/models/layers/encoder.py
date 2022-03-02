@@ -115,12 +115,16 @@ class Encoder(torch.nn.Module):
         # Get connectivity of the graph
         edge_sources = []
         edge_targets = []
+        edge_attrs = []
         for h3_index in self.h3_mapping.keys():
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
+                distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
+                edge_attrs.append(distance)
                 edge_sources.append(self.h3_mapping[h3_index])
                 edge_targets.append(self.h3_mapping[h])
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
+        edge_attrs = torch.unsqueeze(torch.tensor(edge_attrs, dtype=torch.float), dim=-1)
         # Use heterogeneous graph as input and output dims are not same for the encoder
         # Because uniform grid now, don't need edge attributes as they are all the same
-        return Data(x=graph["iso"].x, edge_index=edge_index)
+        return Data(x=graph["iso"].x, edge_index=edge_index, edge_attr = edge_attrs)
