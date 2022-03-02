@@ -60,4 +60,3 @@ def test_end2end():
         pred = decoder(out, features)
     assert pred.size() == (2592, 78)
 
-test_end2end()
