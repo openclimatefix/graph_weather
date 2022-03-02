@@ -93,4 +93,3 @@ class Decoder(torch.nn.Module):
         # TODO Have skip connection to original graph
         out += original_graph
         return NotImplementedError
-

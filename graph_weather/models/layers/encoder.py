@@ -124,6 +124,3 @@ class Encoder(torch.nn.Module):
         # Use heterogeneous graph as input and output dims are not same for the encoder
         # Because uniform grid now, don't need edge attributes as they are all the same
         return Data(x=graph["iso"].x, edge_index=edge_index)
-
-
-
