@@ -40,6 +40,7 @@ class Encoder(torch.nn.Module):
             input_dim: Number of input features for the model
             output_dim: Output dimension of the encoded grid
         """
+        self.output_dim = output_dim
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_mapping = {}
         h_index = 0
@@ -80,6 +81,8 @@ class Encoder(torch.nn.Module):
         print(graph)
         self.graph = graph
 
+        # Output graphy
+
         # TODO Add MLP to convert to 256 dim output
         super().__init__()
 
@@ -96,7 +99,31 @@ class Encoder(torch.nn.Module):
 
         # TODO Add node features based on the variables desired
 
-        return NotImplementedError
+        # TODO Create thesimpler latent graph out of the output from this graph
+        latent_graph = self.create_latent_graph(self.graph)
+        return latent_graph
+
+    def create_latent_graph(self, graph: HeteroData) -> Data:
+        """
+        Copies over and generates a Data object for the processor to use
+        Args:
+            graph:
+
+        Returns:
+
+        """
+        # Get connectivity of the graph
+        edge_sources = []
+        edge_targets = []
+        for h3_index in self.h3_mapping.keys():
+            h_points = h3.k_ring(h3_index, 1)
+            for h in h_points:  # Already includes itself
+                edge_sources.append(self.h3_mapping[h3_index])
+                edge_targets.append(self.h3_mapping[h])
+        edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
+        # Use heterogeneous graph as input and output dims are not same for the encoder
+        # Because uniform grid now, don't need edge attributes as they are all the same
+        return Data(x=graph["iso"].x, edge_index=edge_index)
 
 
 lat_lons = []
