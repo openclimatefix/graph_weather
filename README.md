@@ -15,5 +15,5 @@ Coming soon! We plan to train a model on GFS 0.25 degree operational forecasts, 
 We also plan trying out adaptive meshes, and predicting future satellite imagery as well.
 
 ## Training Data
-Training data will be available through HuggingFace Datasets for the GFS forecasts. MetOffice NWP forecasts we cannot 
+Training data will be available through HuggingFace Datasets for the GFS forecasts. MetOffice NWP forecasts we cannot
 redistribute, but can be accessed through [CEDA](https://data.ceda.ac.uk/).
