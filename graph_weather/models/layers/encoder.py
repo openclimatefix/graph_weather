@@ -126,9 +126,4 @@ class Encoder(torch.nn.Module):
         return Data(x=graph["iso"].x, edge_index=edge_index)
 
 
-lat_lons = []
-for lat in range(-90, 90, 1):
-    for lon in range(0, 360, 1):
-        lat_lons.append((lat, lon))
-print("End create 1 degree grid")
-model = Encoder(lat_lons)
+

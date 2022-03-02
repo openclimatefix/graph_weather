@@ -1,6 +1,6 @@
 from torch.nn import Module
 
-from .GNNComponents.GNNComponents import MLP, GraphProcessor
+from .layers.graph_net_block import MLP, GraphProcessor
 
 
 class GNN(Module):
