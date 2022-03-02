@@ -14,8 +14,6 @@ def test_encoder():
         x, edge_idx, edge_attr = model(features)
     assert x.size() == (5882, 256)
     assert edge_idx.size() == (2, 41162)
-test_encoder()
-print("Now Processor")
 
 def test_processor():
     processor = Processor().eval()
@@ -29,10 +27,8 @@ def test_processor():
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)
-        print(out.shape)
+    assert out.size() == x.size()
 
-test_processor()
-print("Now Decoder")
 def test_decoder():
     lat_lons = []
     for lat in range(-90, 90, 5):
