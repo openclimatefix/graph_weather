@@ -27,7 +27,9 @@ class Decoder(torch.nn.Module):
                  hidden_dim_processor_edge=256,
                  hidden_layers_processor_node=2,
                  hidden_layers_processor_edge=2,
-                 mlp_norm_type="LayerNorm",):
+                 mlp_norm_type="LayerNorm",
+                 hidden_dim_decoder=128,
+                 hidden_layers_decoder=2,):
         """
         Decode the lat/lon data onto the icosahedron node graph
 
@@ -71,9 +73,6 @@ class Decoder(torch.nn.Module):
         # Use normal graph as its a bit simpler
         self.graph = Data(x=nodes, edge_index = edge_index, edge_attr = self.h3_to_lat_distances)
 
-        self.node_encoder = MLP(
-            input_dim, output_dim, 256, 2, mlp_norm_type
-            )
         self.edge_encoder = MLP(
             2, 2, 256, 2, mlp_norm_type
             )
@@ -86,6 +85,9 @@ class Decoder(torch.nn.Module):
             hidden_layers_processor_node,
             hidden_layers_processor_edge,
             mlp_norm_type,
+            )
+        self.node_decoder = MLP(
+            input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None
             )
         super().__init__()
 
@@ -101,8 +103,8 @@ class Decoder(torch.nn.Module):
             Updated features for model
         """
 
-        out = self.node_encoder(processor_features) # Encode to 256 from 78
         edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
-        out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr) # Message Passing
+        out, _ = self.graph_processor(processor_features, self.graph.edge_index, edge_attr) # Message Passing
+        out = self.node_decoder(out) # Decode to 78 from 256
         out += start_features
         return out
