@@ -24,7 +24,6 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 import torch
 import h3
 import numpy as np
-from collections import defaultdict
 from torch_geometric.data import Data, HeteroData
 
 class Encoder(torch.nn.Module):
@@ -39,7 +38,7 @@ class Encoder(torch.nn.Module):
             output_dim: Output dimension of the encoded grid
         """
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
-        self.h3_mapping = defaultdict(int)
+        self.h3_mapping = {}
         h_index = 0
         for h in self.h3_grid:
             if h not in self.h3_mapping:
@@ -76,6 +75,7 @@ class Encoder(torch.nn.Module):
 
         graph["latlon", "mapped", "iso"].edge_attr = self.h3_distances
         print(graph)
+        self.graph = graph
 
         # TODO Add MLP to convert to 256 dim output
         super().__init__()
