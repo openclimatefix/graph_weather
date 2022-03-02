@@ -18,7 +18,7 @@ class Processor(torch.nn.Module):
     def __init__(
         self,
         input_dim: int = 256,
-            edge_dim: int = 1,
+        edge_dim: int = 1,
         num_blocks: int = 9,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
@@ -32,7 +32,7 @@ class Processor(torch.nn.Module):
         Args:
 
         """
-
+        super().__init__()
         # Build the default graph
         # Take features from encoder and put into processor graph
         self.input_dim = input_dim
@@ -48,7 +48,7 @@ class Processor(torch.nn.Module):
             hidden_layers_processor_edge,
             mlp_norm_type,
             )
-        super().__init__()
+
 
     def forward(self, x: torch.Tensor, edge_index, edge_attr) -> torch.Tensor:
         """

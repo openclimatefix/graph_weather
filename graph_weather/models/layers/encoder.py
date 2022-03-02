@@ -122,6 +122,10 @@ class Encoder(torch.nn.Module):
         edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         out = torch.cat([out, self.h3_nodes], dim=0)
+        print(out.shape)
+        print(features.shape)
+        print(self.graph.edge_index.shape)
+        print(edge_attr.shape)
         out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr) # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
