@@ -1,8 +1,8 @@
 """Base model for both types of weather models"""
-import torch
-
 import collections
 import functools
+
+import torch
 
 EdgeSet = collections.namedtuple("EdgeSet", ["name", "features", "senders", "receivers"])
 MultiGraph = collections.namedtuple("Graph", ["node_features", "edge_sets"])

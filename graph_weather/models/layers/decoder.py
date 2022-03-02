@@ -13,11 +13,13 @@ rollout) and longer time steps (fewer iterations required during rollout but mod
 more complex dynamics)
 
 """
-import torch
 import h3
-from torch_geometric.data import Data, HeteroData
 import numpy as np
+import torch
+from torch_geometric.data import Data, HeteroData
+
 from graph_weather.models.layers.encoder import Encoder
+
 
 class Decoder(torch.nn.Module):
     def __init__(self, lat_lons, resolution: int = 2, input_dim: int = 256, output_dim: int = 78):
@@ -41,7 +43,7 @@ class Decoder(torch.nn.Module):
             self.h3_mapping[h] = value
 
         # Build the default graph
-        lat_nodes = torch.zeros((len(lat_lons), output_dim), dtype = torch.float)
+        lat_nodes = torch.zeros((len(lat_lons), output_dim), dtype=torch.float)
         h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
 
         # Get connections between lat nodes and h3 nodes
@@ -55,7 +57,7 @@ class Decoder(torch.nn.Module):
             # Get h3 index
             h_points = h3.k_ring(self.h3_mapping[node_index], 1)
             for h in h_points:
-                distance = h3.point_dist(lat_node, h3.h3_to_geo(h), unit='rads')
+                distance = h3.point_dist(lat_node, h3.h3_to_geo(h), unit="rads")
                 self.h3_to_lat_distances.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.index_to_h3[h])
                 edge_targets.append(node_index)
@@ -91,6 +93,7 @@ class Decoder(torch.nn.Module):
         # TODO Have skip connection to original graph
         out += original_graph
         return NotImplementedError
+
 
 lat_lons = []
 for lat in range(-90, 90, 1):

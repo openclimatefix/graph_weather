@@ -1,8 +1,8 @@
+import numpy as np
+from numpy import concatenate, cumsum, diff, int64, isin, ones, squeeze, tile, where, zeros
+from numpy.random import normal
 from torch import tensor
 from torch.nn.functional import one_hot
-from numpy import concatenate, ones, int64, squeeze, diff, tile, where, isin, cumsum, zeros
-from numpy.random import normal
-import numpy as np
 
 
 def process_node_window(

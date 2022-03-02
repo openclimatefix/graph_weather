@@ -4,7 +4,7 @@ import torch
 class Normalizer(snt.AbstractModule):
     """Feature normalizer that accumulates statistics online."""
 
-    def __init__(self, size, max_accumulations=10**6, std_epsilon=1e-8, name="Normalizer"):
+    def __init__(self, size, max_accumulations=10 ** 6, std_epsilon=1e-8, name="Normalizer"):
         super(Normalizer, self).__init__(name=name)
         self._max_accumulations = max_accumulations
         self._std_epsilon = std_epsilon
@@ -36,7 +36,7 @@ class Normalizer(snt.AbstractModule):
         """Function to perform the accumulation of the batch_data statistics."""
         count = tf.cast(tf.shape(batched_data)[0], tf.float32)
         data_sum = tf.reduce_sum(batched_data, axis=0)
-        squared_data_sum = tf.reduce_sum(batched_data**2, axis=0)
+        squared_data_sum = tf.reduce_sum(batched_data ** 2, axis=0)
         return tf.group(
             tf.assign_add(self._acc_sum, data_sum),
             tf.assign_add(self._acc_sum_squared, squared_data_sum),

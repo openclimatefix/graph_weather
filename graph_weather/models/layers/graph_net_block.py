@@ -18,10 +18,10 @@ Redistributions in binary form must reproduce the above copyright notice, this l
 Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. of Energy, the National Energy Technology Laboratory, Oak Ridge Institute for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore National Security, LLC., the University of California, Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest National Laboratory, Carnegie Mellon University, West Virginia University, Boston University, the Trustees of Princeton University, the University of Texas at Austin, URS Energy & Construction, Inc., nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
 """
-from torch import nn, cat
+import torch
+from torch import cat, nn
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
-import torch
 
 
 class MLP(nn.Module):

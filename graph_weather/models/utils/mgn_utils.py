@@ -1,7 +1,7 @@
+from numpy import concatenate, diff, int64, isin, ones, squeeze, tile, where
+from numpy.random import normal
 from torch import tensor
 from torch.nn.functional import one_hot
-from numpy import concatenate, ones, int64, squeeze, diff, tile, where, isin
-from numpy.random import normal
 
 
 def process_node_window(

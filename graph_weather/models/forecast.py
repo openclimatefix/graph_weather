@@ -1,14 +1,14 @@
 """Model for forecasting weather from NWP states"""
 
 
-from numpy import concatenate, expand_dims, array, float32
-from torch import no_grad, from_numpy
+from huggingface_hub import PyTorchModelHubMixin
+from numpy import array, concatenate, expand_dims, float32
+from torch import from_numpy, no_grad
 from torch_geometric.data import Data
 
-from .utils.mgn_utils import process_node_window
 from .gnn import GNN
+from .utils.mgn_utils import process_node_window
 from .utils.Normalizer import Normalizer
-from huggingface_hub import PyTorchModelHubMixin
 
 
 class GraphWeatherForecaster(GNN, PyTorchModelHubMixin):

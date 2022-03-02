@@ -21,13 +21,16 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 
 
 """
-import torch
 import h3
 import numpy as np
+import torch
 from torch_geometric.data import Data, HeteroData
 
+
 class Encoder(torch.nn.Module):
-    def __init__(self, lat_lons: list, resolution: int = 2, input_dim: int = 78, output_dim: int = 256):
+    def __init__(
+        self, lat_lons: list, resolution: int = 2, input_dim: int = 78, output_dim: int = 256
+    ):
         """
         Encode the lat/lon data onto the icosahedron node graph
 
@@ -50,13 +53,13 @@ class Encoder(torch.nn.Module):
         self.h3_distances = []
         for idx, h3_point in enumerate(self.h3_grid):
             lat_lon = lat_lons[idx]
-            distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit='rads')
+            distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
             self.h3_distances.append([np.sin(distance), np.cos(distance)])
         self.h3_distances = np.asarray(self.h3_distances)
         # Compress to between 0 and 1
 
         # Build the default graph
-        lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype = torch.float)
+        lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
         h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
 
         # Get connections between lat nodes and h3 nodes
@@ -94,6 +97,7 @@ class Encoder(torch.nn.Module):
         # TODO Add node features based on the variables desired
 
         return NotImplementedError
+
 
 lat_lons = []
 for lat in range(-90, 90, 1):
