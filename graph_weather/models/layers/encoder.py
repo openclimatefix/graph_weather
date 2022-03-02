@@ -21,23 +21,28 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 
 
 """
-import h3
 import einops
+import h3
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data, HeteroData
+
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
 class Encoder(torch.nn.Module):
     def __init__(
-        self, lat_lons: list, resolution: int = 2, input_dim: int = 78, output_dim: int = 256,
-            hidden_dim_processor_node=256,
-            hidden_dim_processor_edge=256,
-            hidden_layers_processor_node=2,
-            hidden_layers_processor_edge=2,
-            mlp_norm_type="LayerNorm",
+        self,
+        lat_lons: list,
+        resolution: int = 2,
+        input_dim: int = 78,
+        output_dim: int = 256,
+        hidden_dim_processor_node=256,
+        hidden_dim_processor_edge=256,
+        hidden_layers_processor_node=2,
+        hidden_layers_processor_edge=2,
+        mlp_norm_type="LayerNorm",
     ):
         """
         Encode the lat/lon data onto the icosahedron node graph
@@ -71,9 +76,11 @@ class Encoder(torch.nn.Module):
         # Compress to between 0 and 1
 
         # Build the default graph
-        #lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
-        #h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
-        nodes = torch.zeros((len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        # lat_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
+        # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
+        nodes = torch.zeros(
+            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
+        )
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -83,7 +90,7 @@ class Encoder(torch.nn.Module):
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
 
         # Use homogenous graph to make it easier
-        self.graph = Data(x=nodes, edge_index = edge_index, edge_attr=self.h3_distances)
+        self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_distances)
 
         self.latent_graph = self.create_latent_graph()
 
@@ -91,12 +98,8 @@ class Encoder(torch.nn.Module):
         self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
         # Output graph
 
-        self.node_encoder = MLP(
-            input_dim, output_dim, 256, 2, mlp_norm_type
-            )
-        self.edge_encoder = MLP(
-            2, 2, 256, 2, mlp_norm_type
-            )
+        self.node_encoder = MLP(input_dim, output_dim, 256, 2, mlp_norm_type)
+        self.edge_encoder = MLP(2, 2, 256, 2, mlp_norm_type)
         self.graph_processor = GraphProcessor(
             1,
             output_dim,
@@ -106,7 +109,7 @@ class Encoder(torch.nn.Module):
             hidden_layers_processor_node,
             hidden_layers_processor_edge,
             mlp_norm_type,
-            )
+        )
 
     def forward(self, features: torch.Tensor):
         """
@@ -118,18 +121,18 @@ class Encoder(torch.nn.Module):
         Returns:
 
         """
-        out = self.node_encoder(features) # Encode to 256 from 78
-        edge_attr = self.edge_encoder(self.graph.edge_attr) # Update attributes based on distance
+        out = self.node_encoder(features)  # Encode to 256 from 78
+        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         out = torch.cat([out, self.h3_nodes], dim=0)
         print(out.shape)
         print(features.shape)
         print(self.graph.edge_index.shape)
         print(edge_attr.shape)
-        out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr) # Message Passing
+        out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
-        return out, self.latent_graph.edge_index, self.latent_graph.edge_attr # New graph
+        return out, self.latent_graph.edge_index, self.latent_graph.edge_attr  # New graph
 
     def create_latent_graph(self) -> Data:
         """

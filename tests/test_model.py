@@ -1,6 +1,8 @@
-from graph_weather.models import Decoder, Encoder, Processor
-import torch
 import h3
+import torch
+
+from graph_weather.models import Decoder, Encoder, Processor
+
 
 def test_encoder():
     lat_lons = []
@@ -14,6 +16,7 @@ def test_encoder():
         x, edge_idx, edge_attr = model(features)
     assert x.size() == (5882, 256)
     assert edge_idx.size() == (2, 41162)
+
 
 def test_processor():
     processor = Processor().eval()
@@ -29,6 +32,7 @@ def test_processor():
         out = processor(x, edge_idx, edge_attr)
     assert out.size() == x.size()
 
+
 def test_decoder():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -38,7 +42,8 @@ def test_decoder():
     features = torch.randn((len(lat_lons), 78))
     processed = torch.randn((h3.num_hexagons(2), 256))
     with torch.no_grad():
-        x = model(processed,features)
+        x = model(processed, features)
         print(x.shape)
+
 
 test_decoder()

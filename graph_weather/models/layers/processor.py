@@ -9,9 +9,10 @@ and its immediate neighbors. There are residual connections between each round o
 """
 import h3
 import numpy as np
-from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 import torch
 from torch_geometric.data import Data, HeteroData
+
+from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
 class Processor(torch.nn.Module):
@@ -47,8 +48,7 @@ class Processor(torch.nn.Module):
             hidden_layers_processor_node,
             hidden_layers_processor_edge,
             mlp_norm_type,
-            )
-
+        )
 
     def forward(self, x: torch.Tensor, edge_index, edge_attr) -> torch.Tensor:
         """
