@@ -127,4 +127,4 @@ class Encoder(torch.nn.Module):
         edge_attrs = torch.unsqueeze(torch.tensor(edge_attrs, dtype=torch.float), dim=-1)
         # Use heterogeneous graph as input and output dims are not same for the encoder
         # Because uniform grid now, don't need edge attributes as they are all the same
-        return Data(x=graph["iso"].x, edge_index=edge_index, edge_attr = edge_attrs)
+        return Data(x=graph["iso"].x, edge_index=edge_index, edge_attr=edge_attrs)
