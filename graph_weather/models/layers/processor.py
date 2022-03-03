@@ -14,6 +14,7 @@ from graph_weather.models.layers.graph_net_block import GraphProcessor
 
 class Processor(torch.nn.Module):
     """Processor for latent graphD"""
+
     def __init__(
         self,
         input_dim: int = 256,
