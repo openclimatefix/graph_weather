@@ -51,8 +51,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         self.decoder = Decoder(
             lat_lons=lat_lons,
             resolution=resolution,
-            input_dim=feature_dim,
-            output_dim=node_dim,
+            input_dim=node_dim,
+            output_dim=feature_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
             hidden_layers_processor_node=hidden_layers_processor_node,
@@ -74,6 +74,6 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             The next state in the forecast
         """
         x, edge_idx, edge_attr = self.encoder(features)
-        out = self.processor(x, edge_idx, edge_attr)
-        pred = self.decoder(out, features)
-        return pred
+        x = self.processor(x, edge_idx, edge_attr)
+        x = self.decoder(x, features)
+        return x

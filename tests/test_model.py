@@ -2,7 +2,7 @@ import h3
 import torch
 
 from graph_weather.models import Decoder, Encoder, Processor
-
+from graph_weather import GraphWeatherForecaster
 
 def test_encoder():
     lat_lons = []
@@ -60,3 +60,20 @@ def test_end2end():
         out = processor(x, edge_idx, edge_attr)
         pred = decoder(out, features)
     assert pred.size() == (2592, 78)
+
+
+def test_forecaster():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    model = GraphWeatherForecaster(lat_lons)
+
+    features = torch.randn((len(lat_lons), 78))
+
+    out = model(features)
+    assert not torch.isnan(out).all()
+
+    criterion = torch.nn.MSELoss()
+    loss = criterion(out, features)
+    loss.backward()
