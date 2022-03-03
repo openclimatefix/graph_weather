@@ -14,6 +14,4 @@ They also rescale by nomical static air density at each pressure level, but did 
 
 When summing loss across the lat/lon grid, use a weight proportional to each pixels area i.e. cos(lat) weighting
 
-
-
 """

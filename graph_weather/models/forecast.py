@@ -1,6 +1,4 @@
 """Model for forecasting weather from NWP states"""
-
-
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
@@ -24,6 +22,26 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_layers_decoder=2,
         norm_type="LayerNorm",
     ):
+        """
+        Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
+
+        Args:
+            lat_lons: List of latitude and longitudes for the grid
+            resolution: Resolution of the H3 grid, prefer even resolutions, as
+                odd ones have octogons and heptagons as well
+            feature_dim: Input feature size
+            node_dim: Node hidden dimension
+            edge_dim: Edge hidden dimension
+            num_blocks: Number of message passing blocks in the Processor
+            hidden_dim_processor_node: Hidden dimension of the node processors
+            hidden_dim_processor_edge: Hidden dimension of the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            hidden_dim_decoder:Number of hidden dimensions in the decoder
+            hidden_layers_decoder: Number of layers in the decoder
+            norm_type: Type of norm for the MLPs
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+        """
         super().__init__()
 
         self.encoder = Encoder(
