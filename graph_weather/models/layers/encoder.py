@@ -38,7 +38,7 @@ class Encoder(torch.nn.Module):
         resolution: int = 2,
         input_dim: int = 78,
         output_dim: int = 256,
-        output_edge_dim: int = 2,
+        output_edge_dim: int = 256,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
         hidden_layers_processor_node=2,
@@ -175,7 +175,7 @@ class Encoder(torch.nn.Module):
                 edge_sources.append(self.h3_mapping[h3_index] - self.num_latlons)
                 edge_targets.append(self.h3_mapping[h] - self.num_latlons)
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
-        edge_attrs = torch.unsqueeze(torch.tensor(edge_attrs, dtype=torch.float), dim=-1)
+        edge_attrs = torch.tensor(edge_attrs, dtype=torch.float)
         # Use heterogeneous graph as input and output dims are not same for the encoder
         # Because uniform grid now, don't need edge attributes as they are all the same
         return Data(edge_index=edge_index, edge_attr=edge_attrs)

@@ -28,8 +28,7 @@ class Decoder(torch.nn.Module):
         resolution: int = 2,
         input_dim: int = 256,
         output_dim: int = 78,
-        edge_input_dim: int = 256,
-        edge_output_dim: int = 128,
+        edge_output_dim: int = 256,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
         hidden_layers_processor_node=2,
@@ -89,7 +88,7 @@ class Decoder(torch.nn.Module):
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
         self.edge_encoder = MLP(
-            edge_input_dim, edge_output_dim, hidden_dim_processor_edge, 2, mlp_norm_type
+            2, edge_output_dim, hidden_dim_processor_edge, 2, mlp_norm_type
         )
         self.graph_processor = GraphProcessor(
             mp_iterations=1,
