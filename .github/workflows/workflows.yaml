@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: [3.7, 3.8, 3.9]
         torch-version: [1.9.0, 1.10.0]
         include:
@@ -36,11 +36,41 @@ jobs:
       - name: Install main package
         run: |
           pip install -e .
-          pip install pytest
-      - name: Run tests
+          pip install pytest-xdist
+      - name: Setup with pytest-xdist
         run: |
-          pytest --cov --cov-report=xml
-      - name: Upload coverage
+          # lets get the string for how many cpus to use with pytest
+          echo "Will be using ${{ inputs.pytest_numcpus }} cpus for pytest testing"
+          #
+          # make PYTESTXDIST
+          export PYTESTXDIST="-n 2"
+          if [ 2 -gt 0 ]; then export PYTESTXDIST="$PYTESTXDIST --dist=loadfile"; fi
+          #
+          # echo results and save env var for other jobs
+          echo "pytest-xdist options that will be used are: $PYTESTXDIST"
+          echo "PYTESTXDIST=$PYTESTXDIST" >> $GITHUB_ENV
+      - name: Setup with pytest-cov
+        run: |
+          # let make pytest run with coverage
+          echo "Will be looking at coverage of dir  graph_weather"
+          #
+          # install pytest-cov
+          pip install coverage==6.2 # https://github.com/nedbat/coveragepy/issues/1312
+          pip install pytest-cov
+          #
+          # make PYTESTCOV
+          export PYTESTCOV="--cov=graph_weather--cov-report=xml"
+          # echo results and save env var for other jobs
+          echo "pytest-cov options that will be used are: $PYTESTCOV"
+          echo "PYTESTCOV=$PYTESTCOV" >> $GITHUB_ENV
+      - name: Run pytest
+        run: |
+          export PYTEST_COMMAND="pytest $PYTESTCOV $PYTESTXDIST -s"
+          echo "Will be running this command: $PYTEST_COMMAND"
+          eval $PYTEST_COMMAND
+      - name: Show coverage
+        run: coverage report -m
+      - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
