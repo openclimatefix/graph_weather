@@ -24,6 +24,7 @@ from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 class Decoder(torch.nn.Module):
     """Decoder graph module"""
+
     def __init__(
         self,
         lat_lons,

@@ -5,6 +5,7 @@ import torch
 
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
+
     def __init__(self, feature_variance: list, lat_lons: list):
         """
         Normalized MSE Loss as described in the paper

@@ -18,15 +18,17 @@ Redistributions in binary form must reproduce the above copyright notice, this l
 Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. of Energy, the National Energy Technology Laboratory, Oak Ridge Institute for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore National Security, LLC., the University of California, Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest National Laboratory, Carnegie Mellon University, West Virginia University, Boston University, the Trustees of Princeton University, the University of Texas at Austin, URS Energy & Construction, Inc., nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
 """
+from typing import Tuple
+
 import torch
 from torch import cat, nn
-from typing import Tuple
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
 
 
 class MLP(nn.Module):
     """MLP for graph processing"""
+
     def __init__(
         self,
         in_dim: int,
@@ -89,6 +91,7 @@ class MLP(nn.Module):
 
 class EdgeProcessor(nn.Module):
     """EdgeProcessor"""
+
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -114,7 +117,9 @@ class EdgeProcessor(nn.Module):
             2 * in_dim_node + in_dim_edge, in_dim_edge, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+    def forward(
+        self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+    ) -> torch.Tensor:
         """
         Compute the edge part of the message passing
 
@@ -139,6 +144,7 @@ class EdgeProcessor(nn.Module):
 
 class NodeProcessor(nn.Module):
     """NodeProcessor"""
+
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -164,7 +170,9 @@ class NodeProcessor(nn.Module):
             in_dim_node + in_dim_edge, in_dim_node, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+    ) -> torch.Tensor:
         """
         Compute the node feature updates in message passing
 
@@ -224,6 +232,7 @@ def build_graph_processor_block(
 
 class GraphProcessor(nn.Module):
     """Overall graph processor"""
+
     def __init__(
         self,
         mp_iterations: int = 15,
@@ -266,7 +275,9 @@ class GraphProcessor(nn.Module):
                 )
             )
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute updates to the graph in message passing method
 

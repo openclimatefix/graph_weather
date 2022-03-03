@@ -21,11 +21,12 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 
 
 """
+from typing import Tuple
+
 import einops
 import h3
 import numpy as np
 import torch
-from typing import Tuple
 from torch_geometric.data import Data
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
@@ -33,6 +34,7 @@ from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 class Encoder(torch.nn.Module):
     """Encoder graph model"""
+
     def __init__(
         self,
         lat_lons: list,
