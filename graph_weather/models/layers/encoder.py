@@ -49,13 +49,20 @@ class Encoder(torch.nn.Module):
         mlp_norm_type="LayerNorm",
     ):
         """
-        Encode the lat/lon data onto the icosahedron node graph
+        Encode the lat/lon data inot the isohedron graph
 
         Args:
-            lat_lons: List of lat/lon pairs
-            resolution: Resolution of the h3 grid, int from 0 to 15
-            input_dim: Number of input features for the model
-            output_dim: Output dimension of the encoded grid
+            lat_lons: List of (lat,lon) points
+            resolution: H3 resolution level
+            input_dim: Input node dimension
+            output_dim: Output node dimension
+            output_edge_dim: Edge dimension
+            hidden_dim_processor_node: Hidden dimension of the node processors
+            hidden_dim_processor_edge: Hidden dimension of the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            mlp_norm_type: Type of norm for the MLPs
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
         self.output_dim = output_dim
