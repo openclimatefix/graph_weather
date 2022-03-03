@@ -35,7 +35,6 @@ class Processor(torch.nn.Module):
         # Take features from encoder and put into processor graph
         self.input_dim = input_dim
 
-        # TODO Add MLP to convert to 256 dim processor input to the original feature output
         self.graph_processor = GraphProcessor(
             num_blocks,
             input_dim,
