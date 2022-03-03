@@ -44,7 +44,7 @@ class NormalizedMSELoss(torch.nn.Module):
         pred = pred / self.feature_variance
         target = target / self.feature_variance
 
-        out = (pred - target)**2
+        out = (pred - target) ** 2
         # Mean of the physical variables
         out = out.mean(-1)
         # Weight by the latitude, as that changes, so does the size of the pixel
