@@ -17,7 +17,7 @@ import einops
 import h3
 import numpy as np
 import torch
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import Data
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
@@ -79,10 +79,10 @@ class Decoder(torch.nn.Module):
         )
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.latlon_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
-        # Get connections between lat nodes and h3 nodes
-        # TODO Paper makes it seem like the 3 closest iso points map to the lat/lon point
-        # Do kring 1 around current h3 cell, and calculate distance between all those points and the lat/lon one, choosing the nearest N (3)
-        # For a bit simpler, just include them all with their distances
+        # Get connections between lat nodes and h3 nodes TODO Paper makes it seem like the 3
+        #  closest iso points map to the lat/lon point Do kring 1 around current h3 cell,
+        #  and calculate distance between all those points and the lat/lon one, choosing the
+        #  nearest N (3) For a bit simpler, just include them all with their distances
         edge_sources = []
         edge_targets = []
         self.h3_to_lat_distances = []

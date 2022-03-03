@@ -2,8 +2,8 @@
 
 In the original paper the processor is described as
 
-The Processor iteratively processes the 256-channel latent feature data on the icosahedron grid using
-9 rounds of message-passing GNNs. During each round, a node exchanges information with itself
+The Processor iteratively processes the 256-channel latent feature data on the icosahedron grid
+using 9 rounds of message-passing GNNs. During each round, a node exchanges information with itself
 and its immediate neighbors. There are residual connections between each round of processing.
 
 """

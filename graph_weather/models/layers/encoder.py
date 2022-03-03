@@ -76,7 +76,6 @@ class Encoder(torch.nn.Module):
                 self.h3_mapping[h] = h_index + self.num_latlons
                 h_index += 1
         # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
-        # TODO Add edge features of position of lat/lon nodes to h3 node, which are positions relative to the h3 node
         # Should have vertical and horizontal difference
         self.h3_distances = []
         for idx, h3_point in enumerate(self.h3_grid):
