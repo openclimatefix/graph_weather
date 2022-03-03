@@ -1,7 +1,9 @@
 import h3
 import torch
 
+from graph_weather import GraphWeatherForecaster
 from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather.models.losses import NormalizedMSELoss
 
 
 def test_encoder():
@@ -11,11 +13,11 @@ def test_encoder():
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
 
-    features = torch.randn((len(lat_lons), 78))
+    features = torch.randn((2, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
-    assert x.size() == (5882, 256)
-    assert edge_idx.size() == (2, 41162)
+    assert x.size() == (5882 * 2, 256)
+    assert edge_idx.size() == (2, 41162 * 2)
 
 
 def test_processor():
@@ -26,7 +28,7 @@ def test_processor():
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
 
-    features = torch.randn((len(lat_lons), 78))
+    features = torch.randn((3, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)
@@ -39,11 +41,11 @@ def test_decoder():
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
     model = Decoder(lat_lons).eval()
-    features = torch.randn((len(lat_lons), 78))
-    processed = torch.randn((h3.num_hexagons(2), 256))
+    features = torch.randn((3, len(lat_lons), 78))
+    processed = torch.randn((3 * h3.num_hexagons(2), 256))
     with torch.no_grad():
         x = model(processed, features)
-    assert x.size() == (2592, 78)
+    assert x.size() == (3, 2592, 78)
 
 
 def test_end2end():
@@ -54,9 +56,43 @@ def test_end2end():
     model = Encoder(lat_lons).eval()
     processor = Processor().eval()
     decoder = Decoder(lat_lons).eval()
-    features = torch.randn((len(lat_lons), 78))
+    features = torch.randn((4, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)
         pred = decoder(out, features)
-    assert pred.size() == (2592, 78)
+    assert pred.size() == (4, 2592, 78)
+
+
+def test_forecaster():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    model = GraphWeatherForecaster(lat_lons)
+
+    features = torch.randn((1, len(lat_lons), 78))
+
+    out = model(features)
+    assert not torch.isnan(out).all()
+
+    criterion = torch.nn.MSELoss()
+    loss = criterion(out, features)
+    loss.backward()
+
+
+def test_forecaster_and_loss():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    model = GraphWeatherForecaster(lat_lons)
+
+    features = torch.randn((2, len(lat_lons), 78))
+
+    out = model(features)
+    assert not torch.isnan(out).all()
+
+    loss = criterion(out, features)
+    loss.backward()

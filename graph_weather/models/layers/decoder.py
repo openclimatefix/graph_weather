@@ -13,21 +13,25 @@ rollout) and longer time steps (fewer iterations required during rollout but mod
 more complex dynamics)
 
 """
+import einops
 import h3
 import numpy as np
 import torch
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import Data
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
 class Decoder(torch.nn.Module):
+    """Decoder graph module"""
+
     def __init__(
         self,
         lat_lons,
         resolution: int = 2,
         input_dim: int = 256,
         output_dim: int = 78,
+        output_edge_dim: int = 256,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
         hidden_layers_processor_node=2,
@@ -37,12 +41,22 @@ class Decoder(torch.nn.Module):
         hidden_layers_decoder=2,
     ):
         """
-        Decode the lat/lon data onto the icosahedron node graph
+        Decoder from latent graph to lat/lon graph
 
         Args:
-            h3_to_latlon: Bipartite mapping from h3 indicies to lat/lon in original grid
-            processor_dim: Processor output dim size
-            feature_dim: Output dimension of the original graph
+            lat_lons: List of (lat,lon) points
+            resolution: H3 resolution level
+            input_dim: Input node dimension
+            output_dim: Output node dimension
+            output_edge_dim: Edge dimension
+            hidden_dim_processor_node: Hidden dimension of the node processors
+            hidden_dim_processor_edge: Hidden dimension of the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            hidden_dim_decoder:Number of hidden dimensions in the decoder
+            hidden_layers_decoder: Number of layers in the decoder
+            mlp_norm_type: Type of norm for the MLPs
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
         self.num_latlons = len(lat_lons)
@@ -65,10 +79,10 @@ class Decoder(torch.nn.Module):
         )
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.latlon_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
-        # Get connections between lat nodes and h3 nodes
-        # TODO Paper makes it seem like the 3 closest iso points map to the lat/lon point
-        # Do kring 1 around current h3 cell, and calculate distance between all those points and the lat/lon one, choosing the nearest N (3)
-        # For a bit simpler, just include them all with their distances
+        # Get connections between lat nodes and h3 nodes TODO Paper makes it seem like the 3
+        #  closest iso points map to the lat/lon point Do kring 1 around current h3 cell,
+        #  and calculate distance between all those points and the lat/lon one, choosing the
+        #  nearest N (3) For a bit simpler, just include them all with their distances
         edge_sources = []
         edge_targets = []
         self.h3_to_lat_distances = []
@@ -86,11 +100,11 @@ class Decoder(torch.nn.Module):
         # Use normal graph as its a bit simpler
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
-        self.edge_encoder = MLP(2, 2, 256, 2, mlp_norm_type)
+        self.edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type)
         self.graph_processor = GraphProcessor(
             mp_iterations=1,
             in_dim_node=input_dim,
-            in_dim_edge=2,
+            in_dim_edge=output_edge_dim,
             hidden_dim_node=hidden_dim_processor_node,
             hidden_dim_edge=hidden_dim_processor_edge,
             hidden_layers_node=hidden_layers_processor_node,
@@ -108,19 +122,35 @@ class Decoder(torch.nn.Module):
         Adds features to the encoding graph
 
         Args:
-            processor_features: Processed features
-            start_features: Original input features to the encoder
+            processor_features: Processed features in shape [B*Nodes, Features]
+            start_features: Original input features to the encoder, with shape [B, Nodes, Features]
 
         Returns:
             Updated features for model
         """
-
+        batch_size = start_features.shape[0]
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+        edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+
+        edge_index = torch.cat(
+            [
+                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
+                for i in range(batch_size)
+            ],
+            dim=1,
+        )
+
         # Readd nodes to match graph node number
-        features = torch.cat([processor_features, self.latlon_nodes], dim=0)
-        out, _ = self.graph_processor(features, self.graph.edge_index, edge_attr)  # Message Passing
+        features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
+        features = torch.cat(
+            [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
+        )
+        features = einops.rearrange(features, "b n f -> (b n) f")
+
+        out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing
         # Remove the h3 nodes now, only want the latlon ones
-        _, out = torch.split(out, [processor_features.shape[0], self.num_latlons], dim=0)
         out = self.node_decoder(out)  # Decode to 78 from 256
-        out += start_features
+        out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
+        _, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
+        out = out + start_features  # residual connection
         return out

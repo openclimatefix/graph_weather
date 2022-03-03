@@ -1,23 +1,11 @@
 """
-This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the following license
+Functions for building GNN
 
-Copyright Notice
-MGN was produced under the DOE Carbon Capture Simulation Initiative (CCSI), and is copyright (c) 2012 - 2021 by the software owners: Oak Ridge Institute for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore National Security, LLC., The Regents of the University of California, through Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest Division through Pacific Northwest National Laboratory, Carnegie Mellon University, West Virginia University, Boston University, the Trustees of Princeton University, The University of Texas at Austin, URS Energy & Construction, Inc., et al.. All rights reserved.
-
-NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.
-
-License Agreement
-MGN Copyright (c) 2012 - 2021, by the software owners: Oak Ridge Institute for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore National Security, LLC., The Regents of the University of California, through Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest Division through Pacific Northwest National Laboratory, Carnegie Mellon University, West Virginia University, Boston University, the Trustees of Princeton University, The University of Texas at Austin, URS Energy & Construction, Inc., et al. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. of Energy, the National Energy Technology Laboratory, Oak Ridge Institute for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore National Security, LLC., the University of California, Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest National Laboratory, Carnegie Mellon University, West Virginia University, Boston University, the Trustees of Princeton University, the University of Texas at Austin, URS Energy & Construction, Inc., nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
+This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the
+US Government License
 """
+from typing import Tuple
+
 import torch
 from torch import cat, nn
 from torch_geometric.nn import MetaLayer
@@ -25,7 +13,8 @@ from torch_scatter import scatter_sum
 
 
 class MLP(nn.Module):
-    # MLP with LayerNorm
+    """MLP for graph processing"""
+
     def __init__(
         self,
         in_dim: int,
@@ -67,6 +56,15 @@ class MLP(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the MLP
+
+        Args:
+            x: Node or edge features
+
+        Returns:
+            The transformed tensor
+        """
         return self.model(x)
 
 
@@ -78,6 +76,8 @@ class MLP(nn.Module):
 
 
 class EdgeProcessor(nn.Module):
+    """EdgeProcessor"""
+
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -103,7 +103,22 @@ class EdgeProcessor(nn.Module):
             2 * in_dim_node + in_dim_edge, in_dim_edge, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, src, dest, edge_attr, u=None, batch=None):
+    def forward(
+        self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+    ) -> torch.Tensor:
+        """
+        Compute the edge part of the message passing
+
+        Args:
+            src: Source node tensor
+            dest: Destination node tensor
+            edge_attr: Edge attributes
+            u: Global attributes, ignored
+            batch: Batch Ids, ignored
+
+        Returns:
+            The updated edge attributes
+        """
         out = cat(
             [src, dest, edge_attr], -1
         )  # concatenate source node, destination node, and edge embeddings
@@ -114,6 +129,8 @@ class EdgeProcessor(nn.Module):
 
 
 class NodeProcessor(nn.Module):
+    """NodeProcessor"""
+
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -139,7 +156,22 @@ class NodeProcessor(nn.Module):
             in_dim_node + in_dim_edge, in_dim_node, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr, u=None, batch=None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+    ) -> torch.Tensor:
+        """
+        Compute the node feature updates in message passing
+
+        Args:
+            x: Input nodes
+            edge_index: Edge indicies in COO format
+            edge_attr: Edge attributes
+            u: Global attributes, ignored
+            batch: Batch IDX, ignored
+
+        Returns:
+            torch.Tensor with updated node attributes
+        """
         row, col = edge_index
         out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
         out = cat([x, out], dim=-1)
@@ -185,6 +217,8 @@ def build_graph_processor_block(
 
 
 class GraphProcessor(nn.Module):
+    """Overall graph processor"""
+
     def __init__(
         self,
         mp_iterations: int = 15,
@@ -227,7 +261,20 @@ class GraphProcessor(nn.Module):
                 )
             )
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor):
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute updates to the graph in message passing method
+
+        Args:
+            x: Input nodes
+            edge_index: Edge indicies in COO format
+            edge_attr: Edge attributes
+
+        Returns:
+            Updated nodes and edge attributes
+        """
         for block in self.blocks:
             x, edge_attr, _ = block(x, edge_index, edge_attr)
 
