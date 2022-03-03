@@ -16,6 +16,7 @@ more complex dynamics)
 import h3
 import numpy as np
 import torch
+import einops
 from torch_geometric.data import Data, HeteroData
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
@@ -109,19 +110,27 @@ class Decoder(torch.nn.Module):
         Adds features to the encoding graph
 
         Args:
-            processor_features: Processed features
-            start_features: Original input features to the encoder
+            processor_features: Processed features in shape [B*Nodes, Features]
+            start_features: Original input features to the encoder, with shape [B, Nodes, Features]
 
         Returns:
             Updated features for model
         """
-
+        batch_size = start_features.shape[0]
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+        edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+
+        edge_index = torch.cat([self.graph.edge_index + i*torch.max(self.graph.edge_index)+i for i in range(batch_size)], dim=1)
+
         # Readd nodes to match graph node number
-        features = torch.cat([processor_features, self.latlon_nodes], dim=0)
-        out, _ = self.graph_processor(features, self.graph.edge_index, edge_attr)  # Message Passing
+        features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
+        features = torch.cat([features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1)
+        features = einops.rearrange(features, "b n f -> (b n) f")
+
+        out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing
         # Remove the h3 nodes now, only want the latlon ones
-        _, out = torch.split(out, [processor_features.shape[0], self.num_latlons], dim=0)
         out = self.node_decoder(out)  # Decode to 78 from 256
-        out += start_features
+        out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
+        _, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
+        out += start_features # residual connection
         return out
