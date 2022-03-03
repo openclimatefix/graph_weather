@@ -23,6 +23,7 @@ from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
 class Decoder(torch.nn.Module):
+    """Decoder graph module"""
     def __init__(
         self,
         lat_lons,
@@ -39,12 +40,22 @@ class Decoder(torch.nn.Module):
         hidden_layers_decoder=2,
     ):
         """
-        Decode the lat/lon data onto the icosahedron node graph
+        Decoder from latent graph to lat/lon graph
 
         Args:
-            h3_to_latlon: Bipartite mapping from h3 indicies to lat/lon in original grid
-            processor_dim: Processor output dim size
-            feature_dim: Output dimension of the original graph
+            lat_lons: List of (lat,lon) points
+            resolution: H3 resolution level
+            input_dim: Input node dimension
+            output_dim: Output node dimension
+            output_edge_dim: Edge dimension
+            hidden_dim_processor_node: Hidden dimension of the node processors
+            hidden_dim_processor_edge: Hidden dimension of the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            hidden_dim_decoder:Number of hidden dimensions in the decoder
+            hidden_layers_decoder: Number of layers in the decoder
+            mlp_norm_type: Type of norm for the MLPs
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
         self.num_latlons = len(lat_lons)

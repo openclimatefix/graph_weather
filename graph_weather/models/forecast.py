@@ -1,11 +1,11 @@
 """Model for forecasting weather from NWP states"""
 import torch
 from huggingface_hub import PyTorchModelHubMixin
-
 from graph_weather.models import Decoder, Encoder, Processor
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
+    """Main weather prediction model from the paper"""
     def __init__(
         self,
         lat_lons: list,

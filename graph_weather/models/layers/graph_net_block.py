@@ -20,12 +20,13 @@ Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. of Ener
 """
 import torch
 from torch import cat, nn
+from typing import Tuple
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
 
 
 class MLP(nn.Module):
-    # MLP with LayerNorm
+    """MLP for graph processing"""
     def __init__(
         self,
         in_dim: int,
@@ -67,6 +68,15 @@ class MLP(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the MLP
+
+        Args:
+            x: Node or edge features
+
+        Returns:
+            The transformed tensor
+        """
         return self.model(x)
 
 
@@ -78,6 +88,7 @@ class MLP(nn.Module):
 
 
 class EdgeProcessor(nn.Module):
+    """EdgeProcessor"""
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -103,7 +114,20 @@ class EdgeProcessor(nn.Module):
             2 * in_dim_node + in_dim_edge, in_dim_edge, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, src, dest, edge_attr, u=None, batch=None):
+    def forward(self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+        """
+        Compute the edge part of the message passing
+
+        Args:
+            src: Source node tensor
+            dest: Destination node tensor
+            edge_attr: Edge attributes
+            u: Global attributes, ignored
+            batch: Batch Ids, ignored
+
+        Returns:
+            The updated edge attributes
+        """
         out = cat(
             [src, dest, edge_attr], -1
         )  # concatenate source node, destination node, and edge embeddings
@@ -114,6 +138,7 @@ class EdgeProcessor(nn.Module):
 
 
 class NodeProcessor(nn.Module):
+    """NodeProcessor"""
     def __init__(
         self,
         in_dim_node: int = 128,
@@ -139,7 +164,20 @@ class NodeProcessor(nn.Module):
             in_dim_node + in_dim_edge, in_dim_node, hidden_dim, hidden_layers, norm_type
         )
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr, u=None, batch=None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+        """
+        Compute the node feature updates in message passing
+
+        Args:
+            x: Input nodes
+            edge_index: Edge indicies in COO format
+            edge_attr: Edge attributes
+            u: Global attributes, ignored
+            batch: Batch IDX, ignored
+
+        Returns:
+            torch.Tensor with updated node attributes
+        """
         row, col = edge_index
         out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
         out = cat([x, out], dim=-1)
@@ -185,6 +223,7 @@ def build_graph_processor_block(
 
 
 class GraphProcessor(nn.Module):
+    """Overall graph processor"""
     def __init__(
         self,
         mp_iterations: int = 15,
@@ -227,7 +266,18 @@ class GraphProcessor(nn.Module):
                 )
             )
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor):
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute updates to the graph in message passing method
+
+        Args:
+            x: Input nodes
+            edge_index: Edge indicies in COO format
+            edge_attr: Edge attributes
+
+        Returns:
+            Updated nodes and edge attributes
+        """
         for block in self.blocks:
             x, edge_attr, _ = block(x, edge_index, edge_attr)
 

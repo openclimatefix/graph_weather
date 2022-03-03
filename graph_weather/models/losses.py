@@ -1,8 +1,10 @@
+"""Weather loss functions"""
 import numpy as np
 import torch
 
 
 class NormalizedMSELoss(torch.nn.Module):
+    """Loss function described in the paper"""
     def __init__(self, feature_variance: list, lat_lons: list):
         """
         Normalized MSE Loss as described in the paper
@@ -24,7 +26,7 @@ class NormalizedMSELoss(torch.nn.Module):
         weights = []
         for lat, lon in lat_lons:
             weights.append(np.cos(lat))
-        self.weights = torch.from_numpy(np.asarray(weights))
+        self.weights = torch.tensor(weights, dtype=torch.float)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
         """

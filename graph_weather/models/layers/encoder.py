@@ -25,13 +25,14 @@ import einops
 import h3
 import numpy as np
 import torch
-import torch.nn.functional as F
-from torch_geometric.data import Data, HeteroData
+from typing import Tuple
+from torch_geometric.data import Data
 
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
 class Encoder(torch.nn.Module):
+    """Encoder graph model"""
     def __init__(
         self,
         lat_lons: list,
@@ -131,34 +132,15 @@ class Encoder(torch.nn.Module):
             mlp_norm_type,
         )
 
-    def forward(self, features: torch.Tensor):
+    def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Adds features to the encoding graph
-
-        If given a lat/lon graph, with data.pos being lat/lon, then create h3 grid before
-
-        Given as batch, most doesn't change
-        Latent graph already precomputed, so then just need to batch that the same as the other ones
-        That happens on the fly here, need to test it more
-
-        All MP will be fine, internally, edge index is incremented by number of nodes of all graph before it
-        And save with face tensors, everything else is just concatenated
-
-        If only want to pass features in, not graphs, then need a few things:
-        1. Concatenate edge attrbutes by batch size of the example
-        2. Squish features down into a single vector by concatentating along batch
-        3. Edge index has to be incremeneted by number of nodes in the combined out for the whole batch
-        4. Have to concatenate out before the node_encoder?
-
-        vs generate graph in dataloader nad load here:
-        1. Expand latent graph edge index by same amount, and copy the edge attributes
-        2. Dataloader then needs to know the latent graph for them to match up
 
         Args:
             features: Array of features in same order as lat_lon
 
         Returns:
-
+            Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
         batch_size = features.shape[0]
         features = torch.cat(
@@ -200,11 +182,9 @@ class Encoder(torch.nn.Module):
     def create_latent_graph(self) -> Data:
         """
         Copies over and generates a Data object for the processor to use
-        Args:
-            graph:
 
         Returns:
-
+            The connectivity and edge attributes for the latent graph
         """
         # Get connectivity of the graph
         edge_sources = []

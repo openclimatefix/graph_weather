@@ -1,4 +1,4 @@
-"""Processor for the latent graphy
+"""Processor for the latent graph
 
 In the original paper the processor is described as
 
@@ -25,10 +25,18 @@ class Processor(torch.nn.Module):
         mlp_norm_type="LayerNorm",
     ):
         """
-        Process the latent graph multiple times
+        Latent graph processor
 
         Args:
-
+            input_dim: Input dimension for the node
+            edge_dim: Edge input dimension
+            num_blocks: Number of message passing blocks
+            hidden_dim_processor_node: Hidden dimension of the node processors
+            hidden_dim_processor_edge: Hidden dimension of the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            mlp_norm_type: Type of norm for the MLPs
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
         # Build the default graph
