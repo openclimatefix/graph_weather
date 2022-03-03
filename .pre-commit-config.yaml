@@ -2,7 +2,7 @@ default_language_version:
   python: python3.9
 
 ci:
-  skip: [pydocstyle,flake8]
+  skip: [pydocstyle, flake8]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

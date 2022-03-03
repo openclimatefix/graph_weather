@@ -87,9 +87,7 @@ class Decoder(torch.nn.Module):
         # Use normal graph as its a bit simpler
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
-        self.edge_encoder = MLP(
-            2, edge_output_dim, hidden_dim_processor_edge, 2, mlp_norm_type
-        )
+        self.edge_encoder = MLP(2, edge_output_dim, hidden_dim_processor_edge, 2, mlp_norm_type)
         self.graph_processor = GraphProcessor(
             mp_iterations=1,
             in_dim_node=input_dim,
