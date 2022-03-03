@@ -140,5 +140,5 @@ class Decoder(torch.nn.Module):
         out = self.node_decoder(out)  # Decode to 78 from 256
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
         _, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
-        out += start_features  # residual connection
+        out = out + start_features # residual connection
         return out

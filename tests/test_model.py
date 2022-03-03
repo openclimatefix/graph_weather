@@ -3,6 +3,7 @@ import torch
 
 from graph_weather import GraphWeatherForecaster
 from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather.models.losses import NormalizedMSELoss
 
 
 def test_encoder():
@@ -76,5 +77,22 @@ def test_forecaster():
     assert not torch.isnan(out).all()
 
     criterion = torch.nn.MSELoss()
+    loss = criterion(out, features)
+    loss.backward()
+
+
+def test_forecaster_and_loss():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    criterion = NormalizedMSELoss(lat_lons = lat_lons, feature_variance = torch.randn((78,)))
+    model = GraphWeatherForecaster(lat_lons)
+
+    features = torch.randn((1, len(lat_lons), 78))
+
+    out = model(features)
+    assert not torch.isnan(out).all()
+
     loss = criterion(out, features)
     loss.backward()

@@ -24,7 +24,7 @@ class NormalizedMSELoss(torch.nn.Module):
         weights = []
         for lat, lon in lat_lons:
             weights.append(np.cos(lat))
-        self.weights = torch.from_numpy(weights)
+        self.weights = torch.from_numpy(np.asarray(weights))
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
         """
@@ -44,7 +44,9 @@ class NormalizedMSELoss(torch.nn.Module):
         pred = pred / self.feature_variance
         target = target / self.feature_variance
 
-        out = (pred - target) ** 2
+        out = (pred - target)**2
+        # Mean of the physical variables
+        out = out.mean(-1)
         # Weight by the latitude, as that changes, so does the size of the pixel
         out = out * self.weights.expand_as(out)
-        return out.sum(0)
+        return out.mean()
