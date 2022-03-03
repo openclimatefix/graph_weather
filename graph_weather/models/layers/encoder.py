@@ -38,7 +38,7 @@ class Encoder(torch.nn.Module):
         resolution: int = 2,
         input_dim: int = 78,
         output_dim: int = 256,
-            output_edge_dim: int = 2,
+        output_edge_dim: int = 2,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
         hidden_layers_processor_node=2,
@@ -99,9 +99,27 @@ class Encoder(torch.nn.Module):
         self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
         # Output graph
 
-        self.node_encoder = MLP(input_dim, output_dim, hidden_dim_processor_node, hidden_layers_processor_node, mlp_norm_type)
-        self.edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, hidden_layers_processor_edge, mlp_norm_type)
-        self.latent_edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, hidden_layers_processor_edge, mlp_norm_type)
+        self.node_encoder = MLP(
+            input_dim,
+            output_dim,
+            hidden_dim_processor_node,
+            hidden_layers_processor_node,
+            mlp_norm_type,
+        )
+        self.edge_encoder = MLP(
+            2,
+            output_edge_dim,
+            hidden_dim_processor_edge,
+            hidden_layers_processor_edge,
+            mlp_norm_type,
+        )
+        self.latent_edge_encoder = MLP(
+            2,
+            output_edge_dim,
+            hidden_dim_processor_edge,
+            hidden_layers_processor_edge,
+            mlp_norm_type,
+        )
         self.graph_processor = GraphProcessor(
             1,
             output_dim,
@@ -130,7 +148,11 @@ class Encoder(torch.nn.Module):
         out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
-        return out, self.latent_graph.edge_index, self.latent_edge_encoder(self.latent_graph.edge_attr)  # New graph
+        return (
+            out,
+            self.latent_graph.edge_index,
+            self.latent_edge_encoder(self.latent_graph.edge_attr),
+        )  # New graph
 
     def create_latent_graph(self) -> Data:
         """
