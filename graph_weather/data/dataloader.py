@@ -6,7 +6,6 @@ The dataloader has to do a few things for the model to work correctly
 2. Calculate the top-of-atmosphere solar radiation for each location at fcurrent time and 10 other times +- 12 hours
 3. Add day-of-year, sin(lat), cos(lat), sin(lon), cos(lon) as well
 3. Batch data as either in geometric batches, or more normally
-4. Don't normalize the physical data? Or rescale between 0 and 1, then do loss normalization in the loss
-1. It has to normalize data
+4. Rescale between 0 and 1, but don't normalize
 
 """
