@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 
 class NormalizedMSELoss(torch.nn.Module):
@@ -44,7 +44,7 @@ class NormalizedMSELoss(torch.nn.Module):
         pred = pred / self.feature_variance
         target = target / self.feature_variance
 
-        out = (pred - target)**2
+        out = (pred - target) ** 2
         # Weight by the latitude, as that changes, so does the size of the pixel
         out = out * self.weights.expand_as(out)
         return out.sum(0)

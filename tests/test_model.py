@@ -15,8 +15,8 @@ def test_encoder():
     features = torch.randn((2, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
-    assert x.size() == (5882*2, 256)
-    assert edge_idx.size() == (2, 41162*2)
+    assert x.size() == (5882 * 2, 256)
+    assert edge_idx.size() == (2, 41162 * 2)
 
 
 def test_processor():
@@ -41,7 +41,7 @@ def test_decoder():
             lat_lons.append((lat, lon))
     model = Decoder(lat_lons).eval()
     features = torch.randn((3, len(lat_lons), 78))
-    processed = torch.randn((3*h3.num_hexagons(2), 256))
+    processed = torch.randn((3 * h3.num_hexagons(2), 256))
     with torch.no_grad():
         x = model(processed, features)
     assert x.size() == (3, 2592, 78)

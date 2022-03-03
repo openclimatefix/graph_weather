@@ -161,7 +161,9 @@ class Encoder(torch.nn.Module):
 
         """
         batch_size = features.shape[0]
-        features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)
+        features = torch.cat(
+            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
+        )
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 78
@@ -169,7 +171,13 @@ class Encoder(torch.nn.Module):
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
-        edge_index = torch.cat([self.graph.edge_index + i*torch.max(self.graph.edge_index)+i for i in range(batch_size)], dim=1)
+        edge_index = torch.cat(
+            [
+                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
+                for i in range(batch_size)
+            ],
+            dim=1,
+        )
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
@@ -177,8 +185,16 @@ class Encoder(torch.nn.Module):
         out = einops.rearrange(out, "b n f -> (b n) f")
         return (
             out,
-            torch.cat([self.latent_graph.edge_index + i*torch.max(self.latent_graph.edge_index)+i for i in range(batch_size)], dim=1),
-            self.latent_edge_encoder(einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)),
+            torch.cat(
+                [
+                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                    for i in range(batch_size)
+                ],
+                dim=1,
+            ),
+            self.latent_edge_encoder(
+                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+            ),
         )  # New graph
 
     def create_latent_graph(self) -> Data:
