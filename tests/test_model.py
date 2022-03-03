@@ -1,8 +1,9 @@
 import h3
 import torch
 
-from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather import GraphWeatherForecaster
+from graph_weather.models import Decoder, Encoder, Processor
+
 
 def test_encoder():
     lat_lons = []
