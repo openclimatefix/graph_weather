@@ -2,8 +2,6 @@ from torch import float, max, ones, sqrt, sum, tensor, zeros
 from torch.nn import Module, Parameter
 
 
-# to do: convert to a pytorch-compatible layer, modify MeshGraphNets.py (see BatchNorm for an example)
-# and use incremental update formulas for mean/std and/or exponential decay averaging
 class Normalizer(Module):
     def __init__(self, size, max_accumulations=10 ** 7, epsilon=1e-8, device=None):
 
@@ -19,6 +17,7 @@ class Normalizer(Module):
         super(Normalizer, self).__init__()
 
         self.max_accumulations = max_accumulations
+        self.num_accumulations = 0
         self.epsilon = epsilon
 
         # self.register_buffer('acc_count', tensor(0, dtype=float, device=device))
