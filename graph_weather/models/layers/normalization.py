@@ -42,7 +42,7 @@ class Normalizer(Module):
 
         return (batched_data - self._mean().to(batched_data.device)) / self._std().to(
             batched_data.device
-            )
+        )
 
     def inverse(self, normalized_batch_data):
         """
@@ -51,7 +51,7 @@ class Normalizer(Module):
 
         return normalized_batch_data * self._std().to(
             normalized_batch_data.device
-            ) + self._mean().to(normalized_batch_data.device)
+        ) + self._mean().to(normalized_batch_data.device)
 
     def _accumulate(self, batched_data):
         """

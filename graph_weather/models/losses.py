@@ -1,5 +1,6 @@
 import torch
 from torch.nn.functional import mse_loss
+
 """
 
 For the loss, paper uses MSE loss, but after some processing steps:
@@ -22,6 +23,7 @@ Calculate 1. first beforehand with the sets of variables, then use that unit var
 
 
 """
+
 
 class NormalizedMSELoss(torch.nn.Module):
     def __init__(self, feature_variance: list):
