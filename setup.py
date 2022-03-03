@@ -15,7 +15,7 @@ setup(
     company="Open Climate Fix Ltd",
     author="Jacob Bieker",
     install_requires=install_requires,
-    extras_requires={"vis": ["matplotlib"], "data": {["pysolar"]}},
+    extras_requires={"vis": ["matplotlib"], "data": ["pysolar"]},
     long_description=long_description,
     long_description_content_type="text/markdown",
     author_email="jacob@openclimatefix.org",
