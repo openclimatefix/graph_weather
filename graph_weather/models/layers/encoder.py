@@ -38,6 +38,7 @@ class Encoder(torch.nn.Module):
         resolution: int = 2,
         input_dim: int = 78,
         output_dim: int = 256,
+            output_edge_dim: int = 2,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
         hidden_layers_processor_node=2,
@@ -98,12 +99,13 @@ class Encoder(torch.nn.Module):
         self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
         # Output graph
 
-        self.node_encoder = MLP(input_dim, output_dim, 256, 2, mlp_norm_type)
-        self.edge_encoder = MLP(2, 2, 256, 2, mlp_norm_type)
+        self.node_encoder = MLP(input_dim, output_dim, hidden_dim_processor_node, hidden_layers_processor_node, mlp_norm_type)
+        self.edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, hidden_layers_processor_edge, mlp_norm_type)
+        self.latent_edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, hidden_layers_processor_edge, mlp_norm_type)
         self.graph_processor = GraphProcessor(
             1,
             output_dim,
-            2,
+            output_edge_dim,
             hidden_dim_processor_node,
             hidden_dim_processor_edge,
             hidden_layers_processor_node,
@@ -128,7 +130,7 @@ class Encoder(torch.nn.Module):
         out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
-        return out, self.latent_graph.edge_index, self.latent_graph.edge_attr  # New graph
+        return out, self.latent_graph.edge_index, self.latent_edge_encoder(self.latent_graph.edge_attr)  # New graph
 
     def create_latent_graph(self) -> Data:
         """
@@ -147,7 +149,7 @@ class Encoder(torch.nn.Module):
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
-                edge_attrs.append(distance)
+                edge_attrs.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.h3_mapping[h3_index] - self.num_latlons)
                 edge_targets.append(self.h3_mapping[h] - self.num_latlons)
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)

@@ -16,7 +16,7 @@ class Processor(torch.nn.Module):
     def __init__(
         self,
         input_dim: int = 256,
-        edge_dim: int = 1,
+        edge_dim: int = 2,
         num_blocks: int = 9,
         hidden_dim_processor_node=256,
         hidden_dim_processor_edge=256,
