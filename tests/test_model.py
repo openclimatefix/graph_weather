@@ -89,7 +89,7 @@ def test_forecaster_and_loss():
     criterion = NormalizedMSELoss(lat_lons = lat_lons, feature_variance = torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
 
-    features = torch.randn((1, len(lat_lons), 78))
+    features = torch.randn((2, len(lat_lons), 78))
 
     out = model(features)
     assert not torch.isnan(out).all()
