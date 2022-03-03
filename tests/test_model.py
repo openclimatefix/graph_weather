@@ -12,11 +12,11 @@ def test_encoder():
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
 
-    features = torch.randn((len(lat_lons), 78))
+    features = torch.randn((3, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
-    assert x.size() == (5882, 256)
-    assert edge_idx.size() == (2, 41162)
+    assert x.size() == (5882*3, 256)
+    assert edge_idx.size() == (2, 41162*3)
 
 
 def test_processor():
@@ -27,7 +27,7 @@ def test_processor():
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
 
-    features = torch.randn((len(lat_lons), 78))
+    features = torch.randn((3, len(lat_lons), 78))
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)

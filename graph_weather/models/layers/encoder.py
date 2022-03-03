@@ -96,7 +96,7 @@ class Encoder(torch.nn.Module):
         self.latent_graph = self.create_latent_graph()
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
-        self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
+        self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Output graph
 
         self.node_encoder = MLP(
@@ -135,23 +135,50 @@ class Encoder(torch.nn.Module):
         """
         Adds features to the encoding graph
 
+        If given a lat/lon graph, with data.pos being lat/lon, then create h3 grid before
+
+        Given as batch, most doesn't change
+        Latent graph already precomputed, so then just need to batch that the same as the other ones
+        That happens on the fly here, need to test it more
+
+        All MP will be fine, internally, edge index is incremented by number of nodes of all graph before it
+        And save with face tensors, everything else is just concatenated
+
+        If only want to pass features in, not graphs, then need a few things:
+        1. Concatenate edge attrbutes by batch size of the example
+        2. Squish features down into a single vector by concatentating along batch
+        3. Edge index has to be incremeneted by number of nodes in the combined out for the whole batch
+        4. Have to concatenate out before the node_encoder?
+
+        vs generate graph in dataloader nad load here:
+        1. Expand latent graph edge index by same amount, and copy the edge attributes
+        2. Dataloader then needs to know the latent graph for them to match up
+
         Args:
             features: Array of features in same order as lat_lon
 
         Returns:
 
         """
+        batch_size = features.shape[0]
+        features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)
+        # Cat with the h3 nodes to have correct amount of nodes, and in right order
+        features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 78
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
-        # Cat with the h3 nodes to have correct amount of nodes, and in right order
-        out = torch.cat([out, self.h3_nodes], dim=0)
-        out, _ = self.graph_processor(out, self.graph.edge_index, edge_attr)  # Message Passing
+        # Copy attributes batch times
+        edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+        # Expand edge index correct number of times while adding the proper number to the edge index
+        edge_index = torch.cat([self.graph.edge_index + i*torch.max(self.graph.edge_index)+i for i in range(batch_size)], dim=1)
+        out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
-        _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=0)
+        out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
+        _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=1)
+        out = einops.rearrange(out, "b n f -> (b n) f")
         return (
             out,
-            self.latent_graph.edge_index,
-            self.latent_edge_encoder(self.latent_graph.edge_attr),
+            torch.cat([self.latent_graph.edge_index + i*torch.max(self.latent_graph.edge_index)+i for i in range(batch_size)], dim=1),
+            self.latent_edge_encoder(einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)),
         )  # New graph
 
     def create_latent_graph(self) -> Data:
