@@ -1,4 +1,6 @@
 """
+Functions for building GNN
+
 This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the
 US Government License
 """
