@@ -86,7 +86,7 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons = lat_lons, feature_variance = torch.randn((78,)))
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
 
     features = torch.randn((1, len(lat_lons), 78))
