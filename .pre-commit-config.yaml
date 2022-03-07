@@ -45,7 +45,7 @@ repos:
       - id: isort
         args: [--profile, black, --line-length, "100", "graph_weather"]
   - repo: https://github.com/psf/black
-    rev: 21.12b0
+    rev: 22.1.0
     hooks:
       - id: black
         args: [--line-length, "100"]
