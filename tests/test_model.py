@@ -47,6 +47,7 @@ def test_decoder():
         x = model(processed, features)
     assert x.size() == (3, 2592, 78)
 
+
 def test_assimilator():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -89,6 +90,31 @@ def test_forecaster():
 
     criterion = torch.nn.MSELoss()
     loss = criterion(out, features)
+    loss.backward()
+
+
+def test_assimilator():
+    obs_lat_lons = []
+    for lat in range(-90, 90, 7):
+        for lon in range(0, 180, 6):
+            obs_lat_lons.append((lat, lon))
+        for lon in range(180, 360, 8):
+            obs_lat_lons.append((lat, lon))
+
+    output_lat_lons = []
+    for lat in range(-90, 90, 5):
+            for lon in range(0, 360, 5):
+                output_lat_lons.append((lat, lon))
+    model = GraphWeatherAssimilator(observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons, analysis_dim=24)
+
+    features = torch.randn((2, len(obs_lat_lons), 78))
+
+    out = model(features)
+    assert not torch.isnan(out).all()
+    assert out.size() == (2, len(output_lat_lons), 24)
+
+    criterion = torch.nn.MSELoss()
+    loss = criterion(out, torch.randn((2, len(output_lat_lons), 24)))
     loss.backward()
 
 

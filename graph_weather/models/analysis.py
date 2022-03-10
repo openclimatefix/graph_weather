@@ -99,5 +99,5 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         """
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
-        x = self.decoder(x, features)
+        x = self.decoder(x, features.shape[0])
         return x
