@@ -24,7 +24,7 @@ def test_encoder_uneven_grid():
     lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
-            obs_lat_lons.append((lat, lon))
+            lat_lons.append((lat, lon))
         for lon in range(180, 360, 8):
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
@@ -109,7 +109,7 @@ def test_forecaster():
     loss.backward()
 
 
-def test_assimilator():
+def test_assimilator_model():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
