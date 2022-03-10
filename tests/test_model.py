@@ -19,6 +19,20 @@ def test_encoder():
     assert x.size() == (5882 * 2, 256)
     assert edge_idx.size() == (2, 41162 * 2)
 
+def test_encoder_uneven_grid():
+    lat_lons = []
+    for lat in range(-90, 90, 7):
+        for lon in range(0, 180, 6):
+            obs_lat_lons.append((lat, lon))
+        for lon in range(180, 360, 8):
+            lat_lons.append((lat, lon))
+    model = Encoder(lat_lons).eval()
+
+    features = torch.randn((2, len(lat_lons), 78))
+    with torch.no_grad():
+        x, edge_idx, edge_attr = model(features)
+    assert x.size() == (5882 * 2, 256)
+    assert edge_idx.size() == (2, 41162 * 2)
 
 def test_processor():
     processor = Processor().eval()
