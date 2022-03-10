@@ -1,8 +1,8 @@
 import h3
 import torch
 
-from graph_weather import GraphWeatherForecaster
-from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather import GraphWeatherForecaster, GraphWeatherAssimilator
+from graph_weather.models import Decoder, Encoder, Processor, Assimilator
 from graph_weather.models.losses import NormalizedMSELoss
 
 
