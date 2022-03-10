@@ -106,17 +106,17 @@ def test_assimilator():
         for lon in range(0, 360, 5):
             output_lat_lons.append((lat, lon))
     model = GraphWeatherAssimilator(
-        observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons, analysis_dim=24
+        observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons
     )
 
     features = torch.randn((2, len(obs_lat_lons), 78))
 
     out = model(features)
     assert not torch.isnan(out).all()
-    assert out.size() == (2, len(output_lat_lons), 24)
+    assert out.size() == (2, len(output_lat_lons), 78)
 
     criterion = torch.nn.MSELoss()
-    loss = criterion(out, torch.randn((2, len(output_lat_lons), 24)))
+    loss = criterion(out, torch.randn((2, len(output_lat_lons), 78)))
     loss.backward()
 
 
