@@ -19,6 +19,7 @@ def test_encoder():
     assert x.size() == (5882 * 2, 256)
     assert edge_idx.size() == (2, 41162 * 2)
 
+
 def test_encoder_uneven_grid():
     lat_lons = []
     for lat in range(-90, 90, 7):
@@ -33,6 +34,7 @@ def test_encoder_uneven_grid():
         x, edge_idx, edge_attr = model(features)
     assert x.size() == (5882 * 2, 256)
     assert edge_idx.size() == (2, 41162 * 2)
+
 
 def test_processor():
     processor = Processor().eval()
