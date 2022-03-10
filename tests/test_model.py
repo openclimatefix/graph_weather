@@ -47,6 +47,17 @@ def test_decoder():
         x = model(processed, features)
     assert x.size() == (3, 2592, 78)
 
+def test_assimilator():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    model = Assimilator(lat_lons).eval()
+    processed = torch.randn((3 * h3.num_hexagons(2), 256))
+    with torch.no_grad():
+        x = model(processed, 3)
+    assert x.size() == (3, 2592, 78)
+
 
 def test_end2end():
     lat_lons = []
