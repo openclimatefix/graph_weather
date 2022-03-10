@@ -115,9 +115,7 @@ class Assimilator(torch.nn.Module):
             input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None
         )
 
-    def forward(
-        self, processor_features: torch.Tensor, batch_size: int
-    ) -> torch.Tensor:
+    def forward(self, processor_features: torch.Tensor, batch_size: int) -> torch.Tensor:
         """
         Adds features to the encoding graph
 

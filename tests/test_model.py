@@ -1,8 +1,8 @@
 import h3
 import torch
 
-from graph_weather import GraphWeatherForecaster, GraphWeatherAssimilator
-from graph_weather.models import Decoder, Encoder, Processor, Assimilator
+from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
+from graph_weather.models import Assimilator, Decoder, Encoder, Processor
 from graph_weather.models.losses import NormalizedMSELoss
 
 
@@ -103,9 +103,11 @@ def test_assimilator():
 
     output_lat_lons = []
     for lat in range(-90, 90, 5):
-            for lon in range(0, 360, 5):
-                output_lat_lons.append((lat, lon))
-    model = GraphWeatherAssimilator(observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons, analysis_dim=24)
+        for lon in range(0, 360, 5):
+            output_lat_lons.append((lat, lon))
+    model = GraphWeatherAssimilator(
+        observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons, analysis_dim=24
+    )
 
     features = torch.randn((2, len(obs_lat_lons), 78))
 
