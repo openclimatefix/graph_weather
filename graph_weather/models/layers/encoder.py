@@ -68,6 +68,7 @@ class Encoder(torch.nn.Module):
         self.output_dim = output_dim
         self.num_latlons = len(lat_lons)
         self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
+        self.base_h3_map = {h_i: i for i, h_i in enumerate(self.base_h3_grid)}
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_mapping = {}
         h_index = len(self.base_h3_grid)
@@ -198,13 +199,13 @@ class Encoder(torch.nn.Module):
         edge_sources = []
         edge_targets = []
         edge_attrs = []
-        for h3_index in self.h3_mapping.keys():
+        for h3_index in self.base_h3_grid: # Independent of inputs
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
-                edge_sources.append(self.h3_mapping[h3_index] - self.num_latlons)
-                edge_targets.append(self.h3_mapping[h] - self.num_latlons)
+                edge_sources.append(self.base_h3_map[h3_index])
+                edge_targets.append(self.base_h3_map[h])
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
         edge_attrs = torch.tensor(edge_attrs, dtype=torch.float)
         # Use heterogeneous graph as input and output dims are not same for the encoder
