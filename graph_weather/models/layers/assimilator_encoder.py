@@ -32,14 +32,13 @@ from torch_geometric.data import Data
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
-class Encoder(torch.nn.Module):
-    """Encoder graph model"""
+class AssimilatorEncoder(torch.nn.Module):
+    """Encoder graph model for assimilation"""
 
     def __init__(
         self,
-        lat_lons: list,
         resolution: int = 2,
-        input_dim: int = 78,
+        input_dim: int = 2,
         output_dim: int = 256,
         output_edge_dim: int = 256,
         hidden_dim_processor_node=256,
@@ -52,9 +51,9 @@ class Encoder(torch.nn.Module):
         Encode the lat/lon data inot the isohedron graph
 
         Args:
-            lat_lons: List of (lat,lon) points
             resolution: H3 resolution level
-            input_dim: Input node dimension
+            input_dim: Input node dimension, most likely 2, as one point for one observation +
+                relative observation time
             output_dim: Output node dimension
             output_edge_dim: Edge dimension
             hidden_dim_processor_node: Hidden dimension of the node processors
@@ -66,41 +65,8 @@ class Encoder(torch.nn.Module):
         """
         super().__init__()
         self.output_dim = output_dim
-        self.num_latlons = len(lat_lons)
+        self.resolution = resolution
         self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
-        self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
-        self.h3_mapping = {}
-        h_index = len(self.base_h3_grid)
-        for h in self.base_h3_grid:
-            if h not in self.h3_mapping:
-                h_index -= 1
-                self.h3_mapping[h] = h_index + self.num_latlons
-        # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
-        # Should have vertical and horizontal difference
-        self.h3_distances = []
-        for idx, h3_point in enumerate(self.h3_grid):
-            lat_lon = lat_lons[idx]
-            distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
-            self.h3_distances.append([np.sin(distance), np.cos(distance)])
-        self.h3_distances = torch.tensor(self.h3_distances, dtype=torch.float)
-        # Compress to between 0 and 1
-
-        # Build the default graph
-        # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
-        # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
-        nodes = torch.zeros(
-            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
-        )
-        # Get connections between lat nodes and h3 nodes
-        edge_sources = []
-        edge_targets = []
-        for node_index, lat_node in enumerate(self.h3_grid):
-            edge_sources.append(node_index)
-            edge_targets.append(self.h3_mapping[lat_node])
-        edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
-
-        # Use homogenous graph to make it easier
-        self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_distances)
 
         self.latent_graph = self.create_latent_graph()
 
@@ -116,7 +82,7 @@ class Encoder(torch.nn.Module):
             mlp_norm_type,
         )
         self.edge_encoder = MLP(
-            2,
+            3, # Includes height
             output_edge_dim,
             hidden_dim_processor_edge,
             hidden_layers_processor_edge,
@@ -140,46 +106,44 @@ class Encoder(torch.nn.Module):
             mlp_norm_type,
         )
 
-    def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, features: torch.Tensor, lat_lon_heights: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Adds features to the encoding graph
+        Adds features to the encoding graph, assuming all inputs have same lat/lon/height points
+
+        This is more designed for a batch size of 1, unless the observations are all only taken
+        at the same height/lat/lon point combinations, otherwise the input graph will be wrong
+        for all but the first set of features
 
         Args:
             features: Array of features in same order as lat_lon
+            lat_lon_heights: Tensor containing [Batch, N, 3] with 3 being [Lat,Lon,Height]
 
         Returns:
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
+        graph = self.create_input_graph(features=features, lat_lons_heights = lat_lon_heights)
         batch_size = features.shape[0]
         features = torch.cat(
             [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
         )
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
-        print(f"Features: {features.shape}")
-        out = self.node_encoder(features)  # Encode to 256 from 78
-        print(f"Out: {out.shape}")
-        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
-        print(f"Edge Attrs: {edge_attr.shape}")
+        out = self.node_encoder(features)  # Encode to 256 from 2
+        edge_attr = self.edge_encoder(graph.edge_attr)  # Update attributes based on distance
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-        print(f"Edge Attrs 2: {edge_attr.shape}")
         # Expand edge index correct number of times while adding the proper number to the edge index
-        print(f"Edge Index: {self.graph.edge_index.shape}")
-        print(f"Graph Index Max: {torch.max(self.graph.edge_index)}")
         edge_index = torch.cat(
             [
-                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
+                graph.edge_index + i * torch.max(graph.edge_index) + i
                 for i in range(batch_size)
             ],
             dim=1,
         )
-        print(f"Edge Index 2: {edge_index.shape}")
-        print(f"Graph Index 2 Max: {torch.max(edge_index)}")
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
-        _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=1)
+        _, out = torch.split(out, [len(lat_lon_heights), self.h3_nodes.shape[0]], dim=1)
         out = einops.rearrange(out, "b n f -> (b n) f")
         return (
             out,
@@ -194,6 +158,54 @@ class Encoder(torch.nn.Module):
                 einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
             ),
         )  # New graph
+
+    def create_input_graph(self, features: torch.Tensor, lat_lons_heights: torch.Tensor) -> Data:
+        """
+        Creates an input graph, currently limited to a batch size of 1 to work
+
+        Args:
+            features: Node features
+            lat_lons_heights: List of lat/lon/height values for each node, in [1,N,3] format
+
+        Returns:
+
+        """
+        num_latlons = lat_lons_heights.shape[1]
+        h3_grid = [h3.geo_to_h3(lat, lon, self.resolution) for lat, lon, height in lat_lons_heights]
+        h3_mapping = {}
+        h_index = len(self.base_h3_grid)
+        for h in self.base_h3_grid:
+            if h not in h3_mapping:
+                h_index -= 1
+                h3_mapping[h] = h_index + num_latlons
+        # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
+        # Should have vertical and horizontal difference
+        h3_distances = []
+        for idx, h3_point in enumerate(self.h3_grid):
+            lat, lon, height = lat_lons_heights[idx]
+            distance = h3.point_dist((lat, lon), h3.h3_to_geo(h3_point), unit="rads")
+            # TODO Normalize height by some amount
+            h3_distances.append([np.sin(distance), np.cos(distance), height])
+        h3_distances = torch.tensor(h3_distances, dtype=torch.float)
+        # Compress to between 0 and 1
+
+        # Build the default graph
+        # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
+        # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
+        nodes = torch.zeros(
+            (len(lat_lons_heights) + h3.num_hexagons(self.resolution), self.input_dim), dtype=torch.float
+            )
+        nodes[:len(lat_lons_heights)] = features[0] # Add node features here
+        # Get connections between lat nodes and h3 nodes
+        edge_sources = []
+        edge_targets = []
+        for node_index, lat_node in enumerate(self.h3_grid):
+            edge_sources.append(node_index)
+            edge_targets.append(self.h3_mapping[lat_node])
+        edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
+
+        # Use homogenous graph to make it easier
+        return Data(x=nodes, edge_index=edge_index, edge_attr=h3_distances)
 
     def create_latent_graph(self) -> Data:
         """

@@ -22,8 +22,8 @@ from torch_geometric.data import Data
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
-class Decoder(torch.nn.Module):
-    """Decoder graph module"""
+class Assimilator(torch.nn.Module):
+    """Assimilator graph module"""
 
     def __init__(
         self,
@@ -41,7 +41,7 @@ class Decoder(torch.nn.Module):
         hidden_layers_decoder=2,
     ):
         """
-        Decoder from latent graph to lat/lon graph
+        Decoder from latent graph to lat/lon graph for assimilation of observation
 
         Args:
             lat_lons: List of (lat,lon) points
@@ -115,20 +115,16 @@ class Decoder(torch.nn.Module):
             input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None
         )
 
-    def forward(
-        self, processor_features: torch.Tensor, start_features: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, processor_features: torch.Tensor, batch_size: int) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
         Args:
             processor_features: Processed features in shape [B*Nodes, Features]
-            start_features: Original input features to the encoder, with shape [B, Nodes, Features]
 
         Returns:
             Updated features for model
         """
-        batch_size = start_features.shape[0]
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
 
@@ -152,5 +148,4 @@ class Decoder(torch.nn.Module):
         out = self.node_decoder(out)  # Decode to 78 from 256
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
         _, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
-        out = out + start_features  # residual connection
         return out

@@ -1,8 +1,9 @@
 import h3
 import torch
+import numpy as np
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
-from graph_weather.models import Assimilator, Decoder, Encoder, Processor
+from graph_weather.models import Assimilator, Decoder, Encoder, Processor, AssimilatorEncoder
 from graph_weather.models.losses import NormalizedMSELoss
 
 
@@ -23,9 +24,9 @@ def test_encoder():
 def test_encoder_uneven_grid():
     lat_lons = []
     for lat in range(-90, 90, 7):
-        for lon in range(0, 180, 6):
+        for lon in range(0, 180, 5):
             lat_lons.append((lat, lon))
-        for lon in range(180, 360, 8):
+        for lon in range(180, 360, 9):
             lat_lons.append((lat, lon))
     model = Encoder(lat_lons).eval()
 
@@ -113,26 +114,26 @@ def test_assimilator_model():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
-            obs_lat_lons.append((lat, lon))
-        for lon in range(180, 360, 8):
-            obs_lat_lons.append((lat, lon))
+            obs_lat_lons.append((lat, lon, np.random.random(1)))
+        for lon in 360*np.random.random(100):
+            obs_lat_lons.append((lat, lon, np.random.random(1)))
 
     output_lat_lons = []
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             output_lat_lons.append((lat, lon))
     model = GraphWeatherAssimilator(
-        observation_lat_lons=obs_lat_lons, output_lat_lons=output_lat_lons, analysis_dim=24
+        output_lat_lons=output_lat_lons, analysis_dim=24
     )
 
-    features = torch.randn((2, len(obs_lat_lons), 78))
-
-    out = model(features)
+    features = torch.randn((1, len(obs_lat_lons), 2))
+    lat_lon_heights = torch.tensor(obs_lat_lons)
+    out = model(features, lat_lon_heights)
     assert not torch.isnan(out).all()
-    assert out.size() == (2, len(output_lat_lons), 24)
+    assert out.size() == (1, len(output_lat_lons), 24)
 
     criterion = torch.nn.MSELoss()
-    loss = criterion(out, torch.randn((2, len(output_lat_lons), 24)))
+    loss = criterion(out, torch.randn((1, len(output_lat_lons), 24)))
     loss.backward()
 
 

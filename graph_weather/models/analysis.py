@@ -2,7 +2,7 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import Assimilator, Encoder, Processor
+from graph_weather.models import Assimilator, AssimilatorEncoder, Processor
 
 
 class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
@@ -10,7 +10,6 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
 
     def __init__(
         self,
-        observation_lat_lons: list,
         output_lat_lons: list,
         resolution: int = 2,
         observation_dim: int = 78,
@@ -50,8 +49,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         """
         super().__init__()
 
-        self.encoder = Encoder(
-            lat_lons=observation_lat_lons,
+        self.encoder = AssimilatorEncoder(
             resolution=resolution,
             input_dim=observation_dim,
             output_dim=node_dim,
@@ -87,17 +85,18 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_decoder=hidden_layers_decoder,
         )
 
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor, obs_lat_lon_heights: torch.Tensor) -> torch.Tensor:
         """
         Compute the analysis output
 
         Args:
-            features: The input features, aligned with the order of lat_lons
+            features: The input features, aligned with the order of lat_lons_heights
+            obs_lat_lon_heights: Observation lat/lon/heights in same order as features
 
         Returns:
             The next state in the forecast
         """
-        x, edge_idx, edge_attr = self.encoder(features)
+        x, edge_idx, edge_attr = self.encoder(features, obs_lat_lon_heights)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features.shape[0])
         return x

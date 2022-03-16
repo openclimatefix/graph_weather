@@ -88,7 +88,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         Compute the new state of the forecast
 
         Args:
-            features: The input features, aligned with the order of lat_lons
+            features: The input features, aligned with the order of lat_lons_heights
 
         Returns:
             The next state in the forecast
