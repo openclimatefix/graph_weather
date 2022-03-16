@@ -72,7 +72,7 @@ class AssimilatorEncoder(torch.nn.Module):
         self.h3_mapping = {}
         self.latent_graph = self.create_latent_graph()
 
-     # Extra starting ones for appending to inputs, could 'learn' good starting points
+        # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Output graph
 
@@ -84,7 +84,7 @@ class AssimilatorEncoder(torch.nn.Module):
             mlp_norm_type,
         )
         self.edge_encoder = MLP(
-            3, # Includes height
+            3,  # Includes height
             output_edge_dim,
             hidden_dim_processor_edge,
             hidden_layers_processor_edge,
@@ -108,7 +108,9 @@ class AssimilatorEncoder(torch.nn.Module):
             mlp_norm_type,
         )
 
-    def forward(self, features: torch.Tensor, lat_lon_heights: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, features: torch.Tensor, lat_lon_heights: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Adds features to the encoding graph, assuming all inputs have same lat/lon/height points
 
@@ -123,7 +125,7 @@ class AssimilatorEncoder(torch.nn.Module):
         Returns:
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
-        graph = self.create_input_graph(features=features, lat_lons_heights = lat_lon_heights)
+        graph = self.create_input_graph(features=features, lat_lons_heights=lat_lon_heights)
         batch_size = features.shape[0]
         features = torch.cat(
             [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
@@ -136,10 +138,7 @@ class AssimilatorEncoder(torch.nn.Module):
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
         edge_index = torch.cat(
-            [
-                graph.edge_index + i * torch.max(graph.edge_index) + i
-                for i in range(batch_size)
-            ],
+            [graph.edge_index + i * torch.max(graph.edge_index) + i for i in range(batch_size)],
             dim=1,
         )
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
@@ -193,12 +192,11 @@ class AssimilatorEncoder(torch.nn.Module):
         # Compress to between 0 and 1
 
         # Build the default graph
-        # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
-        # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
         nodes = torch.zeros(
-            (len(lat_lons_heights) + h3.num_hexagons(self.resolution), self.input_dim), dtype=torch.float
-            )
-        nodes[:len(lat_lons_heights)] = features[0] # Add node features here
+            (len(lat_lons_heights) + h3.num_hexagons(self.resolution), self.input_dim),
+            dtype=torch.float,
+        )
+        nodes[: len(lat_lons_heights)] = features[0]
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -221,7 +219,7 @@ class AssimilatorEncoder(torch.nn.Module):
         edge_sources = []
         edge_targets = []
         edge_attrs = []
-        for h3_index in self.base_h3_grid: # Independent of inputs
+        for h3_index in self.base_h3_grid:
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")

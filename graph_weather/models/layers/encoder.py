@@ -199,7 +199,7 @@ class Encoder(torch.nn.Module):
         edge_sources = []
         edge_targets = []
         edge_attrs = []
-        for h3_index in self.base_h3_grid: # Independent of inputs
+        for h3_index in self.base_h3_grid:
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")

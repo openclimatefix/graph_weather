@@ -15,9 +15,10 @@ more complex dynamics)
 """
 import torch
 
-from graph_weather.models.layers.assimilator_decoder import Assimilator
+from graph_weather.models.layers.assimilator_decoder import AssimilatorDecoder
 
-class Decoder(Assimilator):
+
+class Decoder(AssimilatorDecoder):
     """Decoder graph module"""
 
     def __init__(
@@ -53,8 +54,20 @@ class Decoder(Assimilator):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
-        super().__init__(lat_lons, resolution, input_dim, output_dim, output_edge_dim, hidden_dim_processor_node, hidden_dim_processor_edge, hidden_layers_processor_node,
-                         hidden_layers_processor_edge, mlp_norm_type, hidden_dim_decoder, hidden_layers_decoder)
+        super().__init__(
+            lat_lons,
+            resolution,
+            input_dim,
+            output_dim,
+            output_edge_dim,
+            hidden_dim_processor_node,
+            hidden_dim_processor_edge,
+            hidden_layers_processor_node,
+            hidden_layers_processor_edge,
+            mlp_norm_type,
+            hidden_dim_decoder,
+            hidden_layers_decoder,
+        )
 
     def forward(
         self, processor_features: torch.Tensor, start_features: torch.Tensor

@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
-from graph_weather.models import Assimilator, Decoder, Encoder, Processor, AssimilatorEncoder
+from graph_weather.models import AssimilatorDecoder, Decoder, Encoder, Processor, AssimilatorEncoder
 from graph_weather.models.losses import NormalizedMSELoss
 
 
@@ -35,6 +35,7 @@ def test_encoder_uneven_grid():
         x, edge_idx, edge_attr = model(features)
     assert x.size() == (5882 * 2, 256)
     assert edge_idx.size() == (2, 41162 * 2)
+
 
 def test_assimilation_encoder_uneven_grid():
     lat_lons = []
@@ -85,7 +86,7 @@ def test_assimilator():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    model = Assimilator(lat_lons).eval()
+    model = AssimilatorDecoder(lat_lons).eval()
     processed = torch.randn((3 * h3.num_hexagons(2), 256))
     with torch.no_grad():
         x = model(processed, 3)
@@ -130,16 +131,14 @@ def test_assimilator_model():
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
             obs_lat_lons.append((lat, lon, np.random.random(1)))
-        for lon in 360*np.random.random(100):
+        for lon in 360 * np.random.random(100):
             obs_lat_lons.append((lat, lon, np.random.random(1)))
 
     output_lat_lons = []
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             output_lat_lons.append((lat, lon))
-    model = GraphWeatherAssimilator(
-        output_lat_lons=output_lat_lons, analysis_dim=24
-    )
+    model = GraphWeatherAssimilator(output_lat_lons=output_lat_lons, analysis_dim=24)
 
     features = torch.randn((1, len(obs_lat_lons), 2))
     lat_lon_heights = torch.tensor(obs_lat_lons)

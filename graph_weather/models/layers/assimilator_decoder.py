@@ -22,7 +22,7 @@ from torch_geometric.data import Data
 from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
 
 
-class Assimilator(torch.nn.Module):
+class AssimilatorDecoder(torch.nn.Module):
     """Assimilator graph module"""
 
     def __init__(

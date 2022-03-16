@@ -2,7 +2,7 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import Assimilator, AssimilatorEncoder, Processor
+from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
 
 
 class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
@@ -70,7 +70,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
         )
-        self.decoder = Assimilator(
+        self.decoder = AssimilatorDecoder(
             lat_lons=output_lat_lons,
             resolution=resolution,
             input_dim=node_dim,
