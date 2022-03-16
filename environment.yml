@@ -99,8 +99,25 @@ dependencies:
   - zlib=1.2.11=h7f8727e_4
   - zstd=1.4.9=haebb681_0
   - pip:
+    - aiohttp==3.8.1
+    - aiosignal==1.2.0
+    - async-timeout==4.0.2
+    - attrs==21.4.0
     - cython==0.29.28
+    - datasets==2.0.0
     - decorator==4.4.2
+    - dill==0.3.4
+    - einops==0.4.1
+    - filelock==3.6.0
+    - frozenlist==1.3.0
+    - fsspec==2022.2.0
+    - h3==3.7.3
+    - huggingface-hub==0.4.0
+    - multidict==6.0.2
+    - multiprocess==0.70.12.2
     - pandas==1.3.5
+    - pyarrow==7.0.0
+    - responses==0.18.0
     - torch-geometric-temporal==0.51.0
-prefix: /home/jacob/anaconda3/envs/graph
+    - xxhash==3.0.0
+    - yarl==1.7.2
