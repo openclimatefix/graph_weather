@@ -166,10 +166,10 @@ class AssimilatorEncoder(torch.nn.Module):
 
         Args:
             features: Node features
-            lat_lons_heights: List of lat/lon/height values for each node, in [1,N,3] format
+            lat_lons_heights: List of lat/lon/height values for each node, in [N,3] format
 
         Returns:
-
+            torch geometric Data object containing the graph connectivity and edge attributes for the input
         """
         num_latlons = lat_lons_heights.shape[0]
         h3_grid = [h3.geo_to_h3(lat, lon, self.resolution) for lat, lon, height in lat_lons_heights]
