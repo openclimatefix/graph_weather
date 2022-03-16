@@ -156,17 +156,11 @@ class Encoder(torch.nn.Module):
         )
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
-        print(f"Features: {features.shape}")
         out = self.node_encoder(features)  # Encode to 256 from 78
-        print(f"Out: {out.shape}")
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
-        print(f"Edge Attrs: {edge_attr.shape}")
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-        print(f"Edge Attrs 2: {edge_attr.shape}")
         # Expand edge index correct number of times while adding the proper number to the edge index
-        print(f"Edge Index: {self.graph.edge_index.shape}")
-        print(f"Graph Index Max: {torch.max(self.graph.edge_index)}")
         edge_index = torch.cat(
             [
                 self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
@@ -174,8 +168,6 @@ class Encoder(torch.nn.Module):
             ],
             dim=1,
         )
-        print(f"Edge Index 2: {edge_index.shape}")
-        print(f"Graph Index 2 Max: {torch.max(edge_index)}")
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
         # Remove the extra nodes (lat/lon) from the output
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)

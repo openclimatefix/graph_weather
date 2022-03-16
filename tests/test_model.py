@@ -36,6 +36,21 @@ def test_encoder_uneven_grid():
     assert x.size() == (5882 * 2, 256)
     assert edge_idx.size() == (2, 41162 * 2)
 
+def test_assimilation_encoder_uneven_grid():
+    lat_lons = []
+    for lat in range(-90, 90, 7):
+        for lon in range(0, 180, 5):
+            lat_lons.append((lat, lon, np.random.random(1)))
+        for lon in range(180, 360, 9):
+            lat_lons.append((lat, lon, np.random.random(1)))
+    model = AssimilatorEncoder().eval()
+
+    features = torch.randn((2, len(lat_lons), 2))
+    with torch.no_grad():
+        x, edge_idx, edge_attr = model(features, torch.tensor(lat_lons))
+    assert x.size() == (5882 * 2, 256)
+    assert edge_idx.size() == (2, 41162 * 2)
+
 
 def test_processor():
     processor = Processor().eval()
@@ -61,7 +76,7 @@ def test_decoder():
     features = torch.randn((3, len(lat_lons), 78))
     processed = torch.randn((3 * h3.num_hexagons(2), 256))
     with torch.no_grad():
-        x = model(processed, features)
+        x = model(processed, features.shape[0])
     assert x.size() == (3, 2592, 78)
 
 
@@ -89,7 +104,7 @@ def test_end2end():
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)
-        pred = decoder(out, features)
+        pred = decoder(out, features.shape[0])
     assert pred.size() == (4, 2592, 78)
 
 

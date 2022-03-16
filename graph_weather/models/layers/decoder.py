@@ -54,7 +54,7 @@ class Decoder(Assimilator):
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__(lat_lons, resolution, input_dim, output_dim, output_edge_dim, hidden_dim_processor_node, hidden_dim_processor_edge, hidden_layers_processor_node,
-                         hidden_layers_processor_edge, hidden_dim_decoder, hidden_layers_decoder, mlp_norm_type)
+                         hidden_layers_processor_edge, mlp_norm_type, hidden_dim_decoder, hidden_layers_decoder)
 
     def forward(
         self, processor_features: torch.Tensor, start_features: torch.Tensor

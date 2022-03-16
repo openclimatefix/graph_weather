@@ -65,10 +65,10 @@ class AssimilatorEncoder(torch.nn.Module):
         """
         super().__init__()
         self.output_dim = output_dim
+        self.input_dim = input_dim
         self.resolution = resolution
         self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
-
-        self.latent_graph = self.create_latent_graph()
+        self.h3_mapping = {}
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
@@ -122,6 +122,7 @@ class AssimilatorEncoder(torch.nn.Module):
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
         graph = self.create_input_graph(features=features, lat_lons_heights = lat_lon_heights)
+        latent_graph = self.create_latent_graph(lat_lon_heights.shape[1])
         batch_size = features.shape[0]
         features = torch.cat(
             [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
@@ -149,13 +150,13 @@ class AssimilatorEncoder(torch.nn.Module):
             out,
             torch.cat(
                 [
-                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                    latent_graph.edge_index + i * torch.max(latent_graph.edge_index) + i
                     for i in range(batch_size)
                 ],
                 dim=1,
             ),
             self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+                einops.repeat(latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
             ),
         )  # New graph
 
@@ -170,7 +171,7 @@ class AssimilatorEncoder(torch.nn.Module):
         Returns:
 
         """
-        num_latlons = lat_lons_heights.shape[1]
+        num_latlons = lat_lons_heights.shape[0]
         h3_grid = [h3.geo_to_h3(lat, lon, self.resolution) for lat, lon, height in lat_lons_heights]
         h3_mapping = {}
         h_index = len(self.base_h3_grid)
@@ -178,10 +179,11 @@ class AssimilatorEncoder(torch.nn.Module):
             if h not in h3_mapping:
                 h_index -= 1
                 h3_mapping[h] = h_index + num_latlons
+        self.h3_mapping = h3_mapping
         # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
         # Should have vertical and horizontal difference
         h3_distances = []
-        for idx, h3_point in enumerate(self.h3_grid):
+        for idx, h3_point in enumerate(h3_grid):
             lat, lon, height = lat_lons_heights[idx]
             distance = h3.point_dist((lat, lon), h3.h3_to_geo(h3_point), unit="rads")
             # TODO Normalize height by some amount
@@ -199,7 +201,7 @@ class AssimilatorEncoder(torch.nn.Module):
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
-        for node_index, lat_node in enumerate(self.h3_grid):
+        for node_index, lat_node in enumerate(h3_grid):
             edge_sources.append(node_index)
             edge_targets.append(self.h3_mapping[lat_node])
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
@@ -207,7 +209,7 @@ class AssimilatorEncoder(torch.nn.Module):
         # Use homogenous graph to make it easier
         return Data(x=nodes, edge_index=edge_index, edge_attr=h3_distances)
 
-    def create_latent_graph(self) -> Data:
+    def create_latent_graph(self, num_latlons: int) -> Data:
         """
         Copies over and generates a Data object for the processor to use
 
@@ -223,8 +225,8 @@ class AssimilatorEncoder(torch.nn.Module):
             for h in h_points:  # Already includes itself
                 distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
-                edge_sources.append(self.h3_mapping[h3_index] - self.num_latlons)
-                edge_targets.append(self.h3_mapping[h] - self.num_latlons)
+                edge_sources.append(self.h3_mapping[h3_index] - num_latlons)
+                edge_targets.append(self.h3_mapping[h] - num_latlons)
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
         edge_attrs = torch.tensor(edge_attrs, dtype=torch.float)
         # Use heterogeneous graph as input and output dims are not same for the encoder

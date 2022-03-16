@@ -12,7 +12,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         self,
         output_lat_lons: list,
         resolution: int = 2,
-        observation_dim: int = 78,
+        observation_dim: int = 2,
         analysis_dim: int = 78,
         node_dim: int = 256,
         edge_dim: int = 256,
