@@ -2,17 +2,18 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
 
 
-class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
-    """Main weather prediction model from the paper"""
+class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
+    """Model to generate analysis file from raw observations"""
 
     def __init__(
         self,
-        lat_lons: list,
+        output_lat_lons: list,
         resolution: int = 2,
-        feature_dim: int = 78,
+        observation_dim: int = 2,
+        analysis_dim: int = 78,
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
@@ -25,13 +26,15 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         norm_type="LayerNorm",
     ):
         """
-        Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
+        Graph Weather Data Assimilation model
 
         Args:
-            lat_lons: List of latitude and longitudes for the grid
+        observation_lat_lons: Lat/lon points of the observations
+            output_lat_lons: List of latitude and longitudes for the output analysis
             resolution: Resolution of the H3 grid, prefer even resolutions, as
                 odd ones have octogons and heptagons as well
-            feature_dim: Input feature size
+            observation_dim: Input feature size
+            analysis_dim: Output Analysis feature dim
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
             num_blocks: Number of message passing blocks in the Processor
@@ -46,10 +49,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         """
         super().__init__()
 
-        self.encoder = Encoder(
-            lat_lons=lat_lons,
+        self.encoder = AssimilatorEncoder(
             resolution=resolution,
-            input_dim=feature_dim,
+            input_dim=observation_dim,
             output_dim=node_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
@@ -68,11 +70,11 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
         )
-        self.decoder = Decoder(
-            lat_lons=lat_lons,
+        self.decoder = AssimilatorDecoder(
+            lat_lons=output_lat_lons,
             resolution=resolution,
             input_dim=node_dim,
-            output_dim=feature_dim,
+            output_dim=analysis_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
             hidden_layers_processor_node=hidden_layers_processor_node,
@@ -83,17 +85,18 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_decoder=hidden_layers_decoder,
         )
 
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor, obs_lat_lon_heights: torch.Tensor) -> torch.Tensor:
         """
-        Compute the new state of the forecast
+        Compute the analysis output
 
         Args:
             features: The input features, aligned with the order of lat_lons_heights
+            obs_lat_lon_heights: Observation lat/lon/heights in same order as features
 
         Returns:
             The next state in the forecast
         """
-        x, edge_idx, edge_attr = self.encoder(features)
+        x, edge_idx, edge_attr = self.encoder(features, obs_lat_lon_heights)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features.shape[0])
         return x
