@@ -23,7 +23,6 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_dim_decoder=128,
         hidden_layers_decoder=2,
         norm_type="LayerNorm",
-        device="cpu"
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -46,7 +45,6 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
-        self.device = device
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
@@ -58,8 +56,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
-            device=device
-        ).to(device)
+        )
         self.processor = Processor(
             input_dim=node_dim,
             edge_dim=edge_dim,
@@ -69,7 +66,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
-        ).to(device)
+        )
         self.decoder = Decoder(
             lat_lons=lat_lons,
             resolution=resolution,
@@ -83,8 +80,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             mlp_norm_type=norm_type,
             hidden_dim_decoder=hidden_dim_decoder,
             hidden_layers_decoder=hidden_layers_decoder,
-            device=device
-        ).to(device)
+        )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
