@@ -152,6 +152,7 @@ class Encoder(torch.nn.Module):
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
         batch_size = features.shape[0]
+        self.h3_nodes = self.h3_nodes.to(features.device)
         features = torch.cat(
             [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
         )

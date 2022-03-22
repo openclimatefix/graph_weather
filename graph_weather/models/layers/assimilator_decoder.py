@@ -137,6 +137,7 @@ class AssimilatorDecoder(torch.nn.Module):
         )
 
         # Readd nodes to match graph node number
+        self.latlon_nodes = self.latlon_nodes.to(processor_features.device)
         features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
         features = torch.cat(
             [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
@@ -147,5 +148,5 @@ class AssimilatorDecoder(torch.nn.Module):
         # Remove the h3 nodes now, only want the latlon ones
         out = self.node_decoder(out)  # Decode to 78 from 256
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
-        _, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
+        test, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
         return out

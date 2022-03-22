@@ -6,7 +6,7 @@ import torch
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
 
-    def __init__(self, feature_variance: list, lat_lons: list):
+    def __init__(self, feature_variance: list, lat_lons: list, device="cpu"):
         """
         Normalized MSE Loss as described in the paper
 
@@ -23,11 +23,11 @@ class NormalizedMSELoss(torch.nn.Module):
         """
         # TODO Rescale by nominal static air density at each pressure level
         super().__init__()
-        self.feature_variance = torch.tensor(feature_variance)
+        self.feature_variance = torch.tensor(feature_variance).to(device)
         weights = []
         for lat, lon in lat_lons:
             weights.append(np.cos(lat))
-        self.weights = torch.tensor(weights, dtype=torch.float)
+        self.weights = torch.tensor(weights, dtype=torch.float).to(device)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
         """
