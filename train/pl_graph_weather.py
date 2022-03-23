@@ -55,9 +55,10 @@ class AnalysisDataset(Dataset):
         )
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
         # Normalize now
-        return transform(input_data).transpose(0, 1).reshape(-1, input_data.shape[-1]), transform(
-            output_data
-        ).transpose(0, 1).reshape(-1, input_data.shape[-1])
+        return (
+            transform(input_data).transpose(0, 1).reshape(-1, input_data.shape[-1]),
+            transform(output_data).transpose(0, 1).reshape(-1, input_data.shape[-1]),
+        )
 
 
 class LitGraphForecaster(pl.LightningModule):
@@ -89,5 +90,3 @@ class LitGraphForecaster(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
-
-
