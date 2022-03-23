@@ -20,10 +20,13 @@ import torchvision.transforms as transforms
 
 
 class AnalysisDataset(Dataset):
-    def __init__(self, filepaths, coarsen: int = 8):
+    def __init__(self, filepaths, invariant_path, mean, std, coarsen: int = 8):
         super().__init__()
         self.filepaths = sorted(filepaths)
+        self.invariant_path = invariant_path
         self.coarsen = coarsen
+        self.mean = mean
+        self.std = std
 
     def __len__(self):
         return len(self.filepaths) - 1
@@ -52,17 +55,29 @@ class AnalysisDataset(Dataset):
                     .mean()
             )
 
-
+        # Land-sea mask data, resampled to the same as the physical variables
+        landsea = xr.open_zarr(self.invariant_path, consolidated=True).interp(latitude=start.latitude.values).interp(longitude=start.longitude.values)
         # Calculate sin,cos, day of year, solar irradiance here before stacking
+        landsea = np.stack(
+            [
+                landsea[f"{var}"].values
+                for var in landsea.data_vars
+                if not np.isnan(landsea[f"{var}"].values).any()
+            ],
+            axis=-1,
+        )
+        landsea = landsea.T.reshape((-1,landsea.shape[-1]))
         lat_lons = np.array(np.meshgrid(start.latitude.values, start.longitude.values)).T.reshape((-1,2))
         sin_lat_lons = np.sin(lat_lons)
         cos_lat_lons = np.cos(lat_lons)
         date = start.time.dt.values
         day_of_year = start.time.dayofyear.values / 365.0
+        sin_of_year = np.sin(day_of_year)
+        cos_of_year = np.cos(day_of_year)
         solar_times = [np.array([extraterrestrial_irrad(date, lat, lon) for lat, lon in lat_lons])]
         for when in pd.date_range(date-pd.Timedelta("12 hours"), date+pd.Timedelta("12 hours"), freq=f"1H"):
             solar_times.append(np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons]))
-
+        solar_times = np.array(solar_times)
 
         # Stack the data into a large data cube
         input_data = np.stack(
@@ -73,6 +88,10 @@ class AnalysisDataset(Dataset):
             ],
             axis=-1,
         )
+        # TODO Combine with above? And include sin/cos of day of year
+        input_data = np.concatenate([input_data.T.reshape((-1,input_data.shape[-1])), sin_lat_lons, cos_lat_lons, solar_times, landsea], axis=-1)
+        # Not want to predict non-physics variables -> Output only the data variables? Would be simpler, and just add in the new ones each time
+
         mean = np.mean(input_data, axis=(0, 1))
         std = np.std(input_data, axis=(0, 1))
         output_data = np.stack(
@@ -84,15 +103,11 @@ class AnalysisDataset(Dataset):
             axis=-1,
         )
 
+        output_data = np.concatenate([output_data.T.reshape((-1,output_data.shape[-1])), sin_lat_lons, cos_lat_lons, solar_times, landsea], axis=-1)
         # Stick with Numpy, don't tensor it, as just going from 0 to 1
 
-
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
-        input_data = transform(input_data).transpose(0, 1).reshape(-1, input_data.shape[-1])
         # Normalize now
-        return , transform(
-            output_data
-        ).transpose(0, 1).reshape(-1, input_data.shape[-1])
+        return input_data, output_data
 
 obs_data = xr.open_zarr(
     "/home/jacob/Development/prepbufr.gdas.20160101.t00z.nr.48h.raw.zarr", consolidated=True

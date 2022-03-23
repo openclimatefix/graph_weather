@@ -31,3 +31,10 @@ REFORECAST_MAX = []
 REFORECAST_MIN = []
 REFORECAST_VARIANCE = []
 
+LANDSEA_MEAN = {"cl": 0.005749, "cvh": 0.08282, "cvl": 0.1114, "slt": 0.6747, "sr": 0.0001, "tvh": 1.607, "tvl": 1.256, "z": 3.717e+03}
+LANDSEA_STD = {"cl": 0.0513, "cvh": 0.2523, "cvl": 0.2887, "slt": 1.185, "sr": 0.0, "tvh": 4.833, "tvl": 3.408, "z": 8.375e+03}
+
+SOLAR_STD = [403.1591444098585]
+SOLAR_MEAN = [299.97745340056]
+SOLAR_MAX = [1414.8996356465245]
+SOLAR_MIN = [0.0]
