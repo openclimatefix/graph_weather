@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import pandas as pd
 import torchvision.transforms as transforms
+import const
 
 
 class AnalysisDataset(Dataset):
@@ -60,7 +61,7 @@ class AnalysisDataset(Dataset):
         # Calculate sin,cos, day of year, solar irradiance here before stacking
         landsea = np.stack(
             [
-                landsea[f"{var}"].values
+                (landsea[f"{var}"].values - const.LANDSEA_MEAN[var]) / const.LANDSEA_STD[var]
                 for var in landsea.data_vars
                 if not np.isnan(landsea[f"{var}"].values).any()
             ],
@@ -79,6 +80,19 @@ class AnalysisDataset(Dataset):
             solar_times.append(np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons]))
         solar_times = np.array(solar_times)
 
+        # End time solar radiation too
+        end_date = end.time.dt.values
+        end_solar_times = [np.array([extraterrestrial_irrad(date, lat, lon) for lat, lon in lat_lons])]
+        for when in pd.date_range(end_date-pd.Timedelta("12 hours"), end_date+pd.Timedelta("12 hours"), freq=f"1H"):
+            end_solar_times.append(np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons]))
+        end_solar_times = np.array(solar_times)
+
+        # Normalize to between -1 and 1
+        solar_times -= const.SOLAR_MEAN
+        solar_times /= const.SOLAR_STD
+        end_solar_times -= const.SOLAR_MEAN
+        end_solar_times /= const.SOLAR_STD
+
         # Stack the data into a large data cube
         input_data = np.stack(
             [
@@ -92,8 +106,6 @@ class AnalysisDataset(Dataset):
         input_data = np.concatenate([input_data.T.reshape((-1,input_data.shape[-1])), sin_lat_lons, cos_lat_lons, solar_times, landsea], axis=-1)
         # Not want to predict non-physics variables -> Output only the data variables? Would be simpler, and just add in the new ones each time
 
-        mean = np.mean(input_data, axis=(0, 1))
-        std = np.std(input_data, axis=(0, 1))
         output_data = np.stack(
             [
                 end[f"{var}"].values
@@ -103,7 +115,7 @@ class AnalysisDataset(Dataset):
             axis=-1,
         )
 
-        output_data = np.concatenate([output_data.T.reshape((-1,output_data.shape[-1])), sin_lat_lons, cos_lat_lons, solar_times, landsea], axis=-1)
+        output_data = np.concatenate([output_data.T.reshape((-1,output_data.shape[-1])), sin_lat_lons, cos_lat_lons, end_solar_times, landsea], axis=-1)
         # Stick with Numpy, don't tensor it, as just going from 0 to 1
 
         # Normalize now
