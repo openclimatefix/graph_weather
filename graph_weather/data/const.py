@@ -4,7 +4,7 @@ Constants for use in normalizing data, etc.
 Variances for
 1. Analysis file fields
 2. GFS Forecast Fields
-3. GEFS Reforecast Fields
+3. ERA5 Reanalysis Fields
 
 where the variance is the variance in the 3 hour change for a variable averaged across all lat/lon and pressure levels
 and time for (~100 random temporal frames, more the better)
@@ -25,11 +25,11 @@ FORECAST_MAX = []
 FORECAST_MIN = []
 FORECAST_VARIANCE = []
 
-REFORECAST_MEANS = []
-REFORECAST_STD = []
-REFORECAST_MAX = []
-REFORECAST_MIN = []
-REFORECAST_VARIANCE = []
+REANALYSIS_MEANS = []
+REANALYSIS_STD = []
+REANALYSIS_MAX = []
+REANALYSIS_MIN = []
+REANALYSIS_VARIANCE = []
 
 LANDSEA_MEAN = {
     "cl": 0.005749,
