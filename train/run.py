@@ -1,14 +1,16 @@
 """Training script for training the weather forecasting model"""
-from graph_weather import GraphWeatherForecaster
+import json
+
+import numpy as np
+import torch
+import torch.optim as optim
+import torchvision.transforms as transforms
 import xarray as xr
 from torch.utils.data import DataLoader, Dataset
-import numpy as np
-from graph_weather.models.losses import NormalizedMSELoss
-import torchvision.transforms as transforms
-import torch.optim as optim
-import torch
-import json
+
+from graph_weather import GraphWeatherForecaster
 from graph_weather.data import const
+from graph_weather.models.losses import NormalizedMSELoss
 
 
 class XrDataset(Dataset):
@@ -89,6 +91,7 @@ model = GraphWeatherForecaster(lat_lons, feature_dim=597, num_blocks=6).to(devic
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
 import time
+
 for epoch in range(100):  # loop over the dataset multiple times
     running_loss = 0.0
     start = time.time()

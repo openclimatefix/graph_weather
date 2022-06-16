@@ -1,6 +1,6 @@
 # Graph Weather
 Implementation of the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, an implementation
-of a modified model that assimilates raw or processed observations into analysis files. 
+of a modified model that assimilates raw or processed observations into analysis files.
 
 
 ## Installation
@@ -35,8 +35,8 @@ loss = criterion(out, features)
 loss.backward()
 ```
 
-And for the assimilation model, which assumes each lat/lon point also has a height above ground, and each observation 
-is a single value + the relative time. The assimlation model also assumes the desired output grid is given to it as 
+And for the assimilation model, which assumes each lat/lon point also has a height above ground, and each observation
+is a single value + the relative time. The assimlation model also assumes the desired output grid is given to it as
 well.
 
 ```python
