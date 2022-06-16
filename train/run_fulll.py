@@ -19,20 +19,14 @@ class XrDataset(Dataset):
         with open("hf_forecasts.json", "r") as f:
             files = json.load(f)
         self.filepaths = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"+f for f in files]
+        self.data = xr.open_mfdataset(self.filepaths, engine="zarr", concat_dim="reftime", combine="nested").sortby("reftime")
 
     def __len__(self):
-        return len(self.filepaths) * 15
+        return len(self.filepaths)
 
     def __getitem__(self, item):
         start_idx = np.random.randint(0, 15)
-        data = (
-            xr.open_zarr(self.filepaths[item], consolidated=True)
-                .isel(time=[start_idx, start_idx + 1])
-            #.coarsen(latitude=8, boundary="pad")
-            #.mean()
-            #.coarsen(longitude=8)
-            #.mean()
-        )
+        data = self.data.isel(reftime=item, time=slice(start_idx, start_idx+1))
 
         start = data.isel(time=0)
         end = data.isel(time=1)
