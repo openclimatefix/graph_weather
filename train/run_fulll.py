@@ -16,7 +16,7 @@ from graph_weather.models.losses import NormalizedMSELoss
 class XrDataset(Dataset):
     def __init__(self):
         super().__init__()
-        with open("/train/hf_forecasts.json", "r") as f:
+        with open("hf_forecasts.json", "r") as f:
             files = json.load(f)
         self.filepaths = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"+f for f in files]
 
@@ -28,10 +28,10 @@ class XrDataset(Dataset):
         data = (
             xr.open_zarr(self.filepaths[item], consolidated=True)
                 .isel(time=[start_idx, start_idx + 1])
-                .coarsen(latitude=8, boundary="pad")
-                .mean()
-                .coarsen(longitude=8)
-                .mean()
+            #.coarsen(latitude=8, boundary="pad")
+            #.mean()
+            #.coarsen(longitude=8)
+            #.mean()
         )
 
         start = data.isel(time=0)
@@ -65,18 +65,20 @@ class XrDataset(Dataset):
         )
 
 
-
+with open("hf_forecasts.json", "r") as f:
+    files = json.load(f)
+files = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"+f for f in files]
 data = (
-    xr.open_zarr("/run/media/jacob/Square2/2021100300.zarr.zip", consolidated=True).isel(time=0)
-        .coarsen(latitude=8, boundary="pad")
-        .mean()
-        .coarsen(longitude=8)
-        .mean()
+    xr.open_zarr(files[0], consolidated=True).isel(time=0)
+    #.coarsen(latitude=8, boundary="pad")
+    #.mean()
+    #.coarsen(longitude=8)
+    #.mean()
 )
 print(data)
-print("Done coarsening")
+#print("Done coarsening")
 lat_lons = np.array(np.meshgrid(data.latitude.values, data.longitude.values)).T.reshape(-1, 2)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 # Get the variance of the variables
 feature_variances = []
 for var in data.data_vars:

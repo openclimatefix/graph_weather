@@ -11,13 +11,13 @@ The dataloader has to do a few things for the model to work correctly
 
 """
 
-from pysolar.util import extraterrestrial_irrad
-import xarray as xr
-from torch.utils.data import DataLoader, Dataset
+import const
 import numpy as np
 import pandas as pd
 import torchvision.transforms as transforms
-import const
+import xarray as xr
+from pysolar.util import extraterrestrial_irrad
+from torch.utils.data import DataLoader, Dataset
 
 
 class AnalysisDataset(Dataset):

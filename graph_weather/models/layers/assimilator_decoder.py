@@ -125,6 +125,7 @@ class AssimilatorDecoder(torch.nn.Module):
         Returns:
             Updated features for model
         """
+        self.graph = self.graph.to(processor_features.device)
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
 

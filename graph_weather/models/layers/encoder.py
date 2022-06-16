@@ -153,6 +153,8 @@ class Encoder(torch.nn.Module):
         """
         batch_size = features.shape[0]
         self.h3_nodes = self.h3_nodes.to(features.device)
+        self.graph = self.graph.to(features.device)
+        self.latent_graph = self.latent_graph.to(features.device)
         features = torch.cat(
             [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
         )

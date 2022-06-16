@@ -1,12 +1,13 @@
 """PyTorch Lightning training script for the weather forecasting model"""
+import numpy as np
 import pytorch_lightning as pl
-from graph_weather import GraphWeatherForecaster
+import torch
+import torchvision.transforms as transforms
 import xarray as xr
 from torch.utils.data import DataLoader, Dataset
-import numpy as np
+
+from graph_weather import GraphWeatherForecaster
 from graph_weather.models.losses import NormalizedMSELoss
-import torchvision.transforms as transforms
-import torch
 
 
 class AnalysisDataset(Dataset):
