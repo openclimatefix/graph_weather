@@ -24,10 +24,12 @@ class NormalizedMSELoss(torch.nn.Module):
         # TODO Rescale by nominal static air density at each pressure level
         super().__init__()
         self.feature_variance = torch.tensor(feature_variance)
+        assert not torch.isnan(self.feature_variance).any()
         weights = []
         for lat, lon in lat_lons:
             weights.append(np.cos(lat))
         self.weights = torch.tensor(weights, dtype=torch.float)
+        assert not torch.isnan(self.weights).any()
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
         """
@@ -44,14 +46,22 @@ class NormalizedMSELoss(torch.nn.Module):
             MSE loss on the variance-normalized values
         """
         self.feature_variance = self.feature_variance.to(pred.device)
+        assert not torch.isnan(self.feature_variance).any()
         self.weights = self.weights.to(pred.device)
+        assert not torch.isnan(self.weights).any()
+        assert not torch.isnan(pred).any()
+        assert not torch.isnan(target).any()
 
-        pred = pred / self.feature_variance
-        target = target / self.feature_variance
+        #pred = pred / self.feature_variance
+        #target = target / self.feature_variance
+        assert not torch.isnan(pred).any()
+        assert not torch.isnan(target).any()
 
         out = (pred - target) ** 2
+        assert not torch.isnan(out).any()
         # Mean of the physical variables
         out = out.mean(-1)
         # Weight by the latitude, as that changes, so does the size of the pixel
         out = out * self.weights.expand_as(out)
+        assert not torch.isnan(out).any()
         return out.mean()
