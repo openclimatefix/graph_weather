@@ -13,6 +13,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         lat_lons: list,
         resolution: int = 2,
         feature_dim: int = 78,
+        aux_dim: int = 24,
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
@@ -32,6 +33,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             resolution: Resolution of the H3 grid, prefer even resolutions, as
                 odd ones have octogons and heptagons as well
             feature_dim: Input feature size
+            aux_dim: Number of non-NWP features (i.e. landsea mask, lat/lon, etc)
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
             num_blocks: Number of message passing blocks in the Processor
@@ -48,7 +50,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
-            input_dim=feature_dim,
+            input_dim=feature_dim+aux_dim,
             output_dim=node_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,

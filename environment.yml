@@ -121,3 +121,4 @@ dependencies:
       - torch-geometric-temporal==0.51.0
       - xxhash==3.0.0
       - yarl==1.7.2
+      - pysolar
