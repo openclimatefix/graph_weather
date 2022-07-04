@@ -50,7 +50,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
-            input_dim=feature_dim+aux_dim,
+            input_dim=feature_dim + aux_dim,
             output_dim=node_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
