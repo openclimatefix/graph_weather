@@ -1,24 +1,11 @@
 """PyTorch Lightning training script for the weather forecasting model"""
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from graph_weather import GraphWeatherForecaster
-import xarray as xr
-from torch.utils.data import DataLoader, Dataset
-import numpy as np
-from graph_weather.models.losses import NormalizedMSELoss
-import torchvision.transforms as transforms
-import torch
 
-from pysolar.util import extraterrestrial_irrad
 from graph_weather import GraphWeatherForecaster
-from datasets import Array3D, Sequence, Value, Array2D, Features
-import xarray as xr
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 from graph_weather.models.losses import NormalizedMSELoss
-import torchvision.transforms as transforms
-import torch.optim as optim
 import torch
-import json
 from graph_weather.data import const
 import datasets
 import numpy as np
@@ -168,13 +155,13 @@ lat_lons = np.array(
 )
 
 class GraphDataModule(pl.LightningDataModule):
-    def __init__(self, deg: str = "2.0", batch_size: int = 1):
+    def __init__(self, deg: str = "2.0", batch_size: int = 12):
         super().__init__()
         self.batch_size = batch_size
-        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2.0deg", split='train', streaming=True).map(process_data, remove_columns=list(example_batch.keys())).with_format("torch")
+        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2.0deg", split='train', streaming=False).map(process_data, remove_columns=list(example_batch.keys())).with_format("torch")
 
     def train_dataloader(self):
-        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=12)
 
 
 class LitGraphForecaster(pl.LightningModule):
@@ -215,5 +202,5 @@ class LitGraphForecaster(pl.LightningModule):
 checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
 dset = GraphDataModule()
 model = LitGraphForecaster(lat_lons=lat_lons)
-trainer = pl.Trainer(gpus=1, max_epochs=100, precision=32, callbacks=[checkpoint_callback])
+trainer = pl.Trainer(gpus=12, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
 trainer.fit(model, dset)

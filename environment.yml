@@ -122,3 +122,5 @@ dependencies:
       - xxhash==3.0.0
       - yarl==1.7.2
       - pysolar
+      - pytorch-lightning
+      - deepspeed
