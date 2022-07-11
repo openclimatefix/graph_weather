@@ -22,7 +22,7 @@ RUN /bin/bash miniconda3.sh -b -p /conda \
     && rm miniconda3.sh
 ENV PATH="/conda/bin:${PATH}"
 COPY environment.yml ./
-RUN conda env create -f environment.yml -y
+RUN conda env create -f environment.yml
 
 # Switch to bash shell
 SHELL ["/bin/bash", "-c"]
