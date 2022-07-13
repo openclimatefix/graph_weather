@@ -82,7 +82,7 @@ def get_mean_stds():
         stds[f"{i}m_above_ground"] = np.stack(stds[f"{i}m_above_ground"], axis=-1)
     return means, stds
 
-hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=True)
+hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
 example_batch = next(iter(hf_ds))
 means, stds = get_mean_stds()
 """
