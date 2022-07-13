@@ -147,7 +147,6 @@ def process_data(data):
     return new_data
 
 
-print(hf_ds.n_shards)
 lat_lons = np.array(
     np.meshgrid(np.asarray(example_batch["latitude"]).flatten(), np.asarray(example_batch["longitude"]).flatten())).T.reshape(
     (-1, 2)
