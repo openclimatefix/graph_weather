@@ -82,7 +82,7 @@ def get_mean_stds():
         stds[f"{i}m_above_ground"] = np.stack(stds[f"{i}m_above_ground"], axis=-1)
     return means, stds
 
-hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2.0deg", split='train', streaming=True)
+hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=True)
 example_batch = next(iter(hf_ds))
 means, stds = get_mean_stds()
 """
@@ -143,9 +143,8 @@ def process_data(data):
                  torch.from_numpy(cos_lat_lons), torch.from_numpy(np.expand_dims(sin_of_year, axis=-1)),
                  torch.from_numpy(np.expand_dims(cos_of_year, axis=-1))]#, landsea_fixed]
     input_data = torch.concat(to_concat, dim=-1)
-    data["input"] = input_data.float()
-    data["output"] = output_data.float()
-    return data
+    new_data = {"input": input_data.float().numpy(), "output": output_data.float().numpy()}
+    return new_data
 
 
 print(hf_ds.n_shards)
@@ -154,14 +153,18 @@ lat_lons = np.array(
     (-1, 2)
 )
 
+
 class GraphDataModule(pl.LightningDataModule):
-    def __init__(self, deg: str = "2.0", batch_size: int = 12):
+    def __init__(self, deg: str = "2.0", batch_size: int = 1):
         super().__init__()
         self.batch_size = batch_size
-        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2.0deg", split='train', streaming=False).map(process_data, remove_columns=list(example_batch.keys())).with_format("torch")
+        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
+        features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
+                                      "output": datasets.Array2D(shape=(16380, 605), dtype='float32')})
+        self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features).with_format("torch")
 
     def train_dataloader(self):
-        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=12)
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=4)
 
 
 class LitGraphForecaster(pl.LightningModule):
@@ -202,5 +205,5 @@ class LitGraphForecaster(pl.LightningModule):
 checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
 dset = GraphDataModule()
 model = LitGraphForecaster(lat_lons=lat_lons)
-trainer = pl.Trainer(gpus=12, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
+trainer = pl.Trainer(gpus=1, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
 trainer.fit(model, dset)
