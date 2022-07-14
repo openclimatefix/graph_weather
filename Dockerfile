@@ -37,3 +37,5 @@ RUN source activate ${CONDA_ENV_NAME} && pip install -e .
 # Make RUN commands use the new environment:
 SHELL ["conda", "run", "-n", "graph", "/bin/bash", "-c"]
 
+# Example commnad that can be used, need to set API_KEY, API_SECRET and SAVE_DIR
+CMD ["conda", "run", "-n", "graph", "python", "-u", "train/pl_graph_weather.py", "--gpus", "16", "--hidden", "64", "--num-blocks", "3", "--batch", "16"]

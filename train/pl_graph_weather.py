@@ -11,6 +11,7 @@ import datasets
 import numpy as np
 import pandas as pd
 from pysolar.util import extraterrestrial_irrad
+import click
 
 const.FORECAST_MEANS = {var: np.asarray(value) for var, value in const.FORECAST_MEANS.items()}
 const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_STD.items()}
@@ -82,23 +83,9 @@ def get_mean_stds():
         stds[f"{i}m_above_ground"] = np.stack(stds[f"{i}m_above_ground"], axis=-1)
     return means, stds
 
-hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
-example_batch = next(iter(hf_ds))
+
 means, stds = get_mean_stds()
-"""
-landsea = xr.open_zarr("'zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/landsea.zarr.zip", consolidated=True).load()
-landsea = landsea.interp(latitude=np.asarray(example_batch["latitude"]).flatten()).interp(longitude=np.asarray(example_batch["longitude"]).flatten())
-# Calculate sin,cos, day of year, solar irradiance here before stacking
-landsea = np.stack(
-    [
-        (landsea[f"{var}"].values - const.LANDSEA_MEAN[var]) / const.LANDSEA_STD[var]
-        for var in landsea.data_vars
-        if not np.isnan((landsea[f"{var}"].values - const.LANDSEA_MEAN[var]) / const.LANDSEA_STD[var]).any()
-    ],
-    axis=-1,
-)
-landsea_fixed = torch.from_numpy(landsea.T.reshape((-1, landsea.shape[-1])))
-"""
+
 
 def process_data(data):
     data.update({key: np.expand_dims(np.asarray(value), axis=-1) for key, value in data.items() if
@@ -141,34 +128,35 @@ def process_data(data):
     cos_of_year = np.ones_like(lat_lons)[:, 0] * np.cos(day_of_year)
     to_concat = [input_data, torch.permute(torch.from_numpy(solar_times), (1, 0)), torch.from_numpy(sin_lat_lons),
                  torch.from_numpy(cos_lat_lons), torch.from_numpy(np.expand_dims(sin_of_year, axis=-1)),
-                 torch.from_numpy(np.expand_dims(cos_of_year, axis=-1))]#, landsea_fixed]
+                 torch.from_numpy(np.expand_dims(cos_of_year, axis=-1))]  # , landsea_fixed]
     input_data = torch.concat(to_concat, dim=-1)
     new_data = {"input": input_data.float().numpy(), "output": output_data.float().numpy()}
     return new_data
-
-
-lat_lons = np.array(
-    np.meshgrid(np.asarray(example_batch["latitude"]).flatten(), np.asarray(example_batch["longitude"]).flatten())).T.reshape(
-    (-1, 2)
-)
 
 
 class GraphDataModule(pl.LightningDataModule):
     def __init__(self, deg: str = "2.0", batch_size: int = 1):
         super().__init__()
         self.batch_size = batch_size
-        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
-        features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
-                                      "output": datasets.Array2D(shape=(16380, 605), dtype='float32')})
-        self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features).with_format("torch")
+        try:
+            self.dataset = datasets.load_from_disk("gfs-2deg-processed")
+        except:
+            self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train',
+                                                 streaming=False)
+            features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
+                                          "output": datasets.Array2D(shape=(16380, 605), dtype='float32')})
+            self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features,
+                                            num_proc=12, writer_batch_size=5).with_format("torch")
+            self.dataset.save_to_disk("gfs-2deg-processed")
 
     def train_dataloader(self):
-        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=8)
 
 
 class LitGraphForecaster(pl.LightningModule):
     def __init__(
-            self, lat_lons: list, feature_dim: int = 605, aux_dim: int = 32, hidden_dim: int = 128, lr: float = 3e-4
+            self, lat_lons: list, feature_dim: int = 605, aux_dim: int = 32, hidden_dim: int = 64, num_blocks: int = 3,
+            lr: float = 3e-4
     ):
         super().__init__()
         self.model = GraphWeatherForecaster(
@@ -179,7 +167,7 @@ class LitGraphForecaster(pl.LightningModule):
             hidden_dim_processor_node=hidden_dim,
             hidden_layers_processor_edge=hidden_dim,
             hidden_dim_processor_edge=hidden_dim,
-            num_blocks=3,
+            num_blocks=num_blocks,
         )
         self.criterion = NormalizedMSELoss(
             lat_lons=lat_lons, feature_variance=np.ones((feature_dim,))
@@ -201,8 +189,46 @@ class LitGraphForecaster(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
-checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
-dset = GraphDataModule()
-model = LitGraphForecaster(lat_lons=lat_lons)
-trainer = pl.Trainer(gpus=1, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
-trainer.fit(model, dset)
+@click.command()
+@click.option(
+    "--num-blocks",
+    default=5,
+    help="Where to save the zarr files",
+    type=click.INT,
+)
+@click.option(
+    "--hidden",
+    default=32,
+    help="Where to save the zarr files",
+    type=click.INT,
+)
+@click.option(
+    "--batch",
+    default=1,
+    help="Where to save the zarr files",
+    type=click.INT,
+)
+@click.option(
+    "--gpus",
+    default=1,
+    help="Where to save the zarr files",
+    type=click.INT,
+)
+def run(num_blocks, hidden, batch, gpus):
+    hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
+    example_batch = next(iter(hf_ds))
+    lat_lons = np.array(
+        np.meshgrid(np.asarray(example_batch["latitude"]).flatten(),
+                    np.asarray(example_batch["longitude"]).flatten())).T.reshape(
+        (-1, 2)
+    )
+    checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
+    dset = GraphDataModule(batch_size=batch)
+    model = LitGraphForecaster(lat_lons=lat_lons, num_blocks=num_blocks, hidden_dim=hidden)
+    trainer = pl.Trainer(accelerator="gpu", devices=gpus, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
+                         #strategy="deepspeed_stage_2_offload")
+    trainer.fit(model, dset)
+
+
+if __name__ == "__main__":
+    run()
