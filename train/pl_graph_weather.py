@@ -1,17 +1,17 @@
 """PyTorch Lightning training script for the weather forecasting model"""
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-
-from graph_weather import GraphWeatherForecaster
-from torch.utils.data import DataLoader, Dataset, IterableDataset
-from graph_weather.models.losses import NormalizedMSELoss
-import torch
-from graph_weather.data import const
+import click
 import datasets
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
+import torch
 from pysolar.util import extraterrestrial_irrad
-import click
+from pytorch_lightning.callbacks import ModelCheckpoint
+from torch.utils.data import DataLoader, Dataset, IterableDataset
+
+from graph_weather import GraphWeatherForecaster
+from graph_weather.data import const
+from graph_weather.models.losses import NormalizedMSELoss
 
 const.FORECAST_MEANS = {var: np.asarray(value) for var, value in const.FORECAST_MEANS.items()}
 const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_STD.items()}
