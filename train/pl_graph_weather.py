@@ -130,7 +130,7 @@ def process_data(data):
                  torch.from_numpy(cos_lat_lons), torch.from_numpy(np.expand_dims(sin_of_year, axis=-1)),
                  torch.from_numpy(np.expand_dims(cos_of_year, axis=-1))]  # , landsea_fixed]
     input_data = torch.concat(to_concat, dim=-1)
-    new_data = {"input": input_data.float().numpy(), "output": output_data.float().numpy()}
+    new_data = {"input": input_data.float().numpy(), "output": output_data.float().numpy(), "has_nans": not np.isnan(input_data.float().numpy()).any() and not np.isnan(output_data.float().numpy()).any()}
     return new_data
 
 
@@ -138,19 +138,16 @@ class GraphDataModule(pl.LightningDataModule):
     def __init__(self, deg: str = "2.0", batch_size: int = 1):
         super().__init__()
         self.batch_size = batch_size
-        try:
-            self.dataset = datasets.load_from_disk("gfs-2deg-processed")
-        except:
-            self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train',
-                                                 streaming=False)
-            features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
-                                          "output": datasets.Array2D(shape=(16380, 605), dtype='float32')})
-            self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features,
-                                            num_proc=12, writer_batch_size=5).with_format("torch")
-            self.dataset.save_to_disk("gfs-2deg-processed")
+        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train+validation',
+                                             streaming=False)
+        features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
+                                      "output": datasets.Array2D(shape=(16380, 605), dtype='float32'),
+                                      "has_nans": datasets.Value("bool")})
+        self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features,
+                                        num_proc=16, writer_batch_size=2).filter(lambda x: x["has_nans"]).with_format("torch")
 
     def train_dataloader(self):
-        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=8)
+        return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=2)
 
 
 class LitGraphForecaster(pl.LightningModule):

@@ -1,4 +1,4 @@
-name: graph2
+name: graph
 channels:
   - pyg
   - pytorch
