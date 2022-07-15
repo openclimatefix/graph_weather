@@ -21,7 +21,9 @@ RUN /bin/bash miniconda3.sh -b -p /conda \
     && echo export PATH=/conda/bin:$PATH >> .bashrc \
     && rm miniconda3.sh
 ENV PATH="/conda/bin:${PATH}"
-COPY environment.yml ./
+
+RUN git clone https://github.com/openclimatefix/graph_weather.git && mv graph_weather/ gw/ && cd gw/ && mv * .. && rm -rf gw/
+
 RUN conda env create -f environment.yml
 
 # Switch to bash shell
@@ -31,7 +33,6 @@ SHELL ["/bin/bash", "-c"]
 RUN echo "source activate ${CONDA_ENV_NAME}" >> ~/.bashrc
 
 # Cp in the development directory and install
-COPY . ./
 RUN source activate ${CONDA_ENV_NAME} && pip install -e .
 
 # Make RUN commands use the new environment:
