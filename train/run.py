@@ -1,18 +1,20 @@
 """Training script for training the weather forecasting model"""
-from graph_weather import GraphWeatherForecaster
-from datasets import Array3D, Sequence, Value, Array2D, Features
-import xarray as xr
-from torch.utils.data import DataLoader, Dataset, IterableDataset
-from graph_weather.models.losses import NormalizedMSELoss
-import torchvision.transforms as transforms
-import torch.optim as optim
-import torch
 import json
-from graph_weather.data import const
+
 import datasets
 import numpy as np
 import pandas as pd
+import torch
+import torch.optim as optim
+import torchvision.transforms as transforms
+import xarray as xr
+from datasets import Array2D, Array3D, Features, Sequence, Value
 from pysolar.util import extraterrestrial_irrad
+from torch.utils.data import DataLoader, Dataset, IterableDataset
+
+from graph_weather import GraphWeatherForecaster
+from graph_weather.data import const
+from graph_weather.models.losses import NormalizedMSELoss
 
 const.FORECAST_MEANS = {var: np.asarray(value) for var, value in const.FORECAST_MEANS.items()}
 const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_STD.items()}
@@ -174,6 +176,7 @@ model = GraphWeatherForecaster(lat_lons, edge_dim=1024, hidden_dim_processor_edg
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
 import time
+
 for epoch in range(100):  # loop over the dataset multiple times
     running_loss = 0.0
     print(f"Start Epoch: {epoch}")

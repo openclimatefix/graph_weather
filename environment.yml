@@ -3,6 +3,7 @@ channels:
   - pyg
   - pytorch
   - defaults
+  - conda-forge
 dependencies:
   - _libgcc_mutex=0.1=main
   - _openmp_mutex=4.5=1_gnu
@@ -122,3 +123,6 @@ dependencies:
       - xxhash==3.0.0
       - yarl==1.7.2
       - pysolar
+      - pytorch-lightning
+      - deepspeed
+      - click
