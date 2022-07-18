@@ -4,7 +4,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 this_directory = Path(__file__).parent
-install_requires = (this_directory / "requirements.txt").read_text().splitlines()
+# install_requires = (this_directory / "requirements.txt").read_text().splitlines()
 long_description = (this_directory / "README.md").read_text()
 
 setup(
@@ -15,8 +15,8 @@ setup(
     license="MIT License",
     company="Open Climate Fix Ltd",
     author="Jacob Bieker",
-    install_requires=install_requires,
-    extras_requires={"vis": ["matplotlib"], "data": ["pysolar"]},
+    # install_requires=None,
+    extras_requires={"vis": ["matplotlib"]},
     long_description=long_description,
     long_description_content_type="text/markdown",
     author_email="jacob@openclimatefix.org",

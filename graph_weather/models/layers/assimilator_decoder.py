@@ -74,9 +74,7 @@ class AssimilatorDecoder(torch.nn.Module):
             self.h3_mapping[h + self.num_h3] = value
 
         # Build the default graph
-        nodes = torch.zeros(
-            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
-        )
+        nodes = torch.zeros((len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.latlon_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
         # Get connections between lat nodes and h3 nodes TODO Paper makes it seem like the 3
@@ -111,9 +109,7 @@ class AssimilatorDecoder(torch.nn.Module):
             hidden_layers_edge=hidden_layers_processor_edge,
             norm_type=mlp_norm_type,
         )
-        self.node_decoder = MLP(
-            input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None
-        )
+        self.node_decoder = MLP(input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None)
 
     def forward(self, processor_features: torch.Tensor, batch_size: int) -> torch.Tensor:
         """
@@ -130,19 +126,14 @@ class AssimilatorDecoder(torch.nn.Module):
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
 
         edge_index = torch.cat(
-            [
-                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
-                for i in range(batch_size)
-            ],
+            [self.graph.edge_index + i * torch.max(self.graph.edge_index) + i for i in range(batch_size)],
             dim=1,
         )
 
         # Readd nodes to match graph node number
         self.latlon_nodes = self.latlon_nodes.to(processor_features.device)
         features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
-        features = torch.cat(
-            [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
-        )
+        features = torch.cat([features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1)
         features = einops.rearrange(features, "b n f -> (b n) f")
 
         out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing

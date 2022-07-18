@@ -52,8 +52,8 @@ class NormalizedMSELoss(torch.nn.Module):
         assert not torch.isnan(pred).any()
         assert not torch.isnan(target).any()
 
-        #pred = pred / self.feature_variance
-        #target = target / self.feature_variance
+        # pred = pred / self.feature_variance
+        # target = target / self.feature_variance
         assert not torch.isnan(pred).any()
         assert not torch.isnan(target).any()
 

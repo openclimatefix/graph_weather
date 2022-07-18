@@ -89,9 +89,7 @@ class Encoder(torch.nn.Module):
         # Build the default graph
         # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
         # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
-        nodes = torch.zeros(
-            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
-        )
+        nodes = torch.zeros((len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -155,9 +153,7 @@ class Encoder(torch.nn.Module):
         self.h3_nodes = self.h3_nodes.to(features.device)
         self.graph = self.graph.to(features.device)
         self.latent_graph = self.latent_graph.to(features.device)
-        features = torch.cat(
-            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
-        )
+        features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 78
@@ -166,10 +162,7 @@ class Encoder(torch.nn.Module):
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
         edge_index = torch.cat(
-            [
-                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
-                for i in range(batch_size)
-            ],
+            [self.graph.edge_index + i * torch.max(self.graph.edge_index) + i for i in range(batch_size)],
             dim=1,
         )
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
@@ -180,15 +173,10 @@ class Encoder(torch.nn.Module):
         return (
             out,
             torch.cat(
-                [
-                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
-                    for i in range(batch_size)
-                ],
+                [self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i for i in range(batch_size)],
                 dim=1,
             ),
-            self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-            ),
+            self.latent_edge_encoder(einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)),
         )  # New graph
 
     def create_latent_graph(self) -> Data:

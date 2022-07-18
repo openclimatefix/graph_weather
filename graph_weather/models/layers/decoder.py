@@ -69,9 +69,7 @@ class Decoder(AssimilatorDecoder):
             hidden_layers_decoder,
         )
 
-    def forward(
-        self, processor_features: torch.Tensor, start_features: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, processor_features: torch.Tensor, start_features: torch.Tensor) -> torch.Tensor:
         """
         Adds features to the encoding graph
 

@@ -108,9 +108,7 @@ class AssimilatorEncoder(torch.nn.Module):
             mlp_norm_type,
         )
 
-    def forward(
-        self, features: torch.Tensor, lat_lon_heights: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, features: torch.Tensor, lat_lon_heights: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Adds features to the encoding graph, assuming all inputs have same lat/lon/height points
 
@@ -127,9 +125,7 @@ class AssimilatorEncoder(torch.nn.Module):
         """
         graph = self.create_input_graph(features=features, lat_lons_heights=lat_lon_heights)
         batch_size = features.shape[0]
-        features = torch.cat(
-            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
-        )
+        features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 2
@@ -149,15 +145,10 @@ class AssimilatorEncoder(torch.nn.Module):
         return (
             out,
             torch.cat(
-                [
-                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
-                    for i in range(batch_size)
-                ],
+                [self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i for i in range(batch_size)],
                 dim=1,
             ),
-            self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-            ),
+            self.latent_edge_encoder(einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)),
         )  # New graph
 
     def create_input_graph(self, features: torch.Tensor, lat_lons_heights: torch.Tensor) -> Data:

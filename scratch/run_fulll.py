@@ -18,7 +18,7 @@ class XrDataset(Dataset):
         super().__init__()
         with open("hf_forecasts.json", "r") as f:
             files = json.load(f)
-        self.filepaths = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"+f for f in files]
+        self.filepaths = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/" + f for f in files]
         self.data = xr.open_mfdataset(self.filepaths, engine="zarr", concat_dim="reftime", combine="nested").sortby("reftime")
 
     def __len__(self):
@@ -26,7 +26,7 @@ class XrDataset(Dataset):
 
     def __getitem__(self, item):
         start_idx = np.random.randint(0, 15)
-        data = self.data.isel(reftime=item, time=slice(start_idx, start_idx+1))
+        data = self.data.isel(reftime=item, time=slice(start_idx, start_idx + 1))
 
         start = data.isel(time=0)
         end = data.isel(time=1)
@@ -61,26 +61,24 @@ class XrDataset(Dataset):
 
 with open("hf_forecasts.json", "r") as f:
     files = json.load(f)
-files = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"+f for f in files]
+files = ["zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/" + f for f in files]
 data = (
     xr.open_zarr(files[0], consolidated=True).isel(time=0)
-    #.coarsen(latitude=8, boundary="pad")
-    #.mean()
-    #.coarsen(longitude=8)
-    #.mean()
+    # .coarsen(latitude=8, boundary="pad")
+    # .mean()
+    # .coarsen(longitude=8)
+    # .mean()
 )
 print(data)
-#print("Done coarsening")
+# print("Done coarsening")
 lat_lons = np.array(np.meshgrid(data.latitude.values, data.longitude.values)).T.reshape(-1, 2)
 device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 # Get the variance of the variables
 feature_variances = []
 for var in data.data_vars:
     if "mb" in var or "surface" in var:
-        feature_variances.append(const.FORECAST_DIFF_STD[var]**2)
-criterion = NormalizedMSELoss(
-    lat_lons=lat_lons, feature_variance=feature_variances, device=device
-).to(device)
+        feature_variances.append(const.FORECAST_DIFF_STD[var] ** 2)
+criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=feature_variances, device=device).to(device)
 means = []
 dataset = DataLoader(XrDataset(), batch_size=1, num_workers=32)
 model = GraphWeatherForecaster(lat_lons, feature_dim=597, num_blocks=6).to(device)
@@ -111,6 +109,8 @@ for epoch in range(100):  # loop over the dataset multiple times
         print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / (i + 1):.3f} Time: {end - start} sec")
     if epoch % 5 == 0:
         assert not np.isnan(running_loss)
-        model.push_to_hub("graph-weather-forecaster-2.0deg", organization="openclimatefix", commit_message=f"Add model Epoch={epoch}")
+        model.push_to_hub(
+            "graph-weather-forecaster-2.0deg", organization="openclimatefix", commit_message=f"Add model Epoch={epoch}"
+        )
 
 print("Finished Training")
