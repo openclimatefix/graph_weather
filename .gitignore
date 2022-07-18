@@ -1,2 +1,9 @@
 .idea/
 *.nc
+.ipynb_checkpoints
+**/*.ipynb_checkpoints/
+.vscode
+*.egg-info
+__pycache__
+.DS_Store
+*.pyc

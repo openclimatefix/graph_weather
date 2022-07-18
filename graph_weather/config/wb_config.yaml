@@ -1,0 +1,24 @@
+input:
+  basedir: /data2/malexe/weatherbench/netcdf/
+  filename-template: "pl-*.nc"
+  varnames:
+    - t
+    - q
+    - z
+
+model:
+  debug:
+    anomaly-detection: False
+  wandb:
+    enabled: True
+  dask:
+    enabled: True
+    tempdir: /data/malexe/scratch/GNN-WEATHER/dask
+    trim-worker-memory: True
+    num-workers: 8
+    threads-per-worker: 2
+    persist-data: False
+  # specific model settings
+  lead-time: 6
+  batch-size: 1
+  batch-chunk-size: 1

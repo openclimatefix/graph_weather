@@ -1,22 +1,17 @@
 """Setup"""
 from pathlib import Path
-
 from setuptools import find_packages, setup
 
 this_directory = Path(__file__).parent
-# install_requires = (this_directory / "requirements.txt").read_text().splitlines()
 long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="graph_weather",
     version="1.0.14",
-    packages=find_packages(),
-    url="https://github.com/openclimatefix/graph_weather",
+    url="https://github.com/mishooax/graph_weather",
     license="MIT License",
-    company="Open Climate Fix Ltd",
-    author="Jacob Bieker",
-    # install_requires=None,
-    extras_requires={"vis": ["matplotlib"]},
+    company="ECMWF / Open Climate Fix Ltd",
+    author="Jacob Bieker (original author), with modifications by ECMWF",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author_email="jacob@openclimatefix.org",
@@ -28,4 +23,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.9",
     ],
+    packages=find_packages(),
+    entry_points={
+        "console_scripts": [
+            "gnn-wb-train=graph_weather.train.wb_train:main",
+        ]
+    },
 )
