@@ -9,8 +9,7 @@ from graph_weather.utils.config import YAMLConfig
 def __trim_dask_worker_memory() -> int:
     """
     Manually trim Dask worker memory. This will forcefully release allocated but unutilized memory.
-    This may help reduce total memory used per worker when we operate on large numbers of small Python objects
-    (e.g. non-numpy data and small numpy chunks)
+    This may help reduce total memory used per worker.
     See:
         https://distributed.dask.org/en/stable/worker-memory.html
     and
@@ -21,10 +20,13 @@ def __trim_dask_worker_memory() -> int:
 
 
 def init_dask(config: YAMLConfig):
-    # NB: change this to point to a dir where you can write to!
     dask.config.set({"temporary_directory": config["model:dask:temp-dir"]})
-    # forward port 9988 to access the dask dashboard
-    cluster = LocalCluster(n_workers=16, threads_per_worker=2, dashboard_address=":9988")
+    cluster = LocalCluster(
+        n_workers=config["model:dask:num-workers"],
+        threads_per_worker=config["model:dask:num-threads-per-worker"],
+        dashboard_address=f":{config['model:dask:dashboard-port']}",
+    )
     client = Client(cluster)
-    client.run(__trim_dask_worker_memory)
+    if config["model:dask:trim-worker-memory"]:
+        client.run(__trim_dask_worker_memory)
     return client

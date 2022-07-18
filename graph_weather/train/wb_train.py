@@ -1,4 +1,5 @@
 # Train GNN model on the WeatherBench dataset
+from typing import Optional
 import argparse
 
 from dask.distributed import Client
@@ -21,7 +22,7 @@ def train(config: YAMLConfig) -> None:
     """
 
     # initialize dask cluster
-    client: Client = init_dask(config)
+    client: Optional[Client] = init_dask(config) if config["model:dask:enabled"] else None
 
     dmod = WeatherBenchDataModule(config, dask_client=client)
 
