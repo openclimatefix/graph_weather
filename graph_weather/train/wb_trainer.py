@@ -9,7 +9,7 @@ from graph_weather.models.losses import NormalizedMSELoss
 
 
 class LitGraphForecaster(pl.LightningModule):
-    def __init__(self, lat_lons: List, feature_dim: int = 605, aux_dim: int = 6, hidden_dim: int = 64, lr: float = 3e-4):
+    def __init__(self, lat_lons: List, feature_dim: int = 605, aux_dim: int = 6, hidden_dim: int = 64, num_blocks: int = 3, lr: float = 3e-4):
         super().__init__()
         self.gnn = GraphWeatherForecaster(
             lat_lons,
@@ -19,7 +19,7 @@ class LitGraphForecaster(pl.LightningModule):
             hidden_dim_processor_node=hidden_dim,
             hidden_layers_processor_edge=hidden_dim,
             hidden_dim_processor_edge=hidden_dim,
-            num_blocks=3,
+            num_blocks=num_blocks,
         )
         self.criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=np.ones((feature_dim,)))
         self.lr = lr

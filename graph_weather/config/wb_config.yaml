@@ -41,4 +41,5 @@ model:
   # specific GNN model settings
   lead-time: 6
   learn-rate: 2.e-3
-  hidden-dim: 64
+  hidden-dim: 32
+  num-blocks: 1

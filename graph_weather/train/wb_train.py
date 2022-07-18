@@ -34,9 +34,11 @@ def train(config: YAMLConfig) -> None:
         feature_dim=num_features,
         aux_dim=dmod.const_data.nconst,
         hidden_dim=config["model:hidden-dim"],
+        num_blocks=config["model:num-blocks"],
         lr=config["model:learn-rate"],
     )
 
+    # fast_dev_run -> runs a single batch
     trainer = pl.Trainer(accelerator="gpu", max_epochs=2, precision=32, fast_dev_run=True)
     trainer.fit(model, dmod.train_dataloader())
 

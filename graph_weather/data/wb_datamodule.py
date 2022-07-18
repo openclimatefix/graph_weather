@@ -65,7 +65,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
             batch_chunk_size=config["model:dataloader:batch-chunk-size"],
-        ).constants
+        )
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -83,5 +83,5 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             # enable shuffling (off by default!)
             shuffle=True,
             # custom collator (see above)
-            collate_fn=_custom_collator_wrapper(self.const_data),
+            collate_fn=_custom_collator_wrapper(self.const_data.constants),
         )
