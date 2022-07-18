@@ -17,11 +17,8 @@ to each icosahedron node.
 In further notes, they notice that there is some hexagon instabilities in long rollouts
 One possible way to change that is to do the additative noise as in the original MeshGraphNet
 or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
-
-
-
 """
-from typing import Tuple
+from typing import Tuple, List
 
 import einops
 import h3
@@ -37,7 +34,7 @@ class Encoder(torch.nn.Module):
 
     def __init__(
         self,
-        lat_lons: list,
+        lat_lons: List,
         resolution: int = 2,
         input_dim: int = 78,
         output_dim: int = 256,

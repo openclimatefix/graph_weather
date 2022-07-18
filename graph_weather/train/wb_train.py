@@ -2,14 +2,45 @@
 import argparse
 
 from dask.distributed import Client
+import pytorch_lightning as pl
 
 from graph_weather.utils.dask_utils import init_dask
 from graph_weather.utils.config import YAMLConfig
+from graph_weather.data.wb_datamodule import WeatherBenchDataModule
+from graph_weather.utils.logger import get_logger
+from graph_weather.train.wb_trainer import LitGraphForecaster
+
+LOGGER = get_logger(__name__)
 
 
-def train(config: YAMLConfig):
-    """Train entry point"""
+def train(config: YAMLConfig) -> None:
+    """
+    Train entry point.
+    Args:
+        config: job configuration
+    """
+
+    # initialize dask cluster
     client: Client = init_dask(config)
+
+    dmod = WeatherBenchDataModule(config, dask_client=client)
+
+    # number of variables (features)
+    num_features = dmod.ds_train.nlev * dmod.ds_train.nvar
+    LOGGER.debug(f"num_features = {num_features}")
+
+    model = LitGraphForecaster(
+        lat_lons=dmod.const_data.latlons,
+        feature_dim=num_features,
+        aux_dim=dmod.const_data.nconst,
+        hidden_dim=config["model:hidden-dim"],
+        lr=config["model:learn-rate"],
+    )
+
+    trainer = pl.Trainer(accelerator="gpu", max_epochs=2, precision=32, fast_dev_run=True)
+    trainer.fit(model, dmod.train_dataloader())
+
+    LOGGER.debug("---- DONE. ----")
 
 
 def get_args() -> argparse.Namespace:

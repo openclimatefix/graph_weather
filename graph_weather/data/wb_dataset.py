@@ -44,9 +44,9 @@ class WeatherBenchDataset(Dataset):
             batch_chunk_size: size of a batch chunk
             var_means: pre-computed means
             var_std: pre-computed standard deviations
-            dask_client: dask.distributed Client object
-            persist_in_memory: persist dataset in RAM, distributed across all Dask workers
-                               (if a Client is present)
+            dask_client: dask Client, used for parallel data processing, batching, etc.
+            persist_in_memory: if True and (dask_client is not None), persist dataset in RAM, distributed across all Dask workers
+                               if True and (dask_client == None), we simply load the data in the memory of the current process
         """
         super().__init__()
         self.vars = var_names
@@ -55,8 +55,8 @@ class WeatherBenchDataset(Dataset):
         self.dask_client = dask_client
 
         # assumes hourly data, otherwise the length is incorrect
-        if lead_time % 6 != 0:
-            raise RuntimeError(f"Lead time = {lead_time}, but it must be a multiple of 6!")
+        if (lead_time <= 0) or (lead_time % 6 != 0):
+            raise RuntimeError(f"Lead time = {lead_time}, but it must be a (positive) multiple of 6!")
         self.lead_time = lead_time
 
         # open data files and retain only the variables we need

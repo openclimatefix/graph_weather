@@ -17,9 +17,6 @@ to each icosahedron node.
 In further notes, they notice that there is some hexagon instabilities in long rollouts
 One possible way to change that is to do the additative noise as in the original MeshGraphNet
 or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
-
-
-
 """
 from typing import Tuple
 

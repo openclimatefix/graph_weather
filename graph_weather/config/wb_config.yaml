@@ -1,10 +1,23 @@
 input:
-  basedir: /data2/malexe/weatherbench/netcdf/
-  filename-template: "pl-*.nc"
-  varnames:
-    - t
-    - q
-    - z
+  variables:
+    training:
+      basedir: /data2/malexe/weatherbench/netcdf/training
+      filename-template: "pl_*.nc"
+    validation:
+      basedir: /data2/malexe/weatherbench/netcdf/validation
+      filename-template: "pl_*.nc"
+    names:
+      - z
+      - t
+      - q
+      - w
+      - u
+      - w
+  constants:
+    filename: /data2/malexe/weatherbench/netcdf/constants.nc
+    names:
+      - lsm
+      - z_std
 
 model:
   debug:
@@ -13,12 +26,19 @@ model:
     enabled: True
   dask:
     enabled: True
-    tempdir: /data/malexe/scratch/GNN-WEATHER/dask
+    temp-dir: /data/malexe/scratch/GNN-WEATHER/dask
     trim-worker-memory: True
     num-workers: 8
     threads-per-worker: 2
     persist-data: False
-  # specific model settings
+  dataloader:
+    # num-workers > 0 leads to a hang-up
+    # one free beer to whoever finds a way around this limitation
+    # ... and splitting the input data files is not allowed ;)
+    num-workers: 0
+    batch-size: 1
+    batch-chunk-size: 1
+  # specific GNN model settings
   lead-time: 6
-  batch-size: 1
-  batch-chunk-size: 1
+  learn-rate: 2.e-3
+  hidden-dim: 64

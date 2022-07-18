@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 
-class ConstantData:
+class WeatherBenchConstantFields:
     def __init__(
         self,
         const_fname: str,
@@ -18,7 +18,7 @@ class ConstantData:
             const_names: constant field names
         """
         # constant fields
-        self._Xc = xr.load_dataset(const_fname).isel(time=0).drop("time")
+        self._Xc = xr.load_dataset(const_fname)
 
         if const_names is not None:
             # retain only the constant fields we want
@@ -29,7 +29,7 @@ class ConstantData:
             mu_z, sd_z = self._Xc["z"].mean(), self._Xc["z"].std()
             self._Xc["z"] = (self._Xc["z"] - mu_z) / sd_z
 
-        self._constants = np.stack([self._Xc[var].values for var in const_names], axis=0)
+        self._constants = np.stack([self._Xc[var].values for var in const_names], axis=-1)
 
         lats, lons = np.meshgrid(self._Xc.latitude.values, self._Xc.longitude.values)
 
@@ -44,9 +44,29 @@ class ConstantData:
             axis=-1,  # stack along new axis
         )
 
-        self._constants = np.concatenate([self._constants, self.X_latlon], axis=0)
-
+        self._constants = np.concatenate([self._constants, self.X_latlon], axis=-1)
         self._constants = np.stack([self._constants for _ in range(batch_chunk_size)], axis=0)  # batch axis
 
-    def get_constants(self):
+        # reshape the latlon info into what the GNN expects
+        self._latlons = np.array([lats, lons]).T.reshape((-1, 2))
+
+        # number of constant arrays
+        self._nconst = self._constants.shape[-1]
+
+    @property
+    def constants(self):
+        """
+        Returns the constant data as a numpy array of shape (batch_chunk_size, lat, lon, nvar)
+        """
         return self._constants
+
+    @property
+    def latlons(self):
+        """
+        Returns the lat-lon meshgrid data as a numpy array of shape (lat * lon, 2)
+        """
+        return self._latlons
+
+    @property
+    def nconst(self):
+        return self._nconst

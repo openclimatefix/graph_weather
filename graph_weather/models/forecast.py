@@ -2,7 +2,9 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather.models.layers.decoder import Decoder
+from graph_weather.models.layers.encoder import Encoder
+from graph_weather.models.layers.processor import Processor
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
@@ -24,7 +26,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_dim_decoder=128,
         hidden_layers_decoder=2,
         norm_type="LayerNorm",
-    ):
+    ) -> None:
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
 
