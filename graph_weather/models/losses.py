@@ -31,7 +31,7 @@ class NormalizedMSELoss(torch.nn.Module):
         self.weights = torch.tensor(weights, dtype=torch.float)
         assert not torch.isnan(self.weights).any()
 
-    def forward(self, pred: torch.Tensor, target: torch.Tensor):
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
         Calculate the loss
 

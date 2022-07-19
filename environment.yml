@@ -1,9 +1,7 @@
 name: gnn
-
 channels:
   - conda-forge
   - defaults
-
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
@@ -18,22 +16,33 @@ dependencies:
   - backports.functools_lru_cache=1.6.4=pyhd8ed1ab_0
   - beautifulsoup4=4.11.1=pyha770c72_0
   - bleach=5.0.1=pyhd8ed1ab_0
+  - bokeh=2.4.3=py39hf3d152e_0
   - brotlipy=0.7.0=py39hb9d737c_1004
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.18.1=h7f98852_0
   - ca-certificates=2022.6.15=ha878542_0
   - certifi=2022.6.15=py39hf3d152e_0
   - cffi=1.15.1=py39he91dace_0
+  - cftime=1.6.1=py39hd257fcd_0
   - charset-normalizer=2.1.0=pyhd8ed1ab_0
+  - click=8.1.3=py39hf3d152e_0
   - colorama=0.4.5=pyhd8ed1ab_0
   - conda=4.13.0=py39hf3d152e_1
   - conda-package-handling=1.8.1=py39hb9d737c_1
   - cryptography=37.0.4=py39hd97740a_0
+  - curl=7.83.1=h7bff187_0
   - debugpy=1.6.0=py39h5a03fae_0
   - defusedxml=0.7.1=pyhd8ed1ab_0
+  - docker-pycreds=0.4.0=py_0
   - entrypoints=0.4=pyhd8ed1ab_0
   - executing=0.8.3=pyhd8ed1ab_0
   - flit-core=3.7.1=pyhd8ed1ab_0
+  - freetype=2.10.4=h0708190_1
+  - giflib=5.2.1=h36c2ea0_2
+  - gitdb=4.0.9=pyhd8ed1ab_0
+  - gitpython=3.1.27=pyhd8ed1ab_0
+  - hdf4=4.2.15=h10796ff_3
+  - hdf5=1.12.1=nompi_h2386368_104
   - icu=70.1=h27087fc_0
   - idna=3.3=pyhd8ed1ab_0
   - importlib_metadata=4.11.4=hd8ed1ab_0
@@ -44,6 +53,7 @@ dependencies:
   - ipywidgets=7.7.1=pyhd8ed1ab_0
   - jedi=0.18.1=py39hf3d152e_1
   - jinja2=3.1.2=pyhd8ed1ab_1
+  - jpeg=9e=h166bdaf_2
   - json5=0.9.5=pyh9f0ad1d_0
   - jsonschema=4.7.2=pyhd8ed1ab_0
   - jupyter_client=7.3.4=pyhd8ed1ab_0
@@ -55,26 +65,43 @@ dependencies:
   - jupyterlab_widgets=1.1.1=pyhd8ed1ab_0
   - keyutils=1.6.1=h166bdaf_0
   - krb5=1.19.3=h3790be6_0
+  - lcms2=2.12=hddcbb42_0
   - ld_impl_linux-64=2.36.1=hea4e1c9_2
+  - lerc=3.0=h9c3ff4c_0
   - libarchive=3.5.2=hb890918_3
+  - libblas=3.9.0=15_linux64_openblas
+  - libcblas=3.9.0=15_linux64_openblas
   - libcurl=7.83.1=h7bff187_0
+  - libdeflate=1.12=h166bdaf_0
   - libedit=3.1.20191231=he28a2e2_2
   - libev=4.33=h516909a_1
   - libffi=3.4.2=h7f98852_5
   - libgcc-ng=12.1.0=h8d9b700_16
+  - libgfortran-ng=12.1.0=h69a702a_16
+  - libgfortran5=12.1.0=hdcd56e2_16
   - libgomp=12.1.0=h8d9b700_16
   - libiconv=1.16=h516909a_0
+  - liblapack=3.9.0=15_linux64_openblas
   - libmamba=0.24.0=hd8a31e3_1
   - libmambapy=0.24.0=py39hd55135b_1
+  - libnetcdf=4.8.1=nompi_h329d8a1_102
   - libnghttp2=1.47.0=h727a467_0
   - libnsl=2.0.0=h7f98852_0
+  - libopenblas=0.3.20=pthreads_h78a6416_0
+  - libpng=1.6.37=h753d276_3
+  - libprotobuf=3.20.1=h6239696_0
   - libsodium=1.0.18=h36c2ea0_1
   - libsolv=0.7.22=h6239696_0
   - libssh2=1.10.0=ha56f1ee_2
   - libstdcxx-ng=12.1.0=ha89aaad_16
+  - libtiff=4.4.0=hc85c160_1
   - libuuid=2.32.1=h7f98852_1000
   - libuv=1.44.2=h166bdaf_0
+  - libwebp=1.2.2=h3452ae3_0
+  - libwebp-base=1.2.2=h7f98852_1
+  - libxcb=1.13=h7f98852_1004
   - libxml2=2.9.14=h22db469_3
+  - libzip=1.9.2=hc869a4a_0
   - libzlib=1.2.12=h166bdaf_2
   - lz4-c=1.9.3=h9c3ff4c_1
   - lzo=2.10=h516909a_1000
@@ -90,20 +117,27 @@ dependencies:
   - nbformat=5.4.0=pyhd8ed1ab_0
   - ncurses=6.3=h27087fc_1
   - nest-asyncio=1.5.5=pyhd8ed1ab_0
+  - netcdf4=1.6.0=nompi_py39hf5a3a3f_100
   - nodejs=18.6.0=h96d913c_0
   - notebook=6.4.12=pyha770c72_0
   - notebook-shim=0.1.0=pyhd8ed1ab_0
+  - numpy=1.23.1=py39hba7629e_0
+  - openjpeg=2.4.0=hb52868f_1
   - openssl=1.1.1q=h166bdaf_0
   - packaging=21.3=pyhd8ed1ab_0
   - pandoc=2.18=ha770c72_0
   - pandocfilters=1.5.0=pyhd8ed1ab_0
   - parso=0.8.3=pyhd8ed1ab_0
+  - pathtools=0.1.2=py_1
   - pexpect=4.8.0=pyh9f0ad1d_2
   - pickleshare=0.7.5=py_1003
+  - pillow=9.2.0=py39hae2aec6_0
   - pip=22.1.2=pyhd8ed1ab_0
   - prometheus_client=0.14.1=pyhd8ed1ab_0
+  - promise=2.3=py39hf3d152e_6
   - prompt-toolkit=3.0.30=pyha770c72_0
   - psutil=5.9.1=py39hb9d737c_0
+  - pthread-stubs=0.4=h36c2ea0_1001
   - ptyprocess=0.7.0=pyhd3deb0d_0
   - pure_eval=0.2.2=pyhd8ed1ab_0
   - pybind11-abi=4=hd8ed1ab_3
@@ -119,6 +153,7 @@ dependencies:
   - python-fastjsonschema=2.16.1=pyhd8ed1ab_0
   - python_abi=3.9=2_cp39
   - pytz=2022.1=pyhd8ed1ab_0
+  - pyyaml=6.0=py39hb9d737c_4
   - pyzmq=23.2.0=py39headdf64_0
   - readline=8.1.2=h0f457ee_0
   - reproc=14.2.3=h7f98852_0
@@ -126,8 +161,12 @@ dependencies:
   - requests=2.28.1=pyhd8ed1ab_0
   - ruamel_yaml=0.15.80=py39hb9d737c_1007
   - send2trash=1.8.0=pyhd8ed1ab_0
+  - sentry-sdk=1.7.2=pyhd8ed1ab_0
+  - setproctitle=1.2.3=py39hb9d737c_0
   - setuptools=63.2.0=py39hf3d152e_0
+  - shortuuid=1.0.9=pyha770c72_1
   - six=1.16.0=pyh6c4a22f_0
+  - smmap=3.0.5=pyh44b312d_0
   - sniffio=1.2.0=py39hf3d152e_3
   - soupsieve=2.3.1=pyhd8ed1ab_0
   - sqlite=3.39.1=h4ff8645_0
@@ -137,13 +176,17 @@ dependencies:
   - tk=8.6.12=h27826a3_0
   - tqdm=4.64.0=pyhd8ed1ab_0
   - traitlets=5.3.0=pyhd8ed1ab_0
+  - typing_extensions=4.3.0=pyha770c72_0
   - tzdata=2022a=h191b570_0
   - urllib3=1.26.10=pyhd8ed1ab_0
+  - wandb=0.12.21=pyhd8ed1ab_0
   - wcwidth=0.2.5=pyh9f0ad1d_2
   - webencodings=0.5.1=py_1
   - websocket-client=1.3.3=pyhd8ed1ab_0
   - wheel=0.37.1=pyhd8ed1ab_0
   - widgetsnbextension=3.6.1=pyha770c72_0
+  - xorg-libxau=1.0.9=h7f98852_0
+  - xorg-libxdmcp=1.1.3=h7f98852_0
   - xz=5.2.5=h516909a_1
   - yaml=0.2.5=h7f98852_2
   - yaml-cpp=0.7.0=h27087fc_1
@@ -157,7 +200,6 @@ dependencies:
     - async-timeout==4.0.2
     - black==22.6.0
     - cachetools==5.2.0
-    - click==8.1.3
     - cloudpickle==2.1.0
     - cython==0.29.30
     - dask==2022.7.0
@@ -184,12 +226,10 @@ dependencies:
     - multiprocess==0.70.13
     - mypy-extensions==0.4.3
     - networkx==2.8.4
-    - numpy==1.23.1
     - oauthlib==3.2.0
     - pandas==1.3.5
     - partd==1.2.0
     - pathspec==0.9.0
-    - pillow==9.2.0
     - platformdirs==2.5.2
     - protobuf==3.19.4
     - pyarrow==8.0.0
@@ -197,7 +237,6 @@ dependencies:
     - pyasn1-modules==0.2.8
     - pydeprecate==0.3.2
     - pytorch-lightning==1.6.5
-    - pyyaml==6.0
     - requests-oauthlib==1.3.1
     - responses==0.18.0
     - rsa==4.8
@@ -219,7 +258,6 @@ dependencies:
     - torchmetrics==0.9.2
     - torchvision==0.13.0+cu102
     - tornado==6.1
-    - typing-extensions==4.3.0
     - werkzeug==2.1.2
     - xarray==2022.3.0
     - xxhash==3.0.0

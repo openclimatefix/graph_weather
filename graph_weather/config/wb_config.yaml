@@ -19,6 +19,18 @@ input:
       - lsm
       - z_std
 
+###################
+#  OUTPUT BLOCK
+###################
+output:
+  basedir: /data/malexe/scratch/GNN/WeatherBench/checkpoints
+  logging:
+    log-dir: /data/malexe/scratch/GNN/WeatherBench/logs
+    log-interval: 25
+  model:
+    save-top-k: 3
+    checkpoint-filename: "gnn-wb-weights-{epoch:02d}-{mse_train:.3f}"
+
 model:
   debug:
     anomaly-detection: False
@@ -34,13 +46,19 @@ model:
     dashboard-port: 9988
   dataloader:
     # num-workers > 0 leads to a hang-up
-    # one free beer to whoever finds a way around this limitation
-    # ... and splitting the input data files is not allowed ;)
+    # one free beer to whoever finds a good way around this limitation
+    # ... and splitting the input data files is considered cheating ;)
     num-workers: 0
     batch-size: 1
     batch-chunk-size: 1
+  # miscellaneous
+  precision: 32
+  fast-dev-run: False
+  num-gpus: 1
+  limit-train-batches: 0.35
   # specific GNN model settings
   lead-time: 6
+  max-epochs: 3
   learn-rate: 2.e-3
   hidden-dim: 32
   num-blocks: 2

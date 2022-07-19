@@ -35,9 +35,10 @@ class LitGraphForecaster(pl.LightningModule):
         x, y = batch
         # TODO: remove this check
         if torch.isnan(x).any() or torch.isnan(y).any():
-            raise Exception("NaNs detected in input data! Do something!!!")
+            raise Exception("NaNs detected in the input data! Do something!!!")
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
+        self.log("mse_train", loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
         return loss
 
     def configure_optimizers(self):
