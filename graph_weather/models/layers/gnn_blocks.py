@@ -1,13 +1,98 @@
 """
-Functions for building GNN
+Functions for building GNNs.
 
-This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the
-US Government License
+This code is taken from https://github.com/CCSI-Toolset/MGN
+which is available under the US Government License.
+
+Copyright and License
+=====================
+
+Copyright (c) 2012 - 2022
+
+Copyright Notice
+----------------
+
+MGN was produced under the DOE Carbon Capture Simulation Initiative (CCSI),
+and is copyright (c) 2012 - 2022 by the software owners: Oak Ridge Institute
+for Science and Education (ORISE), TRIAD National Security, LLC., Lawrence
+Livermore National Security, LLC., The Regents of the University of California,
+through Lawrence Berkeley National Laboratory, Battelle Memorial Institute,
+Pacific Northwest Division through Pacific Northwest National Laboratory,
+Carnegie Mellon University, West Virginia University, Boston University,
+the Trustees of Princeton University, The University of Texas at Austin,
+URS Energy & Construction, Inc., et al..  All rights reserved.
+
+NOTICE.  This Software was developed under funding from the U.S. Department
+of Energy and the U.S. Government consequently retains certain rights.
+As such, the U.S. Government has been granted for itself and others acting
+on its behalf a paid-up, nonexclusive, irrevocable, worldwide license 
+in the Software to reproduce, distribute copies to the public, prepare 
+derivative works, and perform publicly and display publicly, and to permit 
+other to do so.
+
+License Agreement
+-----------------
+
+MGN Copyright (c) 2012 - 2022, by the software owners: Oak Ridge Institute for 
+Science and Education (ORISE), TRIAD National Security, LLC., Lawrence Livermore 
+National Security, LLC., The Regents of the University of California, through 
+Lawrence Berkeley National Laboratory, Battelle Memorial Institute, Pacific 
+Northwest Division through Pacific Northwest National Laboratory, Carnegie 
+Mellon University, West Virginia University, Boston University, the Trustees 
+of Princeton University, The University of Texas at Austin, URS Energy & 
+Construction, Inc.,  et al.  All rights reserved.
+
+
+Redistribution and use in source and binary forms, with or without modification, 
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this 
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, 
+this list of conditions and the following disclaimer in the documentation 
+and/or other materials provided with the distribution.
+
+3. Neither the name of the Carbon Capture Simulation Initiative, U.S. Dept. 
+of Energy, the National Energy Technology Laboratory, Oak Ridge Institute 
+for Science and Education (ORISE), TRIAD National Security, LLC.,  Lawrence 
+Livermore National Security, LLC., the University of California, Lawrence 
+Berkeley National Laboratory, Battelle Memorial Institute, Pacific Northwest 
+National Laboratory, Carnegie Mellon University, West Virginia University, 
+Boston University, the Trustees of Princeton University, the University of 
+Texas at Austin, URS Energy & Construction, Inc.,  nor the names of its 
+contributors may be used to endorse or promote products derived from this 
+software without specific prior written permission.
+
+ 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+THE POSSIBILITY OF SUCH DAMAGE.
+
+
+You are under no obligation whatsoever to provide any bug fixes, patches, 
+or upgrades to the features, functionality or performance of the source 
+code ("Enhancements") to anyone; however, if you choose to make your 
+Enhancements available either publicly, or directly to Lawrence Berkeley 
+National Laboratory, without imposing a separate written license agreement 
+for such Enhancements, then you hereby grant the following license: a 
+non-exclusive, royalty-free perpetual license to install, use, modify, 
+prepare derivative works, incorporate into other computer software, 
+distribute, and sublicense such enhancements or derivative works 
+thereof, in binary and source code form.
 """
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
-from torch import cat, nn
+from torch import nn
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
 
@@ -21,8 +106,8 @@ class MLP(nn.Module):
         out_dim: int = 128,
         hidden_dim: int = 128,
         hidden_layers: int = 2,
-        norm_type: str = "LayerNorm",
-    ):
+        norm_type: Optional[str] = "LayerNorm",
+    ) -> None:
         """
         MLP
 
@@ -69,7 +154,6 @@ class MLP(nn.Module):
 
 
 #############################
-
 # issue with MessagePassing class:
 # Only node features are updated after MP iterations
 # Need to use MetaLayer to also allow edge features to update
@@ -84,8 +168,8 @@ class EdgeProcessor(nn.Module):
         in_dim_edge: int = 128,
         hidden_dim: int = 128,
         hidden_layers: int = 2,
-        norm_type: str = "LayerNorm",
-    ):
+        norm_type: Optional[str] = "LayerNorm",
+    ) -> None:
         """
         Edge processor
 
@@ -115,10 +199,9 @@ class EdgeProcessor(nn.Module):
         Returns:
             The updated edge attributes
         """
-        out = cat([src, dest, edge_attr], -1)  # concatenate source node, destination node, and edge embeddings
+        out = torch.cat([src, dest, edge_attr], -1)  # concatenate source node, destination node, and edge embeddings
         out = self.edge_mlp(out)
         out += edge_attr  # residual connection
-
         return out
 
 
@@ -131,8 +214,8 @@ class NodeProcessor(nn.Module):
         in_dim_edge: int = 128,
         hidden_dim: int = 128,
         hidden_layers: int = 2,
-        norm_type: str = "LayerNorm",
-    ):
+        norm_type: Optional[str] = "LayerNorm",
+    ) -> None:
         """
         Node Processor
 
@@ -162,12 +245,11 @@ class NodeProcessor(nn.Module):
         Returns:
             torch.Tensor with updated node attributes
         """
-        row, col = edge_index
+        _, col = edge_index
         out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
-        out = cat([x, out], dim=-1)
+        out = torch.cat([x, out], dim=-1)
         out = self.node_mlp(out)
         out += x  # residual connection
-
         return out
 
 
@@ -178,8 +260,8 @@ def build_graph_processor_block(
     hidden_dim_edge: int = 128,
     hidden_layers_node: int = 2,
     hidden_layers_edge: int = 2,
-    norm_type: str = "LayerNorm",
-) -> torch.nn.Module:
+    norm_type: Optional[str] = "LayerNorm",
+) -> nn.Module:
     """
     Build the Graph Net Block
 
@@ -193,7 +275,7 @@ def build_graph_processor_block(
         norm_type: Normalization type
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
     Returns:
-        torch.nn.Module for the graph processing block
+        nn.Module for the graph processing block
     """
 
     return MetaLayer(
@@ -214,8 +296,8 @@ class GraphProcessor(nn.Module):
         hidden_dim_edge: int = 128,
         hidden_layers_node: int = 2,
         hidden_layers_edge: int = 2,
-        norm_type: str = "LayerNorm",
-    ):
+        norm_type: Optional[str] = "LayerNorm",
+    ) -> None:
         """
         Graph Processor
 

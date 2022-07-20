@@ -1,5 +1,9 @@
 """Model for forecasting weather from NWP states"""
+from typing import Optional
+
 import torch
+from torch import nn
+
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models.layers.decoder import Decoder
@@ -7,7 +11,7 @@ from graph_weather.models.layers.encoder import Encoder
 from graph_weather.models.layers.processor import Processor
 
 
-class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
+class GraphWeatherForecaster(nn.Module, PyTorchModelHubMixin):
     """Main weather prediction model from the paper"""
 
     def __init__(
@@ -19,13 +23,13 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
-        norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        norm_type: Optional[str] = "LayerNorm",
     ) -> None:
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf

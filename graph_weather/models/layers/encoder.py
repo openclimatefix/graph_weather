@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from graph_weather.models.layers.graph_net_block import MLP, GraphProcessor
+from graph_weather.models.layers.gnn_blocks import MLP, GraphProcessor
 
 
 class Encoder(torch.nn.Module):

@@ -52,13 +52,13 @@ model:
     batch-size: 1
     batch-chunk-size: 1
   # miscellaneous
-  precision: 32
+  precision: 16
   fast-dev-run: False
   num-gpus: 1
   limit-train-batches: 0.35
   # specific GNN model settings
   lead-time: 6
-  max-epochs: 3
+  max-epochs: 1
   learn-rate: 2.e-3
-  hidden-dim: 32
-  num-blocks: 2
+  hidden-dim: 64
+  num-blocks: 3

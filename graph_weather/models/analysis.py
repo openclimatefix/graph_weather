@@ -1,11 +1,16 @@
 """Model for forecasting weather from NWP states"""
+from typing import Optional
+
 import torch
+from torch import nn
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
+from graph_weather.models.layers.assimilator_decoder import AssimilatorDecoder
+from graph_weather.models.layers.assimilator_encoder import AssimilatorEncoder
+from graph_weather.models.layers.processor import Processor
 
 
-class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
+class GraphWeatherAssimilator(nn.Module, PyTorchModelHubMixin):
     """Model to generate analysis file from raw observations"""
 
     def __init__(
@@ -17,13 +22,13 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
-        norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        norm_type: Optional[str] = "LayerNorm",
     ):
         """
         Graph Weather Data Assimilation model

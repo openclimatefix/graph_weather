@@ -9,7 +9,7 @@ and its immediate neighbors. There are residual connections between each round o
 """
 import torch
 
-from graph_weather.models.layers.graph_net_block import GraphProcessor
+from graph_weather.models.layers.gnn_blocks import GraphProcessor
 
 
 class Processor(torch.nn.Module):
@@ -25,7 +25,7 @@ class Processor(torch.nn.Module):
         hidden_layers_processor_node=2,
         hidden_layers_processor_edge=2,
         mlp_norm_type="LayerNorm",
-    ):
+    ) -> None:
         """
         Latent graph processor
 
