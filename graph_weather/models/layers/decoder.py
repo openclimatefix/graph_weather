@@ -13,6 +13,8 @@ rollout) and longer time steps (fewer iterations required during rollout but mod
 more complex dynamics)
 
 """
+from typing import Optional
+
 import torch
 
 from graph_weather.models.layers.assimilator_decoder import AssimilatorDecoder
@@ -28,14 +30,14 @@ class Decoder(AssimilatorDecoder):
         input_dim: int = 256,
         output_dim: int = 78,
         output_edge_dim: int = 256,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
-    ):
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        mlp_norm_type: Optional[str] = "LayerNorm",
+    ) -> None:
         """
         Decoder from latent graph to lat/lon graph
 
@@ -49,7 +51,7 @@ class Decoder(AssimilatorDecoder):
             hidden_dim_processor_edge: Hidden dimension of the edge processors
             hidden_layers_processor_node: Number of hidden layers in the node processors
             hidden_layers_processor_edge: Number of hidden layers in the edge processors
-            hidden_dim_decoder:Number of hidden dimensions in the decoder
+            hidden_dim_decoder: Number of hidden dimensions in the decoder
             hidden_layers_decoder: Number of layers in the decoder
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None

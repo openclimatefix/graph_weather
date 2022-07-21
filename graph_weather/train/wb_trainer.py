@@ -10,8 +10,8 @@ from graph_weather.models.losses import NormalizedMSELoss
 
 class LitGraphForecaster(pl.LightningModule):
     def __init__(
-        self, lat_lons: List, feature_dim: int = 605, aux_dim: int = 6, hidden_dim: int = 64, num_blocks: int = 3, lr: float = 3e-4
-    ):
+        self, lat_lons: List, feature_dim: int, aux_dim: int, hidden_dim: int = 64, num_blocks: int = 3, lr: float = 3e-4
+    ) -> None:
         super().__init__()
         self.gnn = GraphWeatherForecaster(
             lat_lons,
@@ -23,7 +23,7 @@ class LitGraphForecaster(pl.LightningModule):
             hidden_dim_processor_edge=hidden_dim,
             num_blocks=num_blocks,
         )
-        self.criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=np.ones((feature_dim,)))
+        self.criterion = NormalizedMSELoss(feature_variance=np.ones((feature_dim,)), lat_lons=lat_lons, device=self.device)
         self.lr = lr
         self.save_hyperparameters()
 
@@ -33,12 +33,9 @@ class LitGraphForecaster(pl.LightningModule):
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
         del batch_idx  # not used
         x, y = batch
-        # TODO: remove this check
-        if torch.isnan(x).any() or torch.isnan(y).any():
-            raise Exception("NaNs detected in the input data! Do something!!!")
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
-        self.log("mse_train", loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        self.log("train_wmse", loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
         return loss
 
     def configure_optimizers(self):

@@ -85,9 +85,9 @@ class GraphWeatherForecaster(nn.Module, PyTorchModelHubMixin):
             hidden_layers_processor_node=hidden_layers_processor_node,
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
-            mlp_norm_type=norm_type,
             hidden_dim_decoder=hidden_dim_decoder,
             hidden_layers_decoder=hidden_layers_decoder,
+            mlp_norm_type=norm_type,
         )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:

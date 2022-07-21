@@ -58,16 +58,16 @@ def train(config: YAMLConfig) -> None:
 
     # fast_dev_run -> runs a single batch
     trainer = pl.Trainer(
-        accelerator="gpu",
+        accelerator="auto",
         callbacks=[
-            EarlyStopping(monitor="mse_train", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
+            EarlyStopping(monitor="train_wmse", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
             ModelCheckpoint(
                 dirpath=os.path.join(
                     config["output:basedir"],
                     dt.datetime.now().strftime("%Y%m%d_%H%M"),
                 ),
                 filename=config[f"output:model:checkpoint-filename"],
-                monitor="mse_train",
+                monitor="train_wmse",
                 verbose=False,
                 save_top_k=config["output:model:save-top-k"],
                 save_weights_only=True,
@@ -78,7 +78,7 @@ def train(config: YAMLConfig) -> None:
             ),
         ],
         detect_anomaly=config[f"model:debug:anomaly-detection"],
-        devices=config[f"model:num-gpus"],
+        # devices=config[f"model:num-gpus"],
         precision=config[f"model:precision"],
         max_epochs=config[f"model:max-epochs"],
         logger=logger,

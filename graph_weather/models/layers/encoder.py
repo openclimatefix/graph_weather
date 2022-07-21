@@ -18,7 +18,7 @@ In further notes, they notice that there is some hexagon instabilities in long r
 One possible way to change that is to do the additative noise as in the original MeshGraphNet
 or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 """
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import einops
 import h3
@@ -39,11 +39,11 @@ class Encoder(torch.nn.Module):
         input_dim: int = 78,
         output_dim: int = 256,
         output_edge_dim: int = 256,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        mlp_norm_type: Optional[str] = "LayerNorm",
     ):
         """
         Encode the lat/lon data inot the isohedron graph

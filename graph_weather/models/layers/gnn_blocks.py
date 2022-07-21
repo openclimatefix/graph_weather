@@ -185,7 +185,14 @@ class EdgeProcessor(nn.Module):
         super(EdgeProcessor, self).__init__()
         self.edge_mlp = MLP(2 * in_dim_node + in_dim_edge, in_dim_edge, hidden_dim, hidden_layers, norm_type)
 
-    def forward(self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+    def forward(
+        self,
+        src: torch.Tensor,
+        dest: torch.Tensor,
+        edge_attr: torch.Tensor,
+        u: Optional[torch.Tensor] = None,
+        batch: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Compute the edge part of the message passing
 
@@ -199,6 +206,7 @@ class EdgeProcessor(nn.Module):
         Returns:
             The updated edge attributes
         """
+        del u, batch  # not used
         out = torch.cat([src, dest, edge_attr], -1)  # concatenate source node, destination node, and edge embeddings
         out = self.edge_mlp(out)
         out += edge_attr  # residual connection
@@ -231,7 +239,14 @@ class NodeProcessor(nn.Module):
         super(NodeProcessor, self).__init__()
         self.node_mlp = MLP(in_dim_node + in_dim_edge, in_dim_node, hidden_dim, hidden_layers, norm_type)
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
+        u: Optional[torch.Tensor] = None,
+        batch: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Compute the node feature updates in message passing
 
@@ -245,6 +260,7 @@ class NodeProcessor(nn.Module):
         Returns:
             torch.Tensor with updated node attributes
         """
+        del u, batch  # not used
         _, col = edge_index
         out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
         out = torch.cat([x, out], dim=-1)
