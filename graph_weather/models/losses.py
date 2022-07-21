@@ -3,6 +3,9 @@ import numpy as np
 
 import torch
 from torch import nn
+from graph_weather.utils.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 class NormalizedMSELoss(nn.Module):
@@ -29,6 +32,8 @@ class NormalizedMSELoss(nn.Module):
         super().__init__()
                 
         weights = np.cos(lat_lons[:, 0] * np.pi / 180.) + 1.e-4  # get rid of some small negative weight values
+        LOGGER.debug(f"min/max cos(lat) weights: {weights.min():.3e}, {weights.max():.3e}")
+
         self.register_buffer("weights", torch.as_tensor(weights), persistent=True)
         self.register_buffer("feature_variance", torch.as_tensor(feature_variance), persistent=True)
 

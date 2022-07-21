@@ -64,7 +64,7 @@ class Processor(torch.nn.Module):
         Args:
             x: tensor containing node features
             edge_index: Connectivity of graph, of shape [2, Num edges] in COO format
-            edge_attr: Edge attribues in [Num edges, Features] shape
+            edge_attr: Edge attributes in [Num edges, Features] shape
 
         Returns:
             Values of the nodes of the graph.

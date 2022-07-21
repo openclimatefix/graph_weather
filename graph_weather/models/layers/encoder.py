@@ -34,7 +34,7 @@ class Encoder(torch.nn.Module):
 
     def __init__(
         self,
-        lat_lons: List,
+        lat_lons: np.ndarray,
         resolution: int = 2,
         input_dim: int = 78,
         output_dim: int = 256,
@@ -44,13 +44,13 @@ class Encoder(torch.nn.Module):
         hidden_layers_processor_node: int = 2,
         hidden_layers_processor_edge: int = 2,
         mlp_norm_type: Optional[str] = "LayerNorm",
-    ):
+    ) -> None:
         """
-        Encode the lat/lon data inot the isohedron graph
+        Encode the lat/lon data into the icosahedron graph.
 
         Args:
-            lat_lons: List of (lat,lon) points
-            resolution: H3 resolution level
+            lat_lons: array of (lat,lon) points, shape (lat*lon, 2)
+            resolution: H3 resolution level (resolution = 2 produces a ~ 3-degree grid)
             input_dim: Input node dimension
             output_dim: Output node dimension
             output_edge_dim: Edge dimension
