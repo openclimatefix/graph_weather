@@ -61,6 +61,19 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             persist_in_memory=config["model:dask:persist-data"],
         )
 
+        self.ds_valid = WeatherBenchDataset(
+            fnames=glob.glob(
+                os.path.join(config[f"input:variables:validation:basedir"], config[f"input:variables:validation:filename-template"])
+            ),
+            var_names=config["input:variables:names"],
+            lead_time=config["model:lead-time"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            var_means=self.ds_train.mean,
+            var_std=self.ds_train.std,
+            dask_client=dask_client,
+            persist_in_memory=config["model:dask:persist-data"],
+        )
+
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
@@ -83,5 +96,15 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             # enable shuffling (off by default!)
             shuffle=True,
             # custom collator (see above)
+            collate_fn=_custom_collator_wrapper(self.const_data.constants),
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.ds_valid,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            shuffle=False,
             collate_fn=_custom_collator_wrapper(self.const_data.constants),
         )

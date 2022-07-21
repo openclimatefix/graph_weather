@@ -23,9 +23,9 @@ input:
 #  OUTPUT BLOCK
 ###################
 output:
-  basedir: /data/malexe/scratch/GNN/WeatherBench/checkpoints
+  basedir: /data2/malexe/scratch/GNN/WeatherBench/checkpoints
   logging:
-    log-dir: /data/malexe/scratch/GNN/WeatherBench/logs
+    log-dir: /data2/malexe/scratch/GNN/WeatherBench/logs
     log-interval: 25
   model:
     save-top-k: 3
@@ -38,7 +38,7 @@ model:
     enabled: True
   dask:
     enabled: True
-    temp-dir: /data/malexe/scratch/GNN-WEATHER/dask
+    temp-dir: /data2/malexe/scratch/GNN/WeatherBench/dask-tmp
     trim-worker-memory: True
     num-workers: 16
     num-threads-per-worker: 2
@@ -54,8 +54,7 @@ model:
   # miscellaneous
   precision: 16
   fast-dev-run: False
-  num-gpus: 1
-  limit-train-batches: 0.35
+  limit-train-batches: 0.1
   # specific GNN model settings
   lead-time: 6
   max-epochs: 1

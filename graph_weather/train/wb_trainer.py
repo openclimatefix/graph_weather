@@ -23,7 +23,7 @@ class LitGraphForecaster(pl.LightningModule):
             hidden_dim_processor_edge=hidden_dim,
             num_blocks=num_blocks,
         )
-        self.criterion = NormalizedMSELoss(feature_variance=np.ones((feature_dim,)), lat_lons=lat_lons, device=self.device)
+        self.loss = NormalizedMSELoss(feature_variance=np.ones((feature_dim,)), lat_lons=lat_lons)
         self.lr = lr
         self.save_hyperparameters()
 
@@ -34,9 +34,18 @@ class LitGraphForecaster(pl.LightningModule):
         del batch_idx  # not used
         x, y = batch
         y_hat = self(x)
-        loss = self.criterion(y_hat, y)
+        loss = self.loss(y_hat, y)
         self.log("train_wmse", loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
         return loss
+
+    def validation_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+        del batch_idx  # not used
+        x, y = batch
+        with torch.no_grad():
+            y_hat = self(x)
+            val_loss = self.loss(y_hat, y)
+            self.log("train_wmse", val_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        return val_loss
 
     def configure_optimizers(self):
         # TODO: add a learn rate scheduler?

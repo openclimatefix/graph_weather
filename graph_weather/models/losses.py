@@ -1,14 +1,14 @@
 """Weather loss functions"""
-from typing import List
-
 import numpy as np
+
 import torch
+from torch import nn
 
 
-class NormalizedMSELoss(torch.nn.Module):
+class NormalizedMSELoss(nn.Module):
     """Loss function described in the paper"""
 
-    def __init__(self, feature_variance: List, lat_lons: List, device: str = "cpu"):
+    def __init__(self, feature_variance: np.ndarray, lat_lons: np.ndarray) -> None:
         """
         Normalized MSE Loss as described in the paper.
 
@@ -21,16 +21,16 @@ class NormalizedMSELoss(torch.nn.Module):
 
         Args:
             feature_variance: variance for each of the physical features
-            lat_lons: list of lat/lon pairs, used to generate weighting
+            lat_lons: array of lat/lon, used to generate weighting
             device: device on which the variances and weights tensors are created
-        """
+
         # TODO Rescale by nominal static air density at each pressure level
+        """
         super().__init__()
-        self.feature_variance = torch.tensor(feature_variance, device=device)
-        weights = []
-        for lat, _ in lat_lons:
-            weights.append(np.cos(lat))
-        self.weights = torch.tensor(weights, dtype=torch.float32, device=device)
+                
+        weights = np.cos(lat_lons[:, 0] * np.pi / 180.) + 1.e-4  # get rid of some small negative weight values
+        self.register_buffer("weights", torch.as_tensor(weights), persistent=True)
+        self.register_buffer("feature_variance", torch.as_tensor(feature_variance), persistent=True)
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
@@ -46,8 +46,8 @@ class NormalizedMSELoss(torch.nn.Module):
         Returns:
             MSE loss on the variance-normalized values
         """
-        # pred = pred / self.feature_variance
-        # target = target / self.feature_variance
+        pred = pred / self.feature_variance
+        target = target / self.feature_variance
 
         # Mean of the physical variables
         out = torch.square(pred - target).mean(dim=-1)

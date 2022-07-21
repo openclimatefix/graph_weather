@@ -58,7 +58,7 @@ def train(config: YAMLConfig) -> None:
 
     # fast_dev_run -> runs a single batch
     trainer = pl.Trainer(
-        accelerator="auto",
+        accelerator="gpu",
         callbacks=[
             EarlyStopping(monitor="train_wmse", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
             ModelCheckpoint(
