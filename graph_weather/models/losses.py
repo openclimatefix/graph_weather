@@ -30,8 +30,8 @@ class NormalizedMSELoss(nn.Module):
         # TODO Rescale by nominal static air density at each pressure level
         """
         super().__init__()
-                
-        weights = np.cos(lat_lons[:, 0] * np.pi / 180.) + 1.e-4  # get rid of some small negative weight values
+
+        weights = np.cos(lat_lons[:, 0] * np.pi / 180.0) + 1.0e-4  # get rid of some small negative weight values
         LOGGER.debug(f"min/max cos(lat) weights: {weights.min():.3e}, {weights.max():.3e}")
 
         self.register_buffer("weights", torch.as_tensor(weights), persistent=True)

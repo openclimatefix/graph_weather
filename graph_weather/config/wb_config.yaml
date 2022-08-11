@@ -35,7 +35,9 @@ model:
   debug:
     anomaly-detection: False
   wandb:
-    enabled: True
+    enabled: False
+  tensorboard:
+    enabled: False
   dask:
     enabled: True
     temp-dir: /data2/malexe/scratch/GNN/WeatherBench/dask-tmp
@@ -45,16 +47,13 @@ model:
     persist-data: False
     dashboard-port: 9988
   dataloader:
-    # num-workers > 0 leads to a hang-up
-    # one free beer to whoever finds a good way around this limitation
-    # ... and splitting the input data files is considered cheating ;)
-    num-workers: 0
+    num-workers: 8
     batch-size: 1
     batch-chunk-size: 1
   # miscellaneous
   precision: 16
   fast-dev-run: False
-  limit-train-batches: 0.1
+  limit-train-batches: 1.0
   # specific GNN model settings
   lead-time: 6
   max-epochs: 1

@@ -4,13 +4,13 @@ import argparse
 import datetime as dt
 import os
 
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
-from graph_weather.utils.dask_utils import init_dask
+from graph_weather.utils.dask_utils import init_dask_cluster
 from graph_weather.utils.config import YAMLConfig
 from graph_weather.data.wb_datamodule import WeatherBenchDataModule
 from graph_weather.utils.logger import get_logger
@@ -27,9 +27,13 @@ def train(config: YAMLConfig) -> None:
     """
 
     # initialize dask cluster
-    client: Optional[Client] = init_dask(config) if config["model:dask:enabled"] else None
+    LOGGER.debug("Initializing Dask cluster ...")
+    cluster: Optional[LocalCluster] = init_dask_cluster(config) if config["model:dask:enabled"] else None
+    dask_scheduler_address = cluster.scheduler_address if cluster is not None else None
+    LOGGER.debug("Dask scheduler address: %s", dask_scheduler_address)
 
-    dmod = WeatherBenchDataModule(config, dask_client=client)
+    # create data module (data loaders and data sets)
+    dmod = WeatherBenchDataModule(config, dask_scheduler_address)
 
     # number of variables (features)
     num_features = dmod.ds_train.nlev * dmod.ds_train.nvar
@@ -52,9 +56,11 @@ def train(config: YAMLConfig) -> None:
             project="GNN-WB",
             save_dir=config["output:logging:log-dir"],
         )
-    else:
+    elif config["model:tensorboard:enabled"]:
         # use tensorboard
         logger = TensorBoardLogger(config["output:logging:log-dir"])
+    else:
+        logger = False
 
     # fast_dev_run -> runs a single batch
     trainer = pl.Trainer(
