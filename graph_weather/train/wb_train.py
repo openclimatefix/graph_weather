@@ -66,14 +66,14 @@ def train(config: YAMLConfig) -> None:
     trainer = pl.Trainer(
         accelerator="gpu",
         callbacks=[
-            EarlyStopping(monitor="train_wmse", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
+            EarlyStopping(monitor="val_wmse", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
             ModelCheckpoint(
                 dirpath=os.path.join(
                     config["output:basedir"],
                     dt.datetime.now().strftime("%Y%m%d_%H%M"),
                 ),
                 filename=config[f"output:model:checkpoint-filename"],
-                monitor="train_wmse",
+                monitor="val_wmse",
                 verbose=False,
                 save_top_k=config["output:model:save-top-k"],
                 save_weights_only=True,

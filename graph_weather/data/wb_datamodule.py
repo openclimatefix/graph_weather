@@ -79,6 +79,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
             var_mean=var_means,
             var_sd=var_sds,
+            plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
             batch_chunk_size=config["model:dataloader:batch-chunk-size"],
         )
@@ -91,6 +92,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
             var_mean=self.ds_train.mean,
             var_sd=self.ds_train.sd,
+            plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
             batch_chunk_size=config["model:dataloader:batch-chunk-size"],
         )

@@ -44,7 +44,7 @@ class LitGraphForecaster(pl.LightningModule):
         with torch.no_grad():
             y_hat = self(x)
             val_loss = self.loss(y_hat, y)
-            self.log("train_wmse", val_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+            self.log("val_wmse", val_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
         return val_loss
 
     def configure_optimizers(self):

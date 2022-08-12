@@ -17,6 +17,9 @@ input:
       - w
       - u
       - v
+    levels:
+      - 850
+      - 1000
   constants:
     filename: /data2/malexe/weatherbench/netcdf/constants.nc
     names:
@@ -33,14 +36,14 @@ output:
     log-interval: 25
   model:
     save-top-k: 3
-    checkpoint-filename: "gnn-wb-weights-{epoch:02d}-{mse_train:.3f}"
+    checkpoint-filename: "gnn-wb-weights-{epoch:02d}-{val_wmse:.3f}"
 
 model:
   debug:
     # this will detect and trace back NaNs / Infs etc. but will slow down training
     anomaly-detection: False
   wandb:
-    enabled: True
+    enabled: False
   tensorboard:
     enabled: False
   dask:
@@ -58,7 +61,7 @@ model:
   # miscellaneous
   precision: 16
   fast-dev-run: False
-  limit-train-batches: 1.0
+  limit-train-batches: 100
   # specific GNN model settings
   lead-time: 6
   max-epochs: 1

@@ -7,3 +7,4 @@
 - [ ] allow the user to select plevs when creating the dataset
 - [ ] inspect input data
 - [ ] check training and validation errors
+- [ ] split config file into two separate files (model-specific config and file paths)

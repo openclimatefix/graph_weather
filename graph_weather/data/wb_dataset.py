@@ -18,8 +18,8 @@ class WeatherBenchDataset(IterableDataset):
     Design inspired by https://github.com/openclimatefix/predict_pv_yield/blob/main/notebooks/20.0_simplify_data_loading.ipynb.
     """
 
-    # TODO: refactor this hardcoded value
-    nlev = 13
+    # default number of pressure levels for the WeatherBench dataset
+    _WB_PLEVS = 13
 
     def __init__(
         self,
@@ -28,6 +28,7 @@ class WeatherBenchDataset(IterableDataset):
         read_wb_data_func: Callable[..., xr.Dataset],
         var_mean: xr.Dataset,
         var_sd: xr.Dataset,
+        plevs: Optional[List[int]] = None,
         lead_time: int = 6,
         batch_chunk_size: int = 4,
     ) -> None:
@@ -38,7 +39,8 @@ class WeatherBenchDataset(IterableDataset):
             var_names: variable names
             read_wb_data_func: user function that opens and returns the WB xr.Dataset (use Dask!)
             var_mean, var_std: precomputed means and standard deviations for all data vars; used to normalize data
-            lead_time: lead time
+            plevs: pressure levels (if None then we take all plevs present in the input dataset)
+            lead_time: lead time (multiple of 6 hours!)
             batch_chunk_size: batch chunk size
         """
         self.fnames = fnames
@@ -55,6 +57,10 @@ class WeatherBenchDataset(IterableDataset):
         self.mean = var_mean
         self.sd = var_sd
 
+        # pressure levels
+        self.plevs = plevs
+        self.nlev = len(self.plevs) if self.plevs is not None else self._WB_PLEVS
+
         # lazy init
         self.n_samples_per_epoch_total: int = 0
         self.n_samples_per_epoch_per_worker: int = 0
@@ -65,15 +71,12 @@ class WeatherBenchDataset(IterableDataset):
         """Called by worker_init_func on each copy of WeatherBenchDataset after the worker process has been spawned."""
         self.ds: xr.Dataset = self.read_wb_data(self.fnames)
         self.ds = self.ds[self.vars]
-
-        assert self.nlev == len(self.ds.level), "Incorrect number of pressure levels!"
+        if self.plevs is not None:
+            self.ds = self.ds.sel(level=self.plevs)
 
         self.ds_len = len(self.ds.time) - self.lead_step
-        print(f"Dataset length: {self.ds_len} ...")
         self.effective_ds_len = int(np.ceil(self.ds_len / self.bcs))
-        print(f"Batch chunk size: {self.bcs} -- effective dataset length: {self.effective_ds_len} ...")
         self.n_chunks_per_worker = self.effective_ds_len // n_workers
-        print(f"Each worker gets {self.n_chunks_per_worker} batch chunks per epoch...")
 
         # each worker must have a different seed for its random number generator,
         # otherwise all the workers will output exactly the same data

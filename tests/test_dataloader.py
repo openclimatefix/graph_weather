@@ -17,7 +17,8 @@ np.random.seed(0)
 
 NTIME = 100
 NLON, NLAT = 2, 2
-PLEV = 13
+NLEV = 13
+PLEVELS = [0, 1, 2]
 NVAR = 1
 BATCH_SIZE = 2
 BATCH_CHUNK_SIZE = 3
@@ -27,16 +28,16 @@ NUM_WORKERS = 2
 lon = [[-9.83, -9.32], [-9.79, -9.23]]
 lat = [[42.25, 42.21], [42.63, 42.59]]
 time = np.array(range(NTIME))
-plev = np.array(range(PLEV))
+plev = np.array(range(NLEV))
 
-# init t2m values with the time index value (should make it easier to identify later)
-t2m = np.zeros((NTIME, PLEV, NLAT, NLON), dtype=np.int32)
+# init t and z values with the time index value (should make it easier to identify later)
+t = np.zeros((NTIME, NLEV, NLAT, NLON), dtype=np.int32)
 for i in range(NTIME):
-    t2m[i, ...] = np.ones((PLEV, NLAT, NLON)) * i
+    t[i, ...] = np.ones((NLEV, NLAT, NLON)) * i
 
 DATA = xr.Dataset(
     data_vars=dict(
-        t2m=(["time", "level", "x", "y"], t2m),
+        t=(["time", "level", "x", "y"], t),
     ),
     coords=dict(
         lon=(["x", "y"], lon),
@@ -47,12 +48,12 @@ DATA = xr.Dataset(
     attrs=dict(description="Dummy data."),
 )
 
-t2m_dummy_mean = np.zeros((NTIME, PLEV, NLAT, NLON), dtype=np.int32)
-t2m_dummy_sd = np.ones((NTIME, PLEV, NLAT, NLON), dtype=np.int32)
+t_dummy_mean = np.zeros((NTIME, NLEV, NLAT, NLON), dtype=np.int32)
+t_dummy_sd = np.ones((NTIME, NLEV, NLAT, NLON), dtype=np.int32)
 
 DATA_MEANS = xr.Dataset(
     data_vars=dict(
-        t2m=(["time", "level", "x", "y"], t2m_dummy_mean),
+        t=(["time", "level", "x", "y"], t_dummy_mean),
     ),
     coords=dict(
         lon=(["x", "y"], lon),
@@ -65,7 +66,7 @@ DATA_MEANS = xr.Dataset(
 
 DATA_SDS = xr.Dataset(
     data_vars=dict(
-        t2m=(["time", "level", "x", "y"], t2m_dummy_sd),
+        t=(["time", "level", "x", "y"], t_dummy_sd),
     ),
     coords=dict(
         lon=(["x", "y"], lon),
@@ -115,9 +116,10 @@ class DataloaderTests(unittest.TestCase):
         ds_test = WeatherBenchDataset(
             fnames=[],  # the data is already in memory
             read_wb_data_func=read_dummy_data,
-            var_names=["t2m"],
+            var_names=["t"],
             var_mean=DATA_MEANS,
             var_sd=DATA_SDS,
+            plevs=PLEVELS,
             lead_time=LEAD_TIME,
             batch_chunk_size=BATCH_CHUNK_SIZE,
         )
@@ -144,8 +146,9 @@ class DataloaderTests(unittest.TestCase):
 
         for batch in dl_test:
             # check batch shapes
+            print(batch[0].shape, batch[1].shape)
             self.assertEqual(batch[0].shape, batch[1].shape)
-            self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, PLEV * NVAR))
+            self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, len(PLEVELS) * NVAR))
             X, Y = batch
             # the entries of Y - X should all be equal to the input-vs-target index offset value (i.e. lead_time // 6)
             self.assertTrue(((Y - X) == (LEAD_TIME // 6)).all())
