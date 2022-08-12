@@ -21,6 +21,8 @@ PLEV = 13
 NVAR = 1
 BATCH_SIZE = 2
 BATCH_CHUNK_SIZE = 3
+LEAD_TIME = 18
+NUM_WORKERS = 2
 
 lon = [[-9.83, -9.32], [-9.79, -9.23]]
 lat = [[42.25, 42.21], [42.63, 42.59]]
@@ -31,9 +33,6 @@ plev = np.array(range(PLEV))
 t2m = np.zeros((NTIME, PLEV, NLAT, NLON), dtype=np.int32)
 for i in range(NTIME):
     t2m[i, ...] = np.ones((PLEV, NLAT, NLON)) * i
-print(t2m.min(), t2m.max())
-assert (t2m >= 0).all()
-
 
 DATA = xr.Dataset(
     data_vars=dict(
@@ -119,7 +118,7 @@ class DataloaderTests(unittest.TestCase):
             var_names=["t2m"],
             var_mean=DATA_MEANS,
             var_sd=DATA_SDS,
-            lead_time=6,
+            lead_time=LEAD_TIME,
             batch_chunk_size=BATCH_CHUNK_SIZE,
         )
 
@@ -129,7 +128,7 @@ class DataloaderTests(unittest.TestCase):
             # this means the "real" batch size == config["model:dataloader:batch-size"] * config["model:dataloader:batch-chunk-size"]
             batch_size=BATCH_SIZE,
             # number of worker processes
-            num_workers=2,
+            num_workers=NUM_WORKERS,
             # use of pinned memory can speed up CPU-to-GPU data transfers
             # see https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-pinning
             pin_memory=True,
@@ -143,18 +142,10 @@ class DataloaderTests(unittest.TestCase):
             drop_last=True,
         )
 
-        print("******* Iteration 1 ... *******")
-        for i_batch, batch in enumerate(dl_test):
+        for batch in dl_test:
             # check batch shapes
             self.assertEqual(batch[0].shape, batch[1].shape)
             self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, PLEV * NVAR))
             X, Y = batch
-            print(f"Batch index {i_batch:02d} -- X: {X[:, 0, 0].tolist()} -- Y: {Y[:, 0, 0].tolist()}")
-
-        print("******* Iteration 2 ... *******")
-        for i_batch, batch in enumerate(dl_test):
-            # check batch shapes
-            self.assertEqual(batch[0].shape, batch[1].shape)
-            self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, PLEV * NVAR))
-            X, Y = batch
-            print(f"Batch index {i_batch:02d} -- X: {X[:, 0, 0].tolist()} -- Y: {Y[:, 0, 0].tolist()}")
+            # the entries of Y - X should all be equal to the input-vs-target index offset value (i.e. lead_time // 6)
+            self.assertTrue(((Y - X) == (LEAD_TIME // 6)).all())

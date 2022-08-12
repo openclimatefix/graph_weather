@@ -86,19 +86,19 @@ class WeatherBenchDataset(IterableDataset):
         worker_info = torch.utils.data.get_worker_info()
 
         if worker_info is None:
-            low = 0
-            high = self.ds_len
+            LOGGER.error("worker_info is None! Set num_workers > 0 in your dataloader!")
+            raise RuntimeError
         else:
             worker_id = worker_info.id
             low = worker_id * self.n_chunks_per_worker
             high = min((worker_id + 1) * self.n_chunks_per_worker, self.ds_len)
-            print(f"Worker ID {worker_id} owns range {low} -- {high} ...")
+            # LOGGER.debug(f"Worker ID {worker_id} owns range {low} -- {high} ...")
 
-        chunk_index_range = np.arange(low, high + 1, dtype=np.uint32)
+        chunk_index_range = np.arange(low, high, dtype=np.uint32)
         shuffled_chunk_indices = self.rng.choice(chunk_index_range, size=self.n_chunks_per_worker, replace=False)
 
         for i in shuffled_chunk_indices:
-            print(f"Worker ID {worker_id} sampled index {i} ...")
+            # LOGGER.debug(f"Worker ID {worker_id} sampled index {i} ...")
 
             start, end = i * self.bcs, (i + 1) * self.bcs
             Xv_ = self._transform(self.ds.isel(time=slice(start, end)))
