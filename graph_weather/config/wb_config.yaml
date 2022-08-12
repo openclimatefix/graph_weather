@@ -3,6 +3,10 @@ input:
     training:
       basedir: /data2/malexe/weatherbench/netcdf/training
       filename-template: "pl_*.nc"
+      summary-stats:
+        precomputed: True
+        means: /data2/malexe/weatherbench/netcdf/training/means-2001.nc
+        std-devs: /data2/malexe/weatherbench/netcdf/training/sds-2001.nc
     validation:
       basedir: /data2/malexe/weatherbench/netcdf/validation
       filename-template: "pl_*.nc"
@@ -12,7 +16,7 @@ input:
       - q
       - w
       - u
-      - w
+      - v
   constants:
     filename: /data2/malexe/weatherbench/netcdf/constants.nc
     names:
@@ -33,9 +37,10 @@ output:
 
 model:
   debug:
+    # this will detect and trace back NaNs / Infs etc. but will slow down training
     anomaly-detection: False
   wandb:
-    enabled: False
+    enabled: True
   tensorboard:
     enabled: False
   dask:

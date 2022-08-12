@@ -65,7 +65,11 @@ class WeatherBenchDataModule(pl.LightningDataModule):
         self.num_workers = config["model:dataloader:num-workers"]
         self.config = config
 
-        var_means, var_sds = self._calculate_summary_statistics(scheduler_address)
+        if config["input:variables:training:summary-stats:precomputed"]:
+            var_means, var_sds = self._load_summary_statistics()
+        else:
+            # use Dask to compute summary statistics for the training data on the fly (can take some time)
+            var_means, var_sds = self._calculate_summary_statistics(scheduler_address)
 
         self.ds_train = WeatherBenchDataset(
             fnames=glob.glob(
@@ -99,7 +103,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
 
     def _calculate_summary_statistics(self, dask_cluster_address: Optional[str] = None) -> Tuple[xr.Dataset, xr.Dataset]:
         if dask_cluster_address is not None:
-            client = Client(dask_cluster_address)
+            _ = Client(dask_cluster_address)
 
         with xr.open_mfdataset(
             glob.glob(
@@ -116,17 +120,31 @@ class WeatherBenchDataModule(pl.LightningDataModule):
 
         return var_means, var_sds
 
+    def _load_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:
+        # load pre-computed means and standard deviations
+        var_means = xr.load_dataset(
+            os.path.join(
+                self.config["input:variables:training:basedir"], self.config["input:variables:training:summary-stats:means"]
+            )
+        )
+        var_sds = xr.load_dataset(
+            os.path.join(
+                self.config["input:variables:training:basedir"], self.config["input:variables:training:summary-stats:std-devs"]
+            )
+        )
+        return var_means, var_sds
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.ds_train,
             # we're putting together one full batch from this many batch-chunks
-            # this means the "real" batch size == config["model:dataloader:batch-size"] * config["model::dataloader:batch-chunk-size"]
+            # this means the "real" batch size == config["model:dataloader:batch-size"] * config["model:dataloader:batch-chunk-size"]
             batch_size=self.batch_size,
             # number of worker processes
             num_workers=self.num_workers,
-            # uses pinned memory to speed up CPU-to-GPU data transfers
+            # use of pinned memory can speed up CPU-to-GPU data transfers
             # see https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-pinning
-            pin_memory=False,
+            pin_memory=True,
             # custom collator (see above)
             collate_fn=_custom_collator_wrapper(self.const_data.constants),
             # worker initializer
