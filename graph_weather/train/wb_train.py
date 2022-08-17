@@ -4,7 +4,7 @@ import argparse
 import datetime as dt
 import os
 
-from dask.distributed import Client, LocalCluster
+from dask.distributed import LocalCluster
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -37,8 +37,8 @@ def train(config: YAMLConfig) -> None:
 
     # number of variables (features)
     num_features = dmod.ds_train.nlev * dmod.ds_train.nvar
-    LOGGER.debug(f"GNN num_features = {num_features}")
-    LOGGER.debug(f"GNN aux_dim = {dmod.const_data.nconst}")
+    LOGGER.debug("Number of variables: %d", num_features)
+    LOGGER.debug("Number of auxiliary (time-independent) variables: %d", dmod.const_data.nconst)
 
     model = LitGraphForecaster(
         lat_lons=dmod.const_data.latlons,
@@ -83,13 +83,14 @@ def train(config: YAMLConfig) -> None:
                 every_n_epochs=1,
             ),
         ],
-        detect_anomaly=config[f"model:debug:anomaly-detection"],
-        # devices=config[f"model:num-gpus"],
-        precision=config[f"model:precision"],
-        max_epochs=config[f"model:max-epochs"],
+        detect_anomaly=config["model:debug:anomaly-detection"],
+        # devices=config["model:num-gpus"],
+        devices=1,  # run on a single GPU... for now
+        precision=config["model:precision"],
+        max_epochs=config["model:max-epochs"],
         logger=logger,
         log_every_n_steps=config["output:logging:log-interval"],
-        limit_train_batches=config[f"model:limit-train-batches"],
+        # limit_train_batches=config["model:limit-train-batches"],
         # https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#fast-dev-run
         # fast_dev_run=config["output:logging:fast-dev-run"],
     )
@@ -112,7 +113,3 @@ def main() -> None:
     args = get_args()
     config = YAMLConfig(args.config)
     train(config)
-
-
-if __name__ == "__main__":
-    train()

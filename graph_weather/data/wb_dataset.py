@@ -75,7 +75,7 @@ class WeatherBenchDataset(IterableDataset):
             self.ds = self.ds.sel(level=self.plevs)
 
         self.ds_len = len(self.ds.time) - self.lead_step
-        self.effective_ds_len = int(np.ceil(self.ds_len / self.bcs))
+        self.effective_ds_len = int(np.floor(self.ds_len / self.bcs))
         self.n_chunks_per_worker = self.effective_ds_len // n_workers
 
         # each worker must have a different seed for its random number generator,
@@ -95,14 +95,11 @@ class WeatherBenchDataset(IterableDataset):
             worker_id = worker_info.id
             low = worker_id * self.n_chunks_per_worker
             high = min((worker_id + 1) * self.n_chunks_per_worker, self.ds_len)
-            # LOGGER.debug(f"Worker ID {worker_id} owns range {low} -- {high} ...")
 
         chunk_index_range = np.arange(low, high, dtype=np.uint32)
         shuffled_chunk_indices = self.rng.choice(chunk_index_range, size=self.n_chunks_per_worker, replace=False)
 
         for i in shuffled_chunk_indices:
-            # LOGGER.debug(f"Worker ID {worker_id} sampled index {i} ...")
-
             start, end = i * self.bcs, (i + 1) * self.bcs
             Xv_ = self._transform(self.ds.isel(time=slice(start, end)))
 

@@ -27,7 +27,7 @@ class LitGraphForecaster(pl.LightningModule):
         self.lr = lr
         self.save_hyperparameters()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.gnn(x)
 
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:

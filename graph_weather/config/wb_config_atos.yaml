@@ -1,0 +1,73 @@
+input:
+  variables:
+    training:
+      basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/training
+      filename-template: "pl_*.nc"
+      summary-stats:
+        precomputed: True
+        means: /ec/res4/hpcperm/syma/WeatherBench/netcdf/means-1979-2015.nc
+        std-devs: /ec/res4/hpcperm/syma/WeatherBench/netcdf/sds-1979-2015.nc
+    validation:
+      basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/validation
+      filename-template: "pl_*.nc"
+    test:
+      basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/test
+      filename-template: "pl_*.nc"      
+    names:
+      - z
+      - t
+      - q
+      - w
+      - u
+      - v
+    levels: null
+  constants:
+    filename: /ec/res4/hpcperm/syma/WeatherBench/netcdf/constants.nc
+    names:
+      - lsm
+      - z_std
+
+###################
+#  OUTPUT BLOCK
+###################
+output:
+  basedir: /ec/res4/scratch/syma/GNN/WeatherBench/checkpoints
+  logging:
+    log-dir: /ec/res4/scratch/syma/GNN/WeatherBench/logs
+    log-interval: 50
+  model:
+    save-top-k: 3
+    checkpoint-filename: "gnn-wb-weights-{epoch:02d}-{val_wmse:.3f}"
+
+model:
+  debug:
+    # this will detect and trace back NaNs / Infs etc. but will slow down training
+    anomaly-detection: False
+  wandb:
+    enabled: True
+  tensorboard:
+    enabled: False
+  dask:
+    enabled: True
+    temp-dir: /ec/res4/scratch/syma/dask-temp-dir
+    trim-worker-memory: True
+    num-workers: 16
+    num-threads-per-worker: 2
+    persist-data: False
+    dashboard-port: 9988
+  dataloader:
+    num-workers: 16
+    batch-size: 1
+    batch-chunk-size: 3
+  # miscellaneous
+  precision: 16
+  fast-dev-run: False
+  # runs only N training batches [N = integer | null]
+  # if null then we run through all the batches
+  limit-train-batches: null
+  # specific GNN model settings
+  lead-time: 6
+  max-epochs: 1
+  learn-rate: 2.e-3
+  hidden-dim: 64
+  num-blocks: 3
