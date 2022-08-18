@@ -15,7 +15,6 @@ LOGGER = get_logger(__name__)
 class WeatherBenchDataset(IterableDataset):
     """
     Iterable dataset for WeatherBench data.
-    Design inspired by https://github.com/openclimatefix/predict_pv_yield/blob/main/notebooks/20.0_simplify_data_loading.ipynb.
     """
 
     # default number of pressure levels for the WeatherBench dataset
@@ -30,6 +29,7 @@ class WeatherBenchDataset(IterableDataset):
         var_sd: xr.Dataset,
         plevs: Optional[List[int]] = None,
         lead_time: int = 6,
+        rollout: int = 1,
         batch_chunk_size: int = 4,
     ) -> None:
         """
@@ -49,6 +49,8 @@ class WeatherBenchDataset(IterableDataset):
         self.lead_time = lead_time
         assert self.lead_time > 0 and self.lead_time % 6 == 0, "Lead time must be multiple of 6 hours"
         self.lead_step = lead_time // 6
+
+        self.rollout = rollout
 
         self.vars = var_names
         self.nvar = len(self.vars)
@@ -74,7 +76,7 @@ class WeatherBenchDataset(IterableDataset):
         if self.plevs is not None:
             self.ds = self.ds.sel(level=self.plevs)
 
-        self.ds_len = len(self.ds.time) - self.lead_step
+        self.ds_len = len(self.ds.time) - self.lead_step * self.rollout
         self.effective_ds_len = int(np.floor(self.ds_len / self.bcs))
         self.n_chunks_per_worker = self.effective_ds_len // n_workers
 
@@ -100,17 +102,16 @@ class WeatherBenchDataset(IterableDataset):
         shuffled_chunk_indices = self.rng.choice(chunk_index_range, size=self.n_chunks_per_worker, replace=False)
 
         for i in shuffled_chunk_indices:
-            start, end = i * self.bcs, (i + 1) * self.bcs
-            Xv_ = self._transform(self.ds.isel(time=slice(start, end)))
+            batch = []
 
-            start, end = i * self.bcs + self.lead_step, (i + 1) * self.bcs + self.lead_step
-            Yv_ = self._transform(self.ds.isel(time=slice(start, end)))
+            for r in range(self.rollout + 1):
+                start, end = i * self.bcs + r * self.lead_step, (i + 1) * self.bcs + r * self.lead_step
+                X_ = self._transform(self.ds.isel(time=slice(start, end)))
+                # -> shape: (bs, nvar, nlev, lat, lon)
+                X = da.stack([X_[var] for var in self.vars], axis=1)
+                batch.append(X)
 
-            # shape: (bs, nvar, nlev, lat, lon)
-            X = da.stack([Xv_[var] for var in self.vars], axis=1)
-            Y = da.stack([Yv_[var] for var in self.vars], axis=1)
-
-            yield (X, Y)
+            yield tuple(batch)
 
 
 def worker_init_func(worker_id: int) -> None:

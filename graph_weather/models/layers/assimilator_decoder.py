@@ -97,6 +97,7 @@ class AssimilatorDecoder(torch.nn.Module):
 
         # Use normal graph as its a bit simpler
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
+        # self.register_buffer("graph", graph, persistent=False)
 
         self.edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type)
         self.graph_processor = GraphProcessor(

@@ -27,6 +27,9 @@ import torch
 from torch_geometric.data import Data
 
 from graph_weather.models.layers.gnn_blocks import MLP, GraphProcessor
+from graph_weather.utils.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 class Encoder(torch.nn.Module):
@@ -97,12 +100,14 @@ class Encoder(torch.nn.Module):
 
         # Use homogenous graph to make it easier
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_distances)
-
         self.latent_graph = self.create_latent_graph()
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
-        self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Output graph
+
+        self.register_buffer("h3_nodes", h3_nodes, persistent=False)
+        self.graphs_on_device = False
 
         self.node_encoder = MLP(
             input_dim,
@@ -147,7 +152,7 @@ class Encoder(torch.nn.Module):
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
         batch_size = features.shape[0]
-        self.h3_nodes = self.h3_nodes.to(features.device)
+        # self.h3_nodes = self.h3_nodes.to(features.device)
         self.graph = self.graph.to(features.device)
         self.latent_graph = self.latent_graph.to(features.device)
         features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)

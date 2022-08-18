@@ -1,27 +1,35 @@
-# Train GNN model on the WeatherBench dataset
-from typing import Optional
+from typing import Optional, List
 import argparse
 import datetime as dt
 import os
 
 from dask.distributed import LocalCluster
+import numpy as np
+import torch
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+import xarray as xr
 
 from graph_weather.utils.dask_utils import init_dask_cluster
 from graph_weather.utils.config import YAMLConfig
-from graph_weather.data.wb_datamodule import WeatherBenchTrainingDataModule
+from graph_weather.data.wb_datamodule import WeatherBenchTestDataModule
 from graph_weather.utils.logger import get_logger
 from graph_weather.train.wb_trainer import LitGraphForecaster
 
 LOGGER = get_logger(__name__)
 
 
-def train(config: YAMLConfig) -> None:
+def store_predictions(preds: torch.Tensor, config: YAMLConfig) -> None:
+    raise NotImplementedError
+
+
+def backtransform_predictions(preds: torch.Tensor, means: xr.Dataset, sds: xr.Dataset, config: YAMLConfig) -> torch.Tensor:
+    raise NotImplementedError
+
+
+def predict(config: YAMLConfig, checkpoint_filename: str) -> None:
     """
-    Train entry point.
+    Predict entry point.
     Args:
         config: job configuration
     """
@@ -33,10 +41,10 @@ def train(config: YAMLConfig) -> None:
     LOGGER.debug("Dask scheduler address: %s", dask_scheduler_address)
 
     # create data module (data loaders and data sets)
-    dmod = WeatherBenchTrainingDataModule(config, scheduler_address=dask_scheduler_address)
+    dmod = WeatherBenchTestDataModule(config, scheduler_address=dask_scheduler_address)
 
     # number of variables (features)
-    num_features = dmod.ds_train.nlev * dmod.ds_train.nvar
+    num_features = dmod.ds_test.nlev * dmod.ds_test.nvar
     LOGGER.debug("Number of variables: %d", num_features)
     LOGGER.debug("Number of auxiliary (time-independent) variables: %d", dmod.const_data.nconst)
 
@@ -49,6 +57,10 @@ def train(config: YAMLConfig) -> None:
         lr=config["model:learn-rate"],
         rollout=config["model:rollout"],
     )
+
+    # TODO: restore model from checkpoint
+    checkpoint_filepath = os.path.join(config["output:basedir"], config["output:checkpoints:ckpt-dir"], checkpoint_filename)
+    model = LitGraphForecaster.load_from_checkpoint(checkpoint_filepath)
 
     # init logger
     if config["model:wandb:enabled"]:
@@ -66,40 +78,29 @@ def train(config: YAMLConfig) -> None:
     # fast_dev_run -> runs a single batch
     trainer = pl.Trainer(
         accelerator="gpu",
-        callbacks=[
-            EarlyStopping(monitor="val_wmse", min_delta=1.0e-2, patience=3, verbose=False, mode="min"),
-            ModelCheckpoint(
-                dirpath=os.path.join(
-                    config["output:basedir"],
-                    config["output:checkpoints:ckpt-dir"],
-                    dt.datetime.now().strftime("%Y%m%d_%H%M"),
-                ),
-                filename=config[f"output:model:checkpoint-filename"],
-                monitor="val_wmse",
-                verbose=False,
-                save_top_k=config["output:model:save-top-k"],
-                save_weights_only=True,
-                mode="min",
-                auto_insert_metric_name=True,
-                save_on_train_epoch_end=True,
-                every_n_epochs=1,
-            ),
-        ],
         detect_anomaly=config["model:debug:anomaly-detection"],
         # devices=config["model:num-gpus"],
         devices=1,  # run on a single GPU... for now
         precision=config["model:precision"],
-        max_epochs=config["model:max-epochs"],
         logger=logger,
         log_every_n_steps=config["output:logging:log-interval"],
         # run fewer batches per epoch (helpful when debugging)
-        limit_train_batches=config["model:limit-train-batches"],
-        limit_val_batches=config["model:limit-val-batches"],
+        limit_test_batches=config["model:limit-test-batches"],
         # https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#fast-dev-run
         # fast_dev_run=config["output:logging:fast-dev-run"],
+        max_epochs=-1,
     )
 
-    trainer.fit(model, datamodule=dmod)
+    # run a test loop (calculates test_wmse)
+    trainer.test(model, datamodule=dmod)
+    # run a predict loop on the same data - same as test in this case
+    predictions_ = trainer.predict(model, datamodule=dmod, return_predictions=True)
+    LOGGER.debug(predictions_)
+    predictions: torch.Tensor = torch.cat(predictions_, dim=0).float().cpu()
+    predictions = backtransform_predictions(predictions, config)
+
+    # save data along with observations
+    store_predictions(predictions, config)
 
     LOGGER.debug("---- DONE. ----")
 
@@ -109,11 +110,14 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("--config", required=True, help="Model configuration file (YAML)")
+    required_args.add_argument(
+        "--checkpoint", required=True, help="Name of the model checkpoint file (located under output-basedir/chkpt-dir)."
+    )
     return parser.parse_args()
 
 
 def main() -> None:
-    """Entry point for training."""
+    """Entry point for inference."""
     args = get_args()
     config = YAMLConfig(args.config)
-    train(config)
+    predict(config, args.checkpoint)

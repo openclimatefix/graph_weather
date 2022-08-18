@@ -25,6 +25,7 @@ def init_dask_cluster(config: YAMLConfig) -> LocalCluster:
         n_workers=config["model:dask:num-workers"],
         threads_per_worker=config["model:dask:num-threads-per-worker"],
         dashboard_address=f":{config['model:dask:dashboard-port']}",
+        scheduler_port=config["model:dask:scheduler-port"],
     )
 
 

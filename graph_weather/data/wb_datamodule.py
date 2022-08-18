@@ -26,24 +26,27 @@ def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
         """
         Custom collation function. It collates several batch chunks into a "full" batch.
         Args:
-            data: batch data, [(X_chunk0, Y_chunk0), (X_chunk1, Y_chunk1), ...]
-                  with X_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
+            data: batch data, [(X1_chunk0, X2_chunk0, ...), (X1_chunk1, X2_chunk1, ...), ...]
+                with Xi_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
+                and len(X1_chunk0, X2_chunk0, ...) == length of the rollout window
         """
-        X, Y = list(zip(*batch_data))
-        return torch.as_tensor(
-            np.concatenate(
-                [
-                    # reshape to (bs, (lat*lon), (nvar * nlev))
-                    rearrange(da.concatenate([x for x in X], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
-                    # reshape to (bs, (lat*lon), nconst)
-                    rearrange(np.concatenate([const_data for x in X], axis=0), "b h w c -> b (h w) c"),
-                ],
-                # concat along last axis (var index)
-                axis=-1,
+        zipped_batch = list(zip(*batch_data))
+        batch: List[torch.Tensor] = []
+        for X in zipped_batch:
+            X = torch.as_tensor(
+                np.concatenate(
+                    [
+                        # reshape to (bs, (lat*lon), (nvar * nlev))
+                        rearrange(da.concatenate([x for x in X], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
+                        # reshape to (bs, (lat*lon), nconst)
+                        rearrange(np.concatenate([const_data for x in X], axis=0), "b h w c -> b (h w) c"),
+                    ],
+                    # concat along last axis (var index)
+                    axis=-1,
+                )
             )
-        ), torch.as_tensor(
-            rearrange(da.concatenate([y for y in Y], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
-        )
+            batch.append(X)
+        return tuple(batch)
 
     return custom_collator
 
@@ -52,13 +55,13 @@ def get_weatherbench_dataset(fnames: List[str], config: YAMLConfig, scheduler_ad
     client: Optional[Client] = init_dask_client(scheduler_address, config) if scheduler_address is not None else None
     return xr.open_mfdataset(
         fnames,
-        parallel=True,
+        parallel=(client is not None),  # uses Dask if a client is present
         chunks={"time": 10},
-        lock=False,  # uses Dask if a client is present
+        lock=False,
     )
 
 
-class WeatherBenchDataModule(pl.LightningDataModule):
+class WeatherBenchTrainingDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
         super().__init__()
         self.batch_size = config["model:dataloader:batch-size"]
@@ -82,6 +85,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
             batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            rollout=config["model:rollout"],
         )
 
         self.ds_valid = WeatherBenchDataset(
@@ -90,11 +94,26 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             ),
             var_names=config["input:variables:names"],
             read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
-            var_mean=self.ds_train.mean,
-            var_sd=self.ds_train.sd,
+            var_mean=var_means,
+            var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
             batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            rollout=config["model:rollout"],
+        )
+
+        self.ds_test = WeatherBenchDataset(
+            fnames=glob.glob(
+                os.path.join(config["input:variables:test:basedir"], config["input:variables:test:filename-template"])
+            ),
+            var_names=config["input:variables:names"],
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            var_mean=var_means,
+            var_sd=var_sds,
+            plevs=config["input:variables:levels"],
+            lead_time=config["model:lead-time"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
@@ -152,7 +171,7 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             # worker initializer
             worker_init_fn=worker_init_func,
             # prefetch batches (default prefetch_factor == 2)
-            prefetch_factor=4,
+            prefetch_factor=2,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -163,5 +182,65 @@ class WeatherBenchDataModule(pl.LightningDataModule):
             pin_memory=True,
             collate_fn=_custom_collator_wrapper(self.const_data.constants),
             worker_init_fn=worker_init_func,
-            prefetch_factor=4,
+            prefetch_factor=2,
         )
+
+
+class WeatherBenchTestDataModule(pl.LightningDataModule):
+    def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
+        super().__init__()
+        self.batch_size = config["model:dataloader:batch-size"]
+        self.num_workers = config["model:dataloader:num-workers"]
+        self.config = config
+
+        # summary stats must've been precomputed!
+        var_means, var_sds = self._load_summary_statistics()
+
+        self.ds_test = WeatherBenchDataset(
+            fnames=glob.glob(
+                os.path.join(config["input:variables:test:basedir"], config["input:variables:test:filename-template"])
+            ),
+            var_names=config["input:variables:names"],
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            var_mean=var_means,
+            var_sd=var_sds,
+            plevs=config["input:variables:levels"],
+            lead_time=config["model:lead-time"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            rollout=config["model:rollout"],
+        )
+
+        self.const_data = WeatherBenchConstantFields(
+            const_fname=config["input:constants:filename"],
+            const_names=config["input:constants:names"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+        )
+
+    def _load_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:
+        # load pre-computed means and standard deviations (calculated from the training data)
+        var_means = xr.load_dataset(
+            os.path.join(
+                self.config["input:variables:training:basedir"], self.config["input:variables:training:summary-stats:means"]
+            )
+        )
+        var_sds = xr.load_dataset(
+            os.path.join(
+                self.config["input:variables:training:basedir"], self.config["input:variables:training:summary-stats:std-devs"]
+            )
+        )
+        return var_means, var_sds
+
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.ds_test,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            collate_fn=_custom_collator_wrapper(self.const_data.constants),
+            worker_init_fn=worker_init_func,
+            prefetch_factor=2,
+        )
+
+    def predict_dataloader(self) -> DataLoader:
+        # TODO: we may want to change this later
+        return self.test_dataloader()

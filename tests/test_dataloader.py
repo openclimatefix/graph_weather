@@ -24,6 +24,7 @@ BATCH_SIZE = 2
 BATCH_CHUNK_SIZE = 3
 LEAD_TIME = 18
 NUM_WORKERS = 2
+ROLLOUT = 4
 
 lon = [[-9.83, -9.32], [-9.79, -9.23]]
 lat = [[42.25, 42.21], [42.63, 42.59]]
@@ -82,18 +83,20 @@ def test_batch_collator(batch_data: List[Tuple[np.ndarray, np.ndarray]]) -> Tupl
     """
     Custom collation function. It collates several batch chunks into a "full" batch.
     Args:
-        data: batch data, [(X_chunk0, Y_chunk0), (X_chunk1, Y_chunk1), ...]
-              with X_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
+        data: batch data, [(X1_chunk0, X2_chunk0, ...), (X1_chunk1, X2_chunk1, ...), ...]
+              with Xi_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
+              and len(X1_chunk0, X2_chunk0, ...) == length of the rollout window
     """
-    X, Y = list(zip(*batch_data))
-    return torch.as_tensor(
-        # reshape to (bs, (lat*lon), (nvar * nlev))
-        rearrange(da.concatenate([x for x in X], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
-        dtype=torch.int32,
-    ), torch.as_tensor(
-        rearrange(da.concatenate([y for y in Y], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
-        dtype=torch.int32,
-    )
+    zipped_batch = list(zip(*batch_data))
+    batch = []
+    for X in zipped_batch:
+        t = torch.as_tensor(
+            # reshape to (bs, (lat*lon), (nvar * nlev))
+            rearrange(da.concatenate([x for x in X], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
+            dtype=torch.int32,
+        )
+        batch.append(t)
+    return tuple(batch)
 
 
 def read_dummy_data(fnames: List[str]) -> xr.Dataset:
@@ -122,6 +125,7 @@ class DataloaderTests(unittest.TestCase):
             plevs=PLEVELS,
             lead_time=LEAD_TIME,
             batch_chunk_size=BATCH_CHUNK_SIZE,
+            rollout=ROLLOUT,
         )
 
         dl_test = DataLoader(
@@ -146,9 +150,9 @@ class DataloaderTests(unittest.TestCase):
 
         for batch in dl_test:
             # check batch shapes
-            print(batch[0].shape, batch[1].shape)
+            self.assertEqual(len(batch), ROLLOUT + 1)
             self.assertEqual(batch[0].shape, batch[1].shape)
             self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, len(PLEVELS) * NVAR))
-            X, Y = batch
-            # the entries of Y - X should all be equal to the input-vs-target index offset value (i.e. lead_time // 6)
-            self.assertTrue(((Y - X) == (LEAD_TIME // 6)).all())
+            for X, Y in zip(batch[:-1], batch[1:]):
+                # the entries of Y - X should all be equal to the input-vs-target index offset value (i.e. lead_time // 6)
+                self.assertTrue(((Y - X) == (LEAD_TIME // 6)).all())
