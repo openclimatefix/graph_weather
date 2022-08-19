@@ -93,8 +93,8 @@ def train(config: YAMLConfig) -> None:
         logger=logger,
         log_every_n_steps=config["output:logging:log-interval"],
         # run fewer batches per epoch (helpful when debugging)
-        limit_train_batches=config["model:limit-train-batches"],
-        limit_val_batches=config["model:limit-val-batches"],
+        limit_train_batches=config["model:limit-batches: train"],
+        limit_val_batches=config["model:limit-batches:validation"],
         # https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#fast-dev-run
         # fast_dev_run=config["output:logging:fast-dev-run"],
     )

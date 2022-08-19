@@ -19,12 +19,16 @@ from graph_weather.train.wb_trainer import LitGraphForecaster
 LOGGER = get_logger(__name__)
 
 
+def _reshape_predictions(config: YAMLConfig) -> torch.Tensor:
+    pass
+
+
 def store_predictions(preds: torch.Tensor, config: YAMLConfig) -> None:
-    raise NotImplementedError
+    pass
 
 
 def backtransform_predictions(preds: torch.Tensor, means: xr.Dataset, sds: xr.Dataset, config: YAMLConfig) -> torch.Tensor:
-    raise NotImplementedError
+    pass
 
 
 def predict(config: YAMLConfig, checkpoint_filename: str) -> None:
@@ -85,7 +89,8 @@ def predict(config: YAMLConfig, checkpoint_filename: str) -> None:
         logger=logger,
         log_every_n_steps=config["output:logging:log-interval"],
         # run fewer batches per epoch (helpful when debugging)
-        limit_test_batches=config["model:limit-test-batches"],
+        limit_test_batches=config["model:limit-batches:test"],
+        limit_predict_batches=config["model:limit-batches:predict"],
         # https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#fast-dev-run
         # fast_dev_run=config["output:logging:fast-dev-run"],
         max_epochs=-1,
@@ -93,14 +98,17 @@ def predict(config: YAMLConfig, checkpoint_filename: str) -> None:
 
     # run a test loop (calculates test_wmse)
     trainer.test(model, datamodule=dmod)
+
     # run a predict loop on the same data - same as test in this case
     predictions_ = trainer.predict(model, datamodule=dmod, return_predictions=True)
-    LOGGER.debug(predictions_)
-    predictions: torch.Tensor = torch.cat(predictions_, dim=0).float().cpu()
-    predictions = backtransform_predictions(predictions, config)
+
+    predictions: torch.Tensor = torch.cat(predictions_, dim=0).float()
+    LOGGER.debug(predictions.shape)
+
+    # predictions = backtransform_predictions(predictions, config)
 
     # save data along with observations
-    store_predictions(predictions, config)
+    # store_predictions(predictions, config)
 
     LOGGER.debug("---- DONE. ----")
 

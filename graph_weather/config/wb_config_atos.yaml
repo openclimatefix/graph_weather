@@ -64,17 +64,23 @@ model:
     scheduler-port: 8786
   dataloader:
     num-workers: 6
-    batch-size: 1
-    batch-chunk-size: 1
+    training:
+      batch-size: 1
+      batch-chunk-size: 1
+    inference:
+      batch-size: 2
+      batch-chunk-size: 2
 
   # miscellaneous
   precision: 16
   fast-dev-run: False
   # runs only N training batches [N = integer | null]
   # if null then we run through all the batches
-  limit-train-batches: 25
-  limit-val-batches: 25
-  limit-test-batches: 25
+  limit-batches:
+    train: 25
+    valid: 25
+    test: 25
+    predict: 25
 
   # specific GNN model settings
   lead-time: 6

@@ -64,7 +64,7 @@ def get_weatherbench_dataset(fnames: List[str], config: YAMLConfig, scheduler_ad
 class WeatherBenchTrainingDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
         super().__init__()
-        self.batch_size = config["model:dataloader:batch-size"]
+        self.batch_size = config["model:dataloader:training:batch-size"]
         self.num_workers = config["model:dataloader:num-workers"]
         self.config = config
 
@@ -84,7 +84,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
             rollout=config["model:rollout"],
         )
 
@@ -98,28 +98,14 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
-            rollout=config["model:rollout"],
-        )
-
-        self.ds_test = WeatherBenchDataset(
-            fnames=glob.glob(
-                os.path.join(config["input:variables:test:basedir"], config["input:variables:test:filename-template"])
-            ),
-            var_names=config["input:variables:names"],
-            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
-            var_mean=var_means,
-            var_sd=var_sds,
-            plevs=config["input:variables:levels"],
-            lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
             rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
         )
 
     def _calculate_summary_statistics(self, dask_cluster_address: Optional[str] = None) -> Tuple[xr.Dataset, xr.Dataset]:
@@ -189,7 +175,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
 class WeatherBenchTestDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
         super().__init__()
-        self.batch_size = config["model:dataloader:batch-size"]
+        self.batch_size = config["model:dataloader:inference:batch-size"]
         self.num_workers = config["model:dataloader:num-workers"]
         self.config = config
 
@@ -206,14 +192,14 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
             rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
-            batch_chunk_size=config["model:dataloader:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
         )
 
     def _load_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:
