@@ -8,6 +8,7 @@ import torch
 import dask.array as da
 from torch.utils.data import IterableDataset
 from graph_weather.utils.logger import get_logger
+import graph_weather.utils.constants as constants
 
 LOGGER = get_logger(__name__)
 
@@ -16,9 +17,6 @@ class WeatherBenchDataset(IterableDataset):
     """
     Iterable dataset for WeatherBench data.
     """
-
-    # default number of pressure levels for the WeatherBench dataset
-    _WB_PLEVS = 13
 
     def __init__(
         self,
@@ -31,6 +29,7 @@ class WeatherBenchDataset(IterableDataset):
         lead_time: int = 6,
         rollout: int = 1,
         batch_chunk_size: int = 4,
+        return_sample_idx: bool = False,
     ) -> None:
         """
         Initialize (part of) the dataset state.
@@ -42,6 +41,8 @@ class WeatherBenchDataset(IterableDataset):
             plevs: pressure levels (if None then we take all plevs present in the input dataset)
             lead_time: lead time (multiple of 6 hours!)
             batch_chunk_size: batch chunk size
+            return_sample_idx: return the sample index as part of the batch.
+                                use this index to match the batch contents against "ground-truth" or reference data!
         """
         self.fnames = fnames
         self.ds: Optional[xr.Dataset] = None
@@ -51,6 +52,7 @@ class WeatherBenchDataset(IterableDataset):
         self.lead_step = lead_time // 6
 
         self.rollout = rollout
+        self.return_sample_idx = return_sample_idx
 
         self.vars = var_names
         self.nvar = len(self.vars)
@@ -61,7 +63,7 @@ class WeatherBenchDataset(IterableDataset):
 
         # pressure levels
         self.plevs = plevs
-        self.nlev = len(self.plevs) if self.plevs is not None else self._WB_PLEVS
+        self.nlev = len(self.plevs) if self.plevs is not None else constants._WB_PLEV
 
         # lazy init
         self.n_samples_per_epoch_total: int = 0
@@ -103,6 +105,7 @@ class WeatherBenchDataset(IterableDataset):
 
         for i in shuffled_chunk_indices:
             batch = []
+            batch_idx = []
 
             for r in range(self.rollout + 1):
                 start, end = i * self.bcs + r * self.lead_step, (i + 1) * self.bcs + r * self.lead_step
@@ -110,8 +113,10 @@ class WeatherBenchDataset(IterableDataset):
                 # -> shape: (bs, nvar, nlev, lat, lon)
                 X = da.stack([X_[var] for var in self.vars], axis=1)
                 batch.append(X)
+                idx = np.arange(start, end, dtype=np.int32) 
+                batch_idx.append(idx)
 
-            yield tuple(batch)
+            yield tuple(batch), tuple(batch_idx)
 
 
 def worker_init_func(worker_id: int) -> None:
