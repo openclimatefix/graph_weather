@@ -24,11 +24,12 @@ LOGGER = get_logger(__name__)
 
 class WeatherBenchDataBatch:
     """Custom batch type for WeatherBench data."""
+
     def __init__(self, batch_data: List[Tuple[np.ndarray, np.ndarray]], const_data: np.ndarray) -> None:
         """Construct a batch object from the variable and constant data tensors."""
         zipped_batch = list(zip(*batch_data))
         batch: List[torch.Tensor] = []
-        
+
         for X in zipped_batch:
             X = torch.as_tensor(
                 np.concatenate(

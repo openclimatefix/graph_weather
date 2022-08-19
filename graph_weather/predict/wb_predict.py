@@ -46,7 +46,9 @@ def _reshape_predictions(predictions: torch.Tensor, config: YAMLConfig) -> torch
     )
 
 
-def store_predictions(predictions: torch.Tensor, ds_test: xr.Dataset, config: YAMLConfig, dask_scheduler_address: Optional[str] = None) -> None:
+def store_predictions(
+    predictions: torch.Tensor, ds_test: xr.Dataset, config: YAMLConfig, dask_scheduler_address: Optional[str] = None
+) -> None:
     """
     Stores the model predictions into a netCDF file.
     Args:
@@ -55,10 +57,8 @@ def store_predictions(predictions: torch.Tensor, ds_test: xr.Dataset, config: YA
         config: job configuration
         dask_scheduler_address: dask scheduler address. if not None then we create a Dask client and have it save the data.
     """
-    
 
     # then create a new xarray Dataset with the same coordinates, plus the rollout
-
 
 
 def backtransform_predictions(predictions: torch.Tensor, means: xr.Dataset, sds: xr.Dataset, config: YAMLConfig) -> torch.Tensor:

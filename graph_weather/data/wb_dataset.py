@@ -113,7 +113,7 @@ class WeatherBenchDataset(IterableDataset):
                 # -> shape: (bs, nvar, nlev, lat, lon)
                 X = da.stack([X_[var] for var in self.vars], axis=1)
                 batch.append(X)
-                idx = np.arange(start, end, dtype=np.int32) 
+                idx = np.arange(start, end, dtype=np.int32)
                 batch_idx.append(idx)
 
             yield tuple(batch), tuple(batch_idx)
