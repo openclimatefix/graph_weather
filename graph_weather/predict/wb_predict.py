@@ -16,6 +16,7 @@ from graph_weather.utils.config import YAMLConfig
 from graph_weather.data.wb_datamodule import WeatherBenchTestDataModule
 from graph_weather.utils.logger import get_logger
 from graph_weather.train.wb_trainer import LitGraphForecaster
+from graph_weather.utils.constants import _NC_COMPRESS_LEVEL
 
 LOGGER = get_logger(__name__)
 
@@ -40,25 +41,58 @@ def _reshape_predictions(predictions: torch.Tensor, config: YAMLConfig) -> torch
         "b (h w) (v l) r -> b v l h w r",
         h=_NLAT_WB,
         w=_NLON_WB,
-        v=config["input:variables:names"],
+        v=len(config["input:variables:names"]),
         l=l,
         r=config["model:rollout"],
     )
 
 
 def store_predictions(
-    predictions: torch.Tensor, ds_test: xr.Dataset, config: YAMLConfig, dask_scheduler_address: Optional[str] = None
+    predictions: torch.Tensor,
+    sample_idx: torch.Tensor,
+    config: YAMLConfig,
 ) -> None:
     """
     Stores the model predictions into a netCDF file.
     Args:
         predictions: predictions tensor, shape == (batch_size, nvar, plev, lat, lon, rollout)
-        ds_test: test dataset, used to get the relevant metadata (coordinate information, etc.)
+        sample_idx: sample indices (used to match samples to valid time points in the reference predict dataset)
         config: job configuration
-        dask_scheduler_address: dask scheduler address. if not None then we create a Dask client and have it save the data.
+    TODO: add support for parallel writes with Dask (?)
     """
+    # create a new xarray Dataset with similar coordinates as ds_test, plus the rollout
+    ds_pred_gnn = xr.Dataset()
 
-    # then create a new xarray Dataset with the same coordinates, plus the rollout
+    with xr.open_dataset(config["input:variables:prediction:filename"]) as ds_predict:
+        for var_idx, varname in enumerate(ds_predict.data_vars):
+            LOGGER.debug(
+                "varname: %s -- min: %.3f -- max: %.3f",
+                varname,
+                predictions[:, var_idx, ...].min(),
+                predictions[:, var_idx, ...].max(),
+            )
+            plevs: xr.DataArray = (
+                ds_predict.coords["level"].isel(level=config["input:variables:levels"])
+                if config["input:variables:levels"] is not None
+                else ds_predict.coords["level"]
+            )
+            ds_pred_gnn[varname] = xr.DataArray(
+                data=predictions[:, var_idx, ...].squeeze().numpy(),
+                dims=["time", "level", "latitude", "longitude", "rollout"],
+                coords=dict(
+                    latitude=ds_predict.coords["latitude"],
+                    longitude=ds_predict.coords["longitude"],
+                    level=plevs,
+                    time=ds_predict.coords["time"].isel(time=sample_idx[0, :]),
+                    rollout=np.arange(0, config["model:rollout"], dtype=np.int32),
+                ),
+                attrs=ds_predict[varname].attrs,
+            )
+            ds_pred_gnn[varname] = ds_pred_gnn[varname].sortby("time", ascending=True)
+
+    comp = dict(zlib=True, complevel=_NC_COMPRESS_LEVEL)
+    encoding = {var: comp for var in ds_pred_gnn.data_vars}
+    ds_pred_gnn.to_netcdf("ds_pred_gnn.nc", encoding=encoding)
 
 
 def backtransform_predictions(predictions: torch.Tensor, means: xr.Dataset, sds: xr.Dataset, config: YAMLConfig) -> torch.Tensor:
@@ -74,7 +108,8 @@ def backtransform_predictions(predictions: torch.Tensor, means: xr.Dataset, sds:
     """
     predictions = _reshape_predictions(predictions, config)
     for ivar, varname in enumerate(means.data_vars):
-        predictions[:, ivar, ...] = predictions[:, ivar, ...] * sds[varname] + means[varname]
+        LOGGER.debug("Varname: %s, Mean: %.3f, Std: %.3f", varname, means[varname].values, sds[varname].values)
+        predictions[:, ivar, ...] = predictions[:, ivar, ...] * sds[varname].values + means[varname].values
     return predictions
 
 
@@ -144,19 +179,23 @@ def predict(config: YAMLConfig, checkpoint_relpath: str) -> None:
         max_epochs=-1,
     )
 
-    # run a test loop (calculates test_wmse)
+    # run a test loop (calculates test_wmse, returns nothing)
     trainer.test(model, datamodule=dmod)
 
-    # run a predict loop on the same data - same as test in this case
-    predictions_ = trainer.predict(model, datamodule=dmod, return_predictions=True)
+    # run a predict loop on a different dataset - this doesn't calculate the WMSE but returns the predictions and sample indices
+    predict_output = trainer.predict(model, datamodule=dmod, return_predictions=True)
+
+    predictions_, sample_idx_ = zip(*predict_output)
 
     predictions: torch.Tensor = torch.cat(predictions_, dim=0).float()
-    LOGGER.debug(predictions.shape)
+    sample_idx = np.concatenate(sample_idx_, axis=-1)  # shape == (rollout + 1, num_pred_samples)
 
+    LOGGER.debug("Backtransforming predictions to the original data space ...")
     predictions = backtransform_predictions(predictions, dmod.ds_test.mean, dmod.ds_test.sd, config)
 
     # save data along with observations
-    store_predictions(predictions, config, dask_scheduler_address)
+    LOGGER.debug("Storing model predictions to a netCDF ...")
+    store_predictions(predictions, sample_idx, config)
 
     LOGGER.debug("---- DONE. ----")
 

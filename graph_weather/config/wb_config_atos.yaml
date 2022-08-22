@@ -12,7 +12,9 @@ input:
       filename-template: "pl_*.nc"
     test:
       basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/test
-      filename-template: "pl_*.nc"      
+      filename-template: "pl_*.nc"
+    prediction:
+      filename: /ec/res4/hpcperm/syma/WeatherBench/netcdf/test/pl_2020.nc
     names:
       - z
       - t
@@ -68,8 +70,8 @@ model:
       batch-size: 1
       batch-chunk-size: 1
     inference:
-      batch-size: 2
-      batch-chunk-size: 2
+      batch-size: 1
+      batch-chunk-size: 8
 
   # miscellaneous
   precision: 16
@@ -77,14 +79,14 @@ model:
   # runs only N training batches [N = integer | null]
   # if null then we run through all the batches
   limit-batches:
-    train: 25
-    valid: 25
-    test: 25
-    predict: 25
+    training: null
+    validation: null
+    test: 50
+    predict: 50
 
   # specific GNN model settings
   lead-time: 6
-  max-epochs: 1
+  max-epochs: 15
   learn-rate: 1.e-3
   hidden-dim: 64
   num-blocks: 3

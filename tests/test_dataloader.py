@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import unittest
 import logging
+import itertools
 
 import numpy as np
 import xarray as xr
@@ -12,6 +13,8 @@ from torch.utils.data import DataLoader
 
 from graph_weather.data.wb_dataset import WeatherBenchDataset, worker_init_func
 
+BatchChunkType = Tuple[Union[da.Array, List[List[int]]]]
+
 # dummy xarray data
 np.random.seed(0)
 
@@ -22,8 +25,8 @@ PLEVELS = [0, 1, 2]
 NVAR = 1
 BATCH_SIZE = 2
 BATCH_CHUNK_SIZE = 3
-LEAD_TIME = 18
-NUM_WORKERS = 2
+LEAD_TIME = 12
+NUM_WORKERS = 1
 ROLLOUT = 4
 
 lon = [[-9.83, -9.32], [-9.79, -9.23]]
@@ -79,24 +82,31 @@ DATA_SDS = xr.Dataset(
 )
 
 
-def test_batch_collator(batch_data: List[Tuple[np.ndarray, np.ndarray]]) -> Tuple[torch.Tensor, torch.Tensor]:
+def test_batch_collator(batch_data: List[Tuple[BatchChunkType, ...]]) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Custom collation function. It collates several batch chunks into a "full" batch.
     Args:
-        data: batch data, [(X1_chunk0, X2_chunk0, ...), (X1_chunk1, X2_chunk1, ...), ...]
+        data: batch data, [(X1_chunk0, X2_chunk0, ..., X_index0), (X1_chunk1, X2_chunk1, ..., X_index1), ...]
               with Xi_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
               and len(X1_chunk0, X2_chunk0, ...) == length of the rollout window
+              and X_index0 = sample indices of bach chunk 0
     """
     zipped_batch = list(zip(*batch_data))
     batch = []
-    for X in zipped_batch:
+    for X in zipped_batch[:-1]:
         t = torch.as_tensor(
             # reshape to (bs, (lat*lon), (nvar * nlev))
             rearrange(da.concatenate([x for x in X], axis=0).compute(), "b v l h w -> b (h w) (v l)"),
             dtype=torch.int32,
         )
         batch.append(t)
-    return tuple(batch)
+
+    # batch data
+    X = tuple(batch)
+    # batch sample indices
+    X_idx = rearrange(np.array(zipped_batch[-1], dtype=np.int32), "bs r bcs -> r (bs bcs)")
+
+    return X, X_idx
 
 
 def read_dummy_data(fnames: List[str]) -> xr.Dataset:
@@ -149,10 +159,12 @@ class DataloaderTests(unittest.TestCase):
         )
 
         for batch in dl_test:
+            X_batch, X_sample_idx = batch  # ignore the sample indices
             # check batch shapes
-            self.assertEqual(len(batch), ROLLOUT + 1)
-            self.assertEqual(batch[0].shape, batch[1].shape)
-            self.assertEqual(batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, len(PLEVELS) * NVAR))
-            for X, Y in zip(batch[:-1], batch[1:]):
+            self.assertEqual(len(X_batch), ROLLOUT + 1)
+            self.assertEqual(X_batch[0].shape, X_batch[1].shape)
+            self.assertEqual(X_batch[0].shape, (BATCH_SIZE * BATCH_CHUNK_SIZE, NLAT * NLON, len(PLEVELS) * NVAR))
+            for X, Y in zip(X_batch[:-1], X_batch[1:]):
                 # the entries of Y - X should all be equal to the input-vs-target index offset value (i.e. lead_time // 6)
                 self.assertTrue(((Y - X) == (LEAD_TIME // 6)).all())
+            self.assertEqual(X_sample_idx.shape, (ROLLOUT + 1, BATCH_SIZE * BATCH_CHUNK_SIZE))

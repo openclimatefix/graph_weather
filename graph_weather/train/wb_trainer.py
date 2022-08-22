@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 
 from graph_weather.models.forecast import GraphWeatherForecaster
 from graph_weather.models.losses import NormalizedMSELoss
+from graph_weather.data.wb_datamodule import WeatherBenchDataBatch
 
 
 class LitGraphForecaster(pl.LightningModule):
@@ -39,54 +40,53 @@ class LitGraphForecaster(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.gnn(x)
 
-    def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: WeatherBenchDataBatch, batch_idx: int) -> torch.Tensor:
         del batch_idx  # not used
-        assert len(batch) == (self.rollout + 1), "Rollout window doesn't match len(batch)!"
-        train_loss = torch.zeros(1, dtype=batch[0].dtype, device=self.device, requires_grad=False)
+        assert len(batch.X) == (self.rollout + 1), "Rollout window doesn't match len(batch)!"
+        train_loss = torch.zeros(1, dtype=batch.X[0].dtype, device=self.device, requires_grad=False)
         # start rollout
-        x = batch[0]
+        x = batch.X[0]
         for rstep in range(self.rollout):
             y_hat = self(x)  # prediction at rollout step rstep
-            y = batch[rstep + 1]  # target
+            y = batch.X[rstep + 1]  # target
             # y includes the auxiliary variables, so we must leave those out when computing the loss
             train_loss += self.loss(y_hat, y[..., : self.feature_dim])
             # autoregressive predictions - we re-init the "variable" part of x
             x[..., : self.feature_dim] = y_hat
-        self.log("train_wmse", train_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        self.log("train_wmse", train_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True, batch_size=batch.X[0].shape[0])
         return train_loss
 
-    def validation_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+    def validation_step(self, batch: WeatherBenchDataBatch, batch_idx: int) -> torch.Tensor:
         val_loss = self._shared_eval_step(batch, batch_idx)
-        self.log("val_wmse", val_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        self.log("val_wmse", val_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True, batch_size=batch.X[0].shape[0])
         return val_loss
 
-    def test_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+    def test_step(self, batch: WeatherBenchDataBatch, batch_idx: int) -> torch.Tensor:
         test_loss = self._shared_eval_step(batch, batch_idx)
-        self.log("test_wmse", test_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        self.log("test_wmse", test_loss, on_epoch=True, on_step=True, prog_bar=True, logger=True, batch_size=batch.X[0].shape[0])
         return test_loss
 
-    def predict_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+    def predict_step(self, batch: WeatherBenchDataBatch, batch_idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         del batch_idx  # not used
         preds: List[torch.Tensor] = []
         with torch.no_grad():
             # start rollout
-            x = batch[0]
+            x = batch.X[0]
             for _ in range(self.rollout):
                 y_hat = self(x)
                 x[..., : self.feature_dim] = y_hat
                 preds.append(y_hat)
-        return torch.stack(preds, dim=-1)  # stack along new last dimension
+        return torch.stack(preds, dim=-1), batch.idx  # stack along new last dimension, return sample indices too
 
-    def _shared_eval_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
+    def _shared_eval_step(self, batch: WeatherBenchDataBatch, batch_idx: int) -> torch.Tensor:
         del batch_idx
-        assert len(batch) == (self.rollout + 1), "Rollout window doesn't match len(batch)!"
-        loss = torch.zeros(1, dtype=batch[0].dtype, device=self.device, requires_grad=False)
+        loss = torch.zeros(1, dtype=batch.X[0].dtype, device=self.device, requires_grad=False)
         with torch.no_grad():
             # start rollout
-            x = batch[0]
+            x = batch.X[0]
             for rstep in range(self.rollout):
                 y_hat = self(x)
-                y = batch[rstep + 1]
+                y = batch.X[rstep + 1]
                 loss += self.loss(y_hat, y[..., : self.feature_dim])
                 x[..., : self.feature_dim] = y_hat
         return loss

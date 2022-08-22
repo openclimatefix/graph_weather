@@ -29,7 +29,6 @@ class WeatherBenchDataset(IterableDataset):
         lead_time: int = 6,
         rollout: int = 1,
         batch_chunk_size: int = 4,
-        return_sample_idx: bool = False,
     ) -> None:
         """
         Initialize (part of) the dataset state.
@@ -52,7 +51,6 @@ class WeatherBenchDataset(IterableDataset):
         self.lead_step = lead_time // 6
 
         self.rollout = rollout
-        self.return_sample_idx = return_sample_idx
 
         self.vars = var_names
         self.nvar = len(self.vars)
@@ -104,19 +102,19 @@ class WeatherBenchDataset(IterableDataset):
         shuffled_chunk_indices = self.rng.choice(chunk_index_range, size=self.n_chunks_per_worker, replace=False)
 
         for i in shuffled_chunk_indices:
-            batch = []
-            batch_idx = []
+            batch: List[da.Array] = []
+            sample_idx: List[int] = []
 
             for r in range(self.rollout + 1):
                 start, end = i * self.bcs + r * self.lead_step, (i + 1) * self.bcs + r * self.lead_step
                 X_ = self._transform(self.ds.isel(time=slice(start, end)))
-                # -> shape: (bs, nvar, nlev, lat, lon)
+                # -> shape: (bcs, nvar, nlev, lat, lon)
                 X = da.stack([X_[var] for var in self.vars], axis=1)
                 batch.append(X)
-                idx = np.arange(start, end, dtype=np.int32)
-                batch_idx.append(idx)
+                # "global" sample indices for the current chunk
+                sample_idx.append(list(range(start, end)))
 
-            yield tuple(batch), tuple(batch_idx)
+            yield tuple(batch) + (sample_idx,)
 
 
 def worker_init_func(worker_id: int) -> None:

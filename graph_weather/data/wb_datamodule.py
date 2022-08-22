@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple, Optional
+from typing import Callable, List, Tuple, Optional, Union
 import os
 import glob
 from functools import partial
@@ -21,16 +21,18 @@ import graph_weather.utils.constants as constants
 
 LOGGER = get_logger(__name__)
 
+BatchChunkType = Union[da.Array, List[List[int]]]
+
 
 class WeatherBenchDataBatch:
     """Custom batch type for WeatherBench data."""
 
-    def __init__(self, batch_data: List[Tuple[np.ndarray, np.ndarray]], const_data: np.ndarray) -> None:
+    def __init__(self, batch_data: Tuple[BatchChunkType, ...], const_data: np.ndarray) -> None:
         """Construct a batch object from the variable and constant data tensors."""
         zipped_batch = list(zip(*batch_data))
-        batch: List[torch.Tensor] = []
 
-        for X in zipped_batch:
+        batch: List[torch.Tensor] = []
+        for X in zipped_batch[:-1]:
             X = torch.as_tensor(
                 np.concatenate(
                     [
@@ -40,27 +42,31 @@ class WeatherBenchDataBatch:
                         rearrange(np.concatenate([const_data for x in X], axis=0), "b h w c -> b (h w) c"),
                     ],
                     # concat along last axis (var index)
+                    # final shape: (bs, (lat*lon), nvar * nlev + nconst) -> this is what the GNN expects
                     axis=-1,
                 )
             )
             batch.append(X)
 
-        self.X = tuple(batch)
+        self.X: Tuple[torch.Tensor] = tuple(batch)
+        self.idx: torch.Tensor = torch.as_tensor(rearrange(np.array(zipped_batch[-1], dtype=np.int32), "bs r bcs -> r (bs bcs)"))
 
     def pin_memory(self):
         """Custom memory pinning. See https://pytorch.org/docs/stable/data.html#memory-pinning."""
-        self.X = (t.pin_memory() for t in self.X)
+        self.X = tuple(t.pin_memory() for t in self.X)
+        self.idx = self.idx.pin_memory()
         return self
 
 
 def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
-    def custom_collator(batch_data: List[Tuple[np.ndarray, np.ndarray]]) -> Tuple[torch.Tensor, torch.Tensor]:
+    # TODO: add type annotation
+    def custom_collator(batch_data) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Custom collation function. It collates several batch chunks into a "full" batch.
         Args:
-            data: batch data, [(X1_chunk0, X2_chunk0, ...), (X1_chunk1, X2_chunk1, ...), ...]
+            data: batch-chunks of WeatherBench variables, [(X1_chunk0, X2_chunk0, ...), (X1_chunk1, X2_chunk1, ...), ...]
                 with Xi_chunk0.shape == (batch_chunk_size, nvars, nlevels, lat, lon)
-                and len(X1_chunk0, X2_chunk0, ...) == length of the rollout window
+                and len(X1_chunk0, X2_chunk0, ...) == length of the rollout window + 1
             const_data: constant (time-independent) data
         """
         return WeatherBenchDataBatch(batch_data=batch_data, const_data=const_data)
@@ -73,7 +79,7 @@ def get_weatherbench_dataset(fnames: List[str], config: YAMLConfig, scheduler_ad
     return xr.open_mfdataset(
         fnames,
         parallel=(client is not None),  # uses Dask if a client is present
-        chunks={"time": 10},
+        chunks={"time": constants._DS_TIME_CHUNK},
         lock=False,
     )
 
@@ -101,9 +107,8 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
             rollout=config["model:rollout"],
-            return_sample_idx=False,
         )
 
         self.ds_valid = WeatherBenchDataset(
@@ -116,15 +121,14 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
             rollout=config["model:rollout"],
-            return_sample_idx=False,
         )
 
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
-            batch_chunk_size=config["model:dataloader:train:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
         )
 
     def _calculate_summary_statistics(self, dask_cluster_address: Optional[str] = None) -> Tuple[xr.Dataset, xr.Dataset]:
@@ -190,6 +194,12 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             prefetch_factor=constants._DL_PREFETCH_FACTOR,
         )
 
+    def transfer_batch_to_device(self, batch: WeatherBenchDataBatch, device: torch.device, dataloader_idx: int = 0) -> None:
+        del dataloader_idx  # not used
+        batch.X = tuple(x.to(device) for x in batch.X)
+        batch.idx = batch.idx.to(device)
+        return batch
+
 
 class WeatherBenchTestDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
@@ -213,7 +223,18 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             lead_time=config["model:lead-time"],
             batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
             rollout=config["model:rollout"],
-            return_sample_idx=True,
+        )
+
+        self.ds_predict = WeatherBenchDataset(
+            fnames=[config["input:variables:prediction:filename"]],  # single file
+            var_names=config["input:variables:names"],
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            var_mean=var_means,
+            var_sd=var_sds,
+            plevs=config["input:variables:levels"],
+            lead_time=config["model:lead-time"],
+            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
+            rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
@@ -237,8 +258,14 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
         return var_means, var_sds
 
     def test_dataloader(self) -> DataLoader:
+        return self._get_dataloader(self.ds_test)
+
+    def predict_dataloader(self) -> DataLoader:
+        return self._get_dataloader(self.ds_predict)
+
+    def _get_dataloader(self, data: xr.Dataset) -> DataLoader:
         return DataLoader(
-            self.ds_test,
+            data,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
@@ -247,6 +274,8 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             prefetch_factor=constants._DL_PREFETCH_FACTOR,
         )
 
-    def predict_dataloader(self) -> DataLoader:
-        # TODO: we may want to change this later
-        return self.test_dataloader()
+    def transfer_batch_to_device(self, batch: WeatherBenchDataBatch, device: torch.device, dataloader_idx: int = 0) -> None:
+        del dataloader_idx  # not used
+        batch.X = tuple(x.to(device) for x in batch.X)
+        batch.idx = batch.idx.to(device)
+        return batch
