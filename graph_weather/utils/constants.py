@@ -9,7 +9,7 @@ _WB_LON = 360
 _DL_PREFETCH_FACTOR = 2
 
 # chunk size(s) for the xarray WB data
-_DS_TIME_CHUNK = 10
+_DS_TIME_CHUNK = 4
 
 # netCDF compression level
 _NC_COMPRESS_LEVEL = 9  # max

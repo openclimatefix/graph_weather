@@ -25,12 +25,13 @@ def init_dask_cluster(config: YAMLConfig) -> LocalCluster:
             # temporary directory
             "temporary_directory": config["model:dask:temp-dir"],
             # this high initial guess tells the scheduler to spread tasks
-            "distributed.scheduler.unknown-task-duration": "10s",
+            # "distributed.scheduler.unknown-task-duration": "10s",
             # worker memory management
             "distributed.worker.memory.spill": 0.9,
             "distributed.worker.memory.target": 0.85,
             "distributed.worker.memory.pause": 0.95,
             "distributed.worker.memory.terminate": False,
+            "distributed.worker.use-file-locking": False,
         }
     )
     return LocalCluster(

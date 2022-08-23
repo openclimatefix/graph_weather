@@ -76,6 +76,8 @@ def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
 
 def get_weatherbench_dataset(fnames: List[str], config: YAMLConfig, scheduler_address: Optional[str] = None) -> xr.Dataset:
     client: Optional[Client] = init_dask_client(scheduler_address, config) if scheduler_address is not None else None
+    if client is not None:
+        LOGGER.debug("Created Dask client %s attached to %s ...", client, scheduler_address)
     return xr.open_mfdataset(
         fnames,
         parallel=(client is not None),  # uses Dask if a client is present
