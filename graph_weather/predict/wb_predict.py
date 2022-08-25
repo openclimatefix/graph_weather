@@ -122,8 +122,10 @@ def predict(config: YAMLConfig, checkpoint_relpath: str) -> None:
                             should be relative to your config["output:basedir"]/config["output:checkpoints:ckpt-dir"]
     """
     # initialize dask cluster
-    LOGGER.debug("Initializing Dask cluster ...")
-    cluster: Optional[LocalCluster] = init_dask_cluster(config) if config["model:dask:enabled"] else None
+    cluster: Optional[LocalCluster] = None
+    if config["model:dask:enabled"]:
+        LOGGER.debug("Initializing Dask cluster ...")
+        cluster = init_dask_cluster(config)
     dask_scheduler_address = cluster.scheduler_address if cluster is not None else None
     LOGGER.debug("Dask scheduler address: %s", dask_scheduler_address)
 

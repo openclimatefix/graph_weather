@@ -51,7 +51,7 @@ model:
     # this will detect and trace back NaNs / Infs etc. but will slow down training
     anomaly-detection: False
   wandb:
-    enabled: True
+    enabled: False
   tensorboard:
     enabled: False
   dask:
@@ -65,7 +65,10 @@ model:
     dashboard-port: 8787
     scheduler-port: 8786
   dataloader:
-    num-workers: 6
+    num-workers:
+      training: 8
+      validation: 2
+      inference: 4
     training:
       batch-size: 1
       batch-chunk-size: 1
@@ -79,14 +82,14 @@ model:
   # runs only N training batches [N = integer | null]
   # if null then we run through all the batches
   limit-batches:
-    training: null
-    validation: null
+    training: 200
+    validation: 50
     test: 50
     predict: 50
 
   # specific GNN model settings
   lead-time: 6
-  max-epochs: 15
+  max-epochs: 2
   learn-rate: 1.e-3
   hidden-dim: 64
   num-blocks: 3

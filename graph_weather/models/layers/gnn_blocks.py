@@ -95,6 +95,7 @@ import torch
 from torch import nn
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
+from torch.utils.checkpoint import checkpoint
 
 
 class MLP(nn.Module):
@@ -150,7 +151,8 @@ class MLP(nn.Module):
         Returns:
             The transformed tensor
         """
-        return self.model(x)
+        out = checkpoint(self.model, x, use_reentrant=False)
+        return out
 
 
 #############################

@@ -74,7 +74,9 @@ def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
     return custom_collator
 
 
-def get_weatherbench_dataset(fnames: List[str], config: YAMLConfig, scheduler_address: Optional[str] = None) -> xr.Dataset:
+def get_weatherbench_dataset(
+    fnames: List[str], config: YAMLConfig, scheduler_address: Optional[str] = None, persist_data: bool = False
+) -> xr.Dataset:
     client: Optional[Client] = init_dask_client(scheduler_address, config) if scheduler_address is not None else None
     if client is not None:
         LOGGER.debug("Created Dask client %s attached to %s ...", client, scheduler_address)
@@ -90,7 +92,8 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
         super().__init__()
         self.batch_size = config["model:dataloader:training:batch-size"]
-        self.num_workers = config["model:dataloader:num-workers"]
+        self.num_workers_train = config["model:dataloader:num-workers:training"]
+        self.num_workers_val = config["model:dataloader:num-workers:validation"]
         self.config = config
 
         if config["input:variables:training:summary-stats:precomputed"]:
@@ -166,14 +169,14 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
         )
         return var_means, var_sds
 
-    def train_dataloader(self) -> DataLoader:
+    def _get_dataloader(self, data: xr.Dataset, num_workers: int) -> DataLoader:
         return DataLoader(
-            self.ds_train,
+            data,
             # we're putting together one full batch from this many batch-chunks
             # this means the "real" batch size == config["model:dataloader:batch-size"] * config["model:dataloader:batch-chunk-size"]
             batch_size=self.batch_size,
             # number of worker processes
-            num_workers=self.num_workers,
+            num_workers=num_workers,
             # use of pinned memory can speed up CPU-to-GPU data transfers
             # see https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-pinning
             pin_memory=True,
@@ -185,16 +188,11 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             prefetch_factor=constants._DL_PREFETCH_FACTOR,
         )
 
+    def train_dataloader(self) -> DataLoader:
+        return self._get_dataloader(self.ds_train, self.num_workers_train)
+
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.ds_valid,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            collate_fn=_custom_collator_wrapper(self.const_data.constants),
-            worker_init_fn=worker_init_func,
-            prefetch_factor=constants._DL_PREFETCH_FACTOR,
-        )
+        return self._get_dataloader(self.ds_valid, self.num_workers_val)
 
     def transfer_batch_to_device(self, batch: WeatherBenchDataBatch, device: torch.device, dataloader_idx: int = 0) -> None:
         del dataloader_idx  # not used
@@ -207,7 +205,7 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
         super().__init__()
         self.batch_size = config["model:dataloader:inference:batch-size"]
-        self.num_workers = config["model:dataloader:num-workers"]
+        self.num_workers = config["model:dataloader:num-workers:inference"]
         self.config = config
 
         # summary stats must've been precomputed!

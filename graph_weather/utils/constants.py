@@ -6,7 +6,7 @@ _WB_LAT = 181
 _WB_LON = 360
 
 # ... other stuff
-_DL_PREFETCH_FACTOR = 2
+_DL_PREFETCH_FACTOR = 4
 
 # chunk size(s) for the xarray WB data
 _DS_TIME_CHUNK = 4
