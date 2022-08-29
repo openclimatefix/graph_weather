@@ -1,15 +1,20 @@
 input:
+  format: zarr  # or "netcdf4"
   variables:
     training:
-      basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/training
-      filename-template: "pl_*.nc"
+      # basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/training
+      # filename-template: "pl_*.nc"
+      basedir: /ec/res4/scratch/syma/data/WeatherBench/zarr/training
+      filename-template: "pl_*.zarr"
       summary-stats:
         precomputed: True
         means: /ec/res4/hpcperm/syma/WeatherBench/netcdf/means-1979-2015.nc
         std-devs: /ec/res4/hpcperm/syma/WeatherBench/netcdf/sds-1979-2015.nc
     validation:
-      basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/validation
-      filename-template: "pl_*.nc"
+      # basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/validation
+      # filename-template: "pl_*.nc"
+      basedir: /ec/res4/scratch/syma/data/WeatherBench/zarr/validation
+      filename-template: "pl_*.zarr"
     test:
       basedir: /ec/res4/hpcperm/syma/WeatherBench/netcdf/test
       filename-template: "pl_*.nc"
@@ -59,14 +64,13 @@ model:
     temp-dir: /ec/res4/scratch/syma/GNN/WeatherBench/dask-temp-dir
     log-dir: /ec/res4/scratch/syma/GNN/WeatherBench/dask-log-dir
     trim-worker-memory: True
-    num-workers: 16
-    num-threads-per-worker: 2
-    persist-data: False
+    num-workers: 8
+    num-threads-per-worker: 1
     dashboard-port: 8787
     scheduler-port: 8786
   dataloader:
     num-workers:
-      training: 8
+      training: 4
       validation: 2
       inference: 4
     training:

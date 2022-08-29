@@ -4,10 +4,13 @@ from typing import List, Optional, Callable
 import numpy as np
 import xarray as xr
 
-import torch
 import dask.array as da
+from dask.distributed import Client, LocalCluster
+import torch
 from torch.utils.data import IterableDataset
+
 from graph_weather.utils.logger import get_logger
+from graph_weather.utils.dask_utils import init_dask_config
 import graph_weather.utils.constants as constants
 
 LOGGER = get_logger(__name__)
@@ -69,12 +72,32 @@ class WeatherBenchDataset(IterableDataset):
         self.effective_ds_len = 0
         self.rng = None
 
-    def per_worker_init(self, n_workers: int = 1) -> None:
+        # dask
+        self.cluster: Optional[LocalCluster] = None
+        self.client: Optional[Client] = None
+
+    def per_worker_init(
+        self, n_workers: int, dask_temp_dir: str, num_dask_workers: int = 8, num_dask_threads_per_worker: int = 1
+    ) -> None:
         """Called by worker_init_func on each copy of WeatherBenchDataset after the worker process has been spawned."""
-        self.ds: xr.Dataset = self.read_wb_data(self.fnames)
-        self.ds = self.ds[self.vars]
-        if self.plevs is not None:
-            self.ds = self.ds.sel(level=self.plevs)
+        if self.ds is None:
+            # init the dataset variable. this should happen once per worker and per dataset
+            worker_info = torch.utils.data.get_worker_info()
+            init_dask_config(dask_temp_dir)
+            LOGGER.debug("Pytorch worker %d creating Dask cluster, client and opening WB data files ...", worker_info.id)
+            # must use a multithreaded cluster otherwise we run into errors with daemon processes
+            # see https://github.com/dask/distributed/issues/2142
+            self.cluster = LocalCluster(
+                name=f"cluster_for_dataloader_worker_{worker_info.id:02d}",
+                n_workers=num_dask_workers,
+                threads_per_worker=num_dask_threads_per_worker,
+                memory_limit="4GB",  # this is per worker
+                processes=False,
+            )
+            self.client = Client(self.cluster)
+            self.ds = self.read_wb_data(self.fnames, self.client)[self.vars]
+            if self.plevs is not None:
+                self.ds = self.ds.sel(level=self.plevs)
 
         self.ds_len = len(self.ds.time) - self.lead_step * self.rollout
         self.effective_ds_len = int(np.floor(self.ds_len / self.bcs))
@@ -116,13 +139,28 @@ class WeatherBenchDataset(IterableDataset):
 
             yield tuple(batch) + (sample_idx,)
 
+    def __repr__(self) -> str:
+        return f"""
+            {super().__repr__()}
+            Filenames: {str(self.fnames)}
+            Varnames: {str(self.vars)}
+            Plevs: {str(self.plevs)}
+            Lead time: {self.lead_time}
+        """
 
-def worker_init_func(worker_id: int) -> None:
+
+def worker_init_func(worker_id: int, dask_temp_dir: str, num_dask_workers: int, num_dask_threads_per_worker: int) -> None:
     """Configures each dataset worker process by calling WeatherBenchDataset.per_worker_init()."""
+    del worker_id  # not used
     worker_info = torch.utils.data.get_worker_info()  # information specific to each worker process
     if worker_info is None:
         LOGGER.error("worker_info is None! Set num_workers > 0 in your dataloader!")
         raise RuntimeError
     else:
         dataset_obj = worker_info.dataset  # the copy of the dataset held by this worker process.
-        dataset_obj.per_worker_init(n_workers=worker_info.num_workers)
+        dataset_obj.per_worker_init(
+            n_workers=worker_info.num_workers,
+            dask_temp_dir=dask_temp_dir,
+            num_dask_workers=num_dask_workers,
+            num_dask_threads_per_worker=num_dask_threads_per_worker,
+        )

@@ -1,11 +1,11 @@
-from typing import Callable, List, Tuple, Optional, Union
+from typing import Callable, List, Tuple, Union
 import os
 import glob
 from functools import partial
 
 import xarray as xr
 import dask.array as da
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 from einops import rearrange
 import numpy as np
 import torch
@@ -15,7 +15,6 @@ import pytorch_lightning as pl
 from graph_weather.data.wb_dataset import WeatherBenchDataset, worker_init_func
 from graph_weather.data.wb_constants import WeatherBenchConstantFields
 from graph_weather.utils.config import YAMLConfig
-from graph_weather.utils.dask_utils import init_dask_client
 from graph_weather.utils.logger import get_logger
 import graph_weather.utils.constants as constants
 
@@ -75,21 +74,23 @@ def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
 
 
 def get_weatherbench_dataset(
-    fnames: List[str], config: YAMLConfig, scheduler_address: Optional[str] = None, persist_data: bool = False
+    fnames: List[str],
+    client: Client,
+    config: YAMLConfig,
 ) -> xr.Dataset:
-    client: Optional[Client] = init_dask_client(scheduler_address, config) if scheduler_address is not None else None
-    if client is not None:
-        LOGGER.debug("Created Dask client %s attached to %s ...", client, scheduler_address)
+    LOGGER.debug("Created Dask client %s attached to %s ...", client, client.scheduler_info)
+    kwargs = dict(consolidated=True) if config["input:format"] == "zarr" else {}
     return xr.open_mfdataset(
         fnames,
         parallel=(client is not None),  # uses Dask if a client is present
         chunks={"time": constants._DS_TIME_CHUNK},
-        lock=False,
+        engine=config["input:format"],
+        **kwargs,
     )
 
 
 class WeatherBenchTrainingDataModule(pl.LightningDataModule):
-    def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
+    def __init__(self, config: YAMLConfig) -> None:
         super().__init__()
         self.batch_size = config["model:dataloader:training:batch-size"]
         self.num_workers_train = config["model:dataloader:num-workers:training"]
@@ -100,14 +101,14 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_means, var_sds = self._load_summary_statistics()
         else:
             # use Dask to compute summary statistics for the training data on the fly (can take some time)
-            var_means, var_sds = self._calculate_summary_statistics(scheduler_address)
+            var_means, var_sds = self._calculate_summary_statistics()
 
         self.ds_train = WeatherBenchDataset(
             fnames=glob.glob(
                 os.path.join(config["input:variables:training:basedir"], config["input:variables:training:filename-template"])
             ),
             var_names=config["input:variables:names"],
-            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config),
             var_mean=var_means,
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
@@ -121,7 +122,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
                 os.path.join(config["input:variables:validation:basedir"], config["input:variables:validation:filename-template"])
             ),
             var_names=config["input:variables:names"],
-            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config),
             var_mean=var_means,
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
@@ -136,22 +137,24 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
         )
 
-    def _calculate_summary_statistics(self, dask_cluster_address: Optional[str] = None) -> Tuple[xr.Dataset, xr.Dataset]:
-        if dask_cluster_address is not None:
-            _ = Client(dask_cluster_address)
-
-        with xr.open_mfdataset(
-            glob.glob(
-                os.path.join(
-                    self.config["input:variables:training:basedir"], self.config["input:variables:training:filename-template"]
-                )
-            ),
-            chunks={"time": 10},
-            parallel=True,  # uses Dask if a client is present
-        ) as ds_wb:
-            ds_wb = ds_wb[self.config["input:variables:names"]]
-            var_means = ds_wb.mean().compute()
-            var_sds = ds_wb.std("time").mean(("level", "latitude", "longitude")).compute()
+    def _calculate_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:
+        with LocalCluster(
+            n_workers=self.config["model:dask:num-workers"],
+            threads_per_worker=self.config["model:dask:num-threads-per-worker"],
+            processes=True,
+        ) as cluster, Client(cluster) as client:
+            with xr.open_mfdataset(
+                glob.glob(
+                    os.path.join(
+                        self.config["input:variables:training:basedir"], self.config["input:variables:training:filename-template"]
+                    )
+                ),
+                chunks={"time": 10},
+                parallel=True,  # uses Dask if a client is present
+            ) as ds_wb:
+                ds_wb = ds_wb[self.config["input:variables:names"]]
+                var_means = ds_wb.mean().compute()
+                var_sds = ds_wb.std("time").mean(("level", "latitude", "longitude")).compute()
 
         return var_means, var_sds
 
@@ -183,9 +186,15 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             # custom collator (see above)
             collate_fn=_custom_collator_wrapper(self.const_data.constants),
             # worker initializer
-            worker_init_fn=worker_init_func,
+            worker_init_fn=partial(
+                worker_init_func,
+                dask_temp_dir=self.config["model:dask:temp-dir"],
+                num_dask_workers=self.config["model:dask:num-workers"],
+                num_dask_threads_per_worker=self.config["model:dask:num-threads-per-worker"],
+            ),
             # prefetch batches (default prefetch_factor == 2)
             prefetch_factor=constants._DL_PREFETCH_FACTOR,
+            persistent_workers=True,
         )
 
     def train_dataloader(self) -> DataLoader:
@@ -202,7 +211,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
 
 
 class WeatherBenchTestDataModule(pl.LightningDataModule):
-    def __init__(self, config: YAMLConfig, scheduler_address: Optional[str] = None) -> None:
+    def __init__(self, config: YAMLConfig) -> None:
         super().__init__()
         self.batch_size = config["model:dataloader:inference:batch-size"]
         self.num_workers = config["model:dataloader:num-workers:inference"]
@@ -216,7 +225,7 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
                 os.path.join(config["input:variables:test:basedir"], config["input:variables:test:filename-template"])
             ),
             var_names=config["input:variables:names"],
-            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config),
             var_mean=var_means,
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
@@ -228,7 +237,7 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
         self.ds_predict = WeatherBenchDataset(
             fnames=[config["input:variables:prediction:filename"]],  # single file
             var_names=config["input:variables:names"],
-            read_wb_data_func=partial(get_weatherbench_dataset, config=config, scheduler_address=scheduler_address),
+            read_wb_data_func=partial(get_weatherbench_dataset, config=config),
             var_mean=var_means,
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
@@ -270,8 +279,14 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             collate_fn=_custom_collator_wrapper(self.const_data.constants),
-            worker_init_fn=worker_init_func,
+            worker_init_fn=partial(
+                worker_init_func,
+                dask_temp_dir=self.config["model:dask:temp-dir"],
+                num_dask_workers=self.config["model:dask:num-workers"],
+                num_dask_threads_per_worker=self.config["model:dask:num-threads-per-worker"],
+            ),
             prefetch_factor=constants._DL_PREFETCH_FACTOR,
+            persistent_workers=True,
         )
 
     def transfer_batch_to_device(self, batch: WeatherBenchDataBatch, device: torch.device, dataloader_idx: int = 0) -> None:

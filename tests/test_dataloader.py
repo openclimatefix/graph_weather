@@ -1,13 +1,14 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 import unittest
 import logging
-import itertools
+from functools import partial
 
 import numpy as np
 import xarray as xr
 import dask.array as da
 from einops import rearrange
 
+from dask.distributed import Client
 import torch
 from torch.utils.data import DataLoader
 
@@ -109,8 +110,8 @@ def test_batch_collator(batch_data: List[Tuple[BatchChunkType, ...]]) -> Tuple[t
     return X, X_idx
 
 
-def read_dummy_data(fnames: List[str]) -> xr.Dataset:
-    del fnames  # not used
+def read_dummy_data(fnames: List[str], client: Optional[Client] = None) -> xr.Dataset:
+    del fnames, client  # not used
     return DATA
 
 
@@ -151,7 +152,11 @@ class DataloaderTests(unittest.TestCase):
             # custom collator (see above)
             collate_fn=test_batch_collator,
             # worker initializer
-            worker_init_fn=worker_init_func,
+            worker_init_fn=partial(
+                worker_init_func,
+                num_dask_workers=1,
+                num_dask_threads_per_worker=1,
+            ),
             # prefetch batches (default prefetch_factor == 2)
             prefetch_factor=2,
             # drop last incomplete batch (makes it easier to test the resulting tensor shapes)

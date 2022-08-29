@@ -121,16 +121,8 @@ def predict(config: YAMLConfig, checkpoint_relpath: str) -> None:
         checkpoint_relpath: path to the model checkpoint that you want to restore
                             should be relative to your config["output:basedir"]/config["output:checkpoints:ckpt-dir"]
     """
-    # initialize dask cluster
-    cluster: Optional[LocalCluster] = None
-    if config["model:dask:enabled"]:
-        LOGGER.debug("Initializing Dask cluster ...")
-        cluster = init_dask_cluster(config)
-    dask_scheduler_address = cluster.scheduler_address if cluster is not None else None
-    LOGGER.debug("Dask scheduler address: %s", dask_scheduler_address)
-
     # create data module (data loaders and data sets)
-    dmod = WeatherBenchTestDataModule(config, scheduler_address=dask_scheduler_address)
+    dmod = WeatherBenchTestDataModule(config)
 
     # number of variables (features)
     num_features = dmod.ds_test.nlev * dmod.ds_test.nvar
