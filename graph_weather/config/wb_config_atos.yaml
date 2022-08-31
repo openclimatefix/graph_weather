@@ -73,12 +73,12 @@ model:
       training: 4
       validation: 2
       inference: 4
-    training:
-      batch-size: 1
-      batch-chunk-size: 1
-    inference:
-      batch-size: 1
-      batch-chunk-size: 8
+    batch-size:
+      training: 1
+      inference: 2
+    batch-chunk-size:
+      training: 1
+      inference: 4
 
   # miscellaneous
   precision: 16

@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, Optional
 import os
 import glob
 from functools import partial
@@ -75,24 +75,27 @@ def _custom_collator_wrapper(const_data: np.ndarray) -> Callable:
 
 def get_weatherbench_dataset(
     fnames: List[str],
+    varnames: List[str],
+    plevs: Optional[List[int]],
     client: Client,
     config: YAMLConfig,
 ) -> xr.Dataset:
     LOGGER.debug("Created Dask client %s attached to %s ...", client, client.scheduler_info)
     kwargs = dict(consolidated=True) if config["input:format"] == "zarr" else {}
+    sel_plevs = plevs if plevs is not None else slice(None)
     return xr.open_mfdataset(
         fnames,
         parallel=(client is not None),  # uses Dask if a client is present
         chunks={"time": constants._DS_TIME_CHUNK},
         engine=config["input:format"],
         **kwargs,
-    )
+    )[varnames].sel(level=sel_plevs)
 
 
 class WeatherBenchTrainingDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig) -> None:
         super().__init__()
-        self.batch_size = config["model:dataloader:training:batch-size"]
+        self.batch_size = config["model:dataloader:batch-size:training"]
         self.num_workers_train = config["model:dataloader:num-workers:training"]
         self.num_workers_val = config["model:dataloader:num-workers:validation"]
         self.config = config
@@ -113,7 +116,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:training"],
             rollout=config["model:rollout"],
         )
 
@@ -127,14 +130,14 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:training"],
             rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
-            batch_chunk_size=config["model:dataloader:training:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:training"],
         )
 
     def _calculate_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:
@@ -213,7 +216,7 @@ class WeatherBenchTrainingDataModule(pl.LightningDataModule):
 class WeatherBenchTestDataModule(pl.LightningDataModule):
     def __init__(self, config: YAMLConfig) -> None:
         super().__init__()
-        self.batch_size = config["model:dataloader:inference:batch-size"]
+        self.batch_size = config["model:dataloader:batch-size:inference"]
         self.num_workers = config["model:dataloader:num-workers:inference"]
         self.config = config
 
@@ -230,7 +233,7 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:inference"],
             rollout=config["model:rollout"],
         )
 
@@ -242,14 +245,14 @@ class WeatherBenchTestDataModule(pl.LightningDataModule):
             var_sd=var_sds,
             plevs=config["input:variables:levels"],
             lead_time=config["model:lead-time"],
-            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:inference"],
             rollout=config["model:rollout"],
         )
 
         self.const_data = WeatherBenchConstantFields(
             const_fname=config["input:constants:filename"],
             const_names=config["input:constants:names"],
-            batch_chunk_size=config["model:dataloader:inference:batch-chunk-size"],
+            batch_chunk_size=config["model:dataloader:batch-chunk-size:inference"],
         )
 
     def _load_summary_statistics(self) -> Tuple[xr.Dataset, xr.Dataset]:

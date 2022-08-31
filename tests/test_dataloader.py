@@ -141,25 +141,16 @@ class DataloaderTests(unittest.TestCase):
 
         dl_test = DataLoader(
             ds_test,
-            # we're putting together one full batch from this many batch-chunks
-            # this means the "real" batch size == config["model:dataloader:batch-size"] * config["model:dataloader:batch-chunk-size"]
             batch_size=BATCH_SIZE,
-            # number of worker processes
             num_workers=NUM_WORKERS,
-            # use of pinned memory can speed up CPU-to-GPU data transfers
-            # see https://pytorch.org/docs/stable/notes/cuda.html#cuda-memory-pinning
             pin_memory=True,
-            # custom collator (see above)
             collate_fn=test_batch_collator,
-            # worker initializer
             worker_init_fn=partial(
                 worker_init_func,
                 num_dask_workers=1,
                 num_dask_threads_per_worker=1,
             ),
-            # prefetch batches (default prefetch_factor == 2)
             prefetch_factor=2,
-            # drop last incomplete batch (makes it easier to test the resulting tensor shapes)
             drop_last=True,
         )
 

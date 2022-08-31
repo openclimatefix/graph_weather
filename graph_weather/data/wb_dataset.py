@@ -43,8 +43,6 @@ class WeatherBenchDataset(IterableDataset):
             plevs: pressure levels (if None then we take all plevs present in the input dataset)
             lead_time: lead time (multiple of 6 hours!)
             batch_chunk_size: batch chunk size
-            return_sample_idx: return the sample index as part of the batch.
-                                use this index to match the batch contents against "ground-truth" or reference data!
         """
         self.fnames = fnames
         self.ds: Optional[xr.Dataset] = None
@@ -91,13 +89,11 @@ class WeatherBenchDataset(IterableDataset):
                 name=f"cluster_for_dataloader_worker_{worker_info.id:02d}",
                 n_workers=num_dask_workers,
                 threads_per_worker=num_dask_threads_per_worker,
-                memory_limit="4GB",  # this is per worker
+                memory_limit="4GB",  # this is per worker; TODO: get rid of this hardcoded value
                 processes=False,
             )
             self.client = Client(self.cluster)
-            self.ds = self.read_wb_data(self.fnames, self.client)[self.vars]
-            if self.plevs is not None:
-                self.ds = self.ds.sel(level=self.plevs)
+            self.ds = self.read_wb_data(self.fnames, self.vars, self.plevs, self.client)
 
         self.ds_len = len(self.ds.time) - self.lead_step * self.rollout
         self.effective_ds_len = int(np.floor(self.ds_len / self.bcs))
