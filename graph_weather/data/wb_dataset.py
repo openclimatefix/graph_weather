@@ -116,10 +116,9 @@ class WeatherBenchDataset(IterableDataset):
         if worker_info is None:
             LOGGER.error("worker_info is None! Set num_workers > 0 in your dataloader!")
             raise RuntimeError
-        else:
-            worker_id = worker_info.id
-            low = worker_id * self.n_chunks_per_worker
-            high = min((worker_id + 1) * self.n_chunks_per_worker, self.ds_len)
+        worker_id = worker_info.id
+        low = worker_id * self.n_chunks_per_worker
+        high = min((worker_id + 1) * self.n_chunks_per_worker, self.ds_len)
 
         chunk_index_range = np.arange(low, high, dtype=np.uint32)
         shuffled_chunk_indices = self.rng.choice(chunk_index_range, size=self.n_chunks_per_worker, replace=False)
@@ -156,11 +155,10 @@ def worker_init_func(worker_id: int, dask_temp_dir: str, num_dask_workers: int, 
     if worker_info is None:
         LOGGER.error("worker_info is None! Set num_workers > 0 in your dataloader!")
         raise RuntimeError
-    else:
-        dataset_obj = worker_info.dataset  # the copy of the dataset held by this worker process.
-        dataset_obj.per_worker_init(
-            n_workers=worker_info.num_workers,
-            dask_temp_dir=dask_temp_dir,
-            num_dask_workers=num_dask_workers,
-            num_dask_threads_per_worker=num_dask_threads_per_worker,
-        )
+    dataset_obj = worker_info.dataset  # the copy of the dataset held by this worker process.
+    dataset_obj.per_worker_init(
+        n_workers=worker_info.num_workers,
+        dask_temp_dir=dask_temp_dir,
+        num_dask_workers=num_dask_workers,
+        num_dask_threads_per_worker=num_dask_threads_per_worker,
+    )
