@@ -103,5 +103,5 @@ class GraphWeatherAssimilator(nn.Module, PyTorchModelHubMixin):
         """
         x, edge_idx, edge_attr = self.encoder(features, obs_lat_lon_heights)
         x = self.processor(x, edge_idx, edge_attr)
-        x = self.decoder(x, features.shape[0])
+        x = self.decoder(x, features)
         return x
