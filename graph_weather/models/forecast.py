@@ -53,6 +53,7 @@ class GraphWeatherForecaster(nn.Module, PyTorchModelHubMixin):
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
         """
         super().__init__()
+        self.feature_dim = feature_dim
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
@@ -102,5 +103,5 @@ class GraphWeatherForecaster(nn.Module, PyTorchModelHubMixin):
         """
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
-        x = self.decoder(x, features)
+        x = self.decoder(x, features[..., : self.feature_dim])
         return x
