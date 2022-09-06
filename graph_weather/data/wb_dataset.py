@@ -89,7 +89,7 @@ class WeatherBenchDataset(IterableDataset):
                 name=f"cluster_for_dataloader_worker_{worker_info.id:02d}",
                 n_workers=num_dask_workers,
                 threads_per_worker=num_dask_threads_per_worker,
-                memory_limit="4GB",  # this is per worker; TODO: get rid of this hardcoded value
+                memory_limit="16GB",  # this is per worker; TODO: get rid of this hardcoded value
                 processes=False,
             )
             self.client = Client(self.cluster)
