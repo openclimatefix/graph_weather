@@ -9,7 +9,7 @@ class WeatherBenchConstantFields:
         self,
         const_fname: str,
         const_names: Optional[List[str]] = None,
-        batch_chunk_size: int = 8,
+        batch_chunk_size: int = 4,
     ) -> None:
         """
         Args:

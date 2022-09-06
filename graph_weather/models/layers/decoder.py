@@ -82,6 +82,6 @@ class Decoder(AssimilatorDecoder):
         Returns:
             Updated features for model
         """
-        out = super().forward(processor_features, start_features)
+        out = super().forward(processor_features, start_features.shape[0])
         out = out + start_features  # residual connection
         return out

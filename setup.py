@@ -27,6 +27,7 @@ setup(
     entry_points={
         "console_scripts": [
             "gnn-wb-train=graph_weather.train.wb_train:main",
+            "gnn-wb-predict=graph_weather.predict.wb_predict:main",
         ]
     },
 )

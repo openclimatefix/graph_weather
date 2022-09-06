@@ -30,10 +30,11 @@ input:
 #  OUTPUT BLOCK
 ###################
 output:
-  basedir: /data2/malexe/scratch/GNN/WeatherBench/checkpoints
+  basedir: /data2/malexe/scratch/GNN/WeatherBench
   logging:
     log-dir: /data2/malexe/scratch/GNN/WeatherBench/logs
     log-interval: 25
+  ckpt-dir: checkpoints
   model:
     save-top-k: 3
     checkpoint-filename: "gnn-wb-weights-{epoch:02d}-{val_wmse:.3f}"
@@ -61,7 +62,11 @@ model:
   # miscellaneous
   precision: 16
   fast-dev-run: False
-  limit-train-batches: 100
+  limit-batches:
+    train: 100
+    valid: 100
+    test: 100
+    predict: 100
   # specific GNN model settings
   lead-time: 6
   max-epochs: 1

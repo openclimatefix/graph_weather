@@ -27,6 +27,9 @@ import torch
 from torch_geometric.data import Data
 
 from graph_weather.models.layers.gnn_blocks import MLP, GraphProcessor
+from graph_weather.utils.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 class Encoder(torch.nn.Module):
@@ -97,12 +100,14 @@ class Encoder(torch.nn.Module):
 
         # Use homogenous graph to make it easier
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_distances)
-
         self.latent_graph = self.create_latent_graph()
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
-        self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
         # Output graph
+
+        self.register_buffer("h3_nodes", h3_nodes, persistent=False)
+        self.graphs_on_device = False
 
         self.node_encoder = MLP(
             input_dim,
@@ -147,14 +152,16 @@ class Encoder(torch.nn.Module):
             Torch tensors of node features, latent graph edge index, and latent edge attributes
         """
         batch_size = features.shape[0]
-        self.h3_nodes = self.h3_nodes.to(features.device)
+        # self.h3_nodes = self.h3_nodes.to(features.device)
         self.graph = self.graph.to(features.device)
         self.latent_graph = self.latent_graph.to(features.device)
         features = torch.cat([features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1)
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
-        out = self.node_encoder(features)  # Encode to 256 from 78
+
+        out = self.node_encoder(features)
         edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
@@ -162,7 +169,9 @@ class Encoder(torch.nn.Module):
             [self.graph.edge_index + i * torch.max(self.graph.edge_index) + i for i in range(batch_size)],
             dim=1,
         )
+
         out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
+
         # Remove the extra nodes (lat/lon) from the output
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
         _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=1)
