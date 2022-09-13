@@ -32,6 +32,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "paapu88",
+      "name": "Markus Kaukonen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6195764?v=4",
+      "profile": "http://iki.fi/markus.kaukonen",
+      "contributions": [
+        "question"
+      ]
     }
   ],
   "contributorsPerLine": 7,
