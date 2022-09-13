@@ -1,0 +1,25 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "jacobbieker",
+      "name": "Jacob Bieker",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7170359?v=4",
+      "profile": "https://www.jacobbieker.com",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "graph_weather",
+  "projectOwner": "openclimatefix",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
