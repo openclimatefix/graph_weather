@@ -41,6 +41,15 @@
       "contributions": [
         "question"
       ]
+    },
+    {
+      "login": "MoHawastaken",
+      "name": "MoHawastaken",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55447473?v=4",
+      "profile": "https://github.com/MoHawastaken",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
