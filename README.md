@@ -1,6 +1,6 @@
 # Graph Weather
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 Implementation of the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, an implementation
 of a modified model that assimilates raw or processed observations into analysis files.
@@ -89,11 +89,12 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tbody>
     <tr>
-      <td align="center"><a href="https://www.jacobbieker.com"><img src="https://avatars.githubusercontent.com/u/7170359?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jacob Bieker</b></sub></a><br /><a href="https://github.com/openclimatefix/graph_weather/commits?author=jacobbieker" title="Code">💻</a></td>
-      <td align="center"><a href="http://jack-kelly.com"><img src="https://avatars.githubusercontent.com/u/460756?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jack Kelly</b></sub></a><br /><a href="#ideas-JackKelly" title="Ideas, Planning, & Feedback">🤔</a></td>
-      <td align="center"><a href="https://github.com/byphilipp"><img src="https://avatars.githubusercontent.com/u/59995258?v=4?s=100" width="100px;" alt=""/><br /><sub><b>byphilipp</b></sub></a><br /><a href="#ideas-byphilipp" title="Ideas, Planning, & Feedback">🤔</a></td>
-      <td align="center"><a href="http://iki.fi/markus.kaukonen"><img src="https://avatars.githubusercontent.com/u/6195764?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Markus Kaukonen</b></sub></a><br /><a href="#question-paapu88" title="Answering Questions">💬</a></td>
-      <td align="center"><a href="https://github.com/MoHawastaken"><img src="https://avatars.githubusercontent.com/u/55447473?v=4?s=100" width="100px;" alt=""/><br /><sub><b>MoHawastaken</b></sub></a><br /><a href="https://github.com/openclimatefix/graph_weather/issues?q=author%3AMoHawastaken" title="Bug reports">🐛</a></td>
+      <td align="center"><a href="https://www.jacobbieker.com"><img src="https://avatars.githubusercontent.com/u/7170359?v=4?s=100" width="100px;" alt="Jacob Bieker"/><br /><sub><b>Jacob Bieker</b></sub></a><br /><a href="https://github.com/openclimatefix/graph_weather/commits?author=jacobbieker" title="Code">💻</a></td>
+      <td align="center"><a href="http://jack-kelly.com"><img src="https://avatars.githubusercontent.com/u/460756?v=4?s=100" width="100px;" alt="Jack Kelly"/><br /><sub><b>Jack Kelly</b></sub></a><br /><a href="#ideas-JackKelly" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center"><a href="https://github.com/byphilipp"><img src="https://avatars.githubusercontent.com/u/59995258?v=4?s=100" width="100px;" alt="byphilipp"/><br /><sub><b>byphilipp</b></sub></a><br /><a href="#ideas-byphilipp" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center"><a href="http://iki.fi/markus.kaukonen"><img src="https://avatars.githubusercontent.com/u/6195764?v=4?s=100" width="100px;" alt="Markus Kaukonen"/><br /><sub><b>Markus Kaukonen</b></sub></a><br /><a href="#question-paapu88" title="Answering Questions">💬</a></td>
+      <td align="center"><a href="https://github.com/MoHawastaken"><img src="https://avatars.githubusercontent.com/u/55447473?v=4?s=100" width="100px;" alt="MoHawastaken"/><br /><sub><b>MoHawastaken</b></sub></a><br /><a href="https://github.com/openclimatefix/graph_weather/issues?q=author%3AMoHawastaken" title="Bug reports">🐛</a></td>
+      <td align="center"><a href="http://www.ecmwf.int"><img src="https://avatars.githubusercontent.com/u/47196359?v=4?s=100" width="100px;" alt="Mihai"/><br /><sub><b>Mihai</b></sub></a><br /><a href="#question-mishooax" title="Answering Questions">💬</a></td>
     </tr>
   </tbody>
 </table>
