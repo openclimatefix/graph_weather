@@ -23,11 +23,11 @@ dependencies:
   - xarray
   - zarr
   - pip:
-    - datasets
-    - einops
-    - fsspec
-    - h3
-    - torch-geometric-temporal
-    - huggingface-hub
-    - pysolar
-    - pytorch-lightning
+      - datasets
+      - einops
+      - fsspec
+      - h3
+      - torch-geometric-temporal
+      - huggingface-hub
+      - pysolar
+      - pytorch-lightning

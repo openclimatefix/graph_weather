@@ -116,7 +116,7 @@ def test_forecaster():
             lat_lons.append((lat, lon))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
-    features = torch.randn((1, len(lat_lons), 78+24))
+    features = torch.randn((1, len(lat_lons), 78 + 24))
 
     out = model(features)
     assert not torch.isnan(out).any()
@@ -143,6 +143,7 @@ def test_assimilator_model():
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
 
+
 def test_forecaster_and_loss():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -151,7 +152,7 @@ def test_forecaster_and_loss():
     criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
-    features = torch.randn((2, len(lat_lons), 78+24))
+    features = torch.randn((2, len(lat_lons), 78 + 24))
 
     out = model(features)
     loss = criterion(out, torch.rand(out.shape))
