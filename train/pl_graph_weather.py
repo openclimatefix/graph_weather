@@ -22,18 +22,52 @@ def worker_init_fn(worker_id):
 
 
 def get_mean_stds():
-    names = ['CLMR', 'GRLE', 'VVEL', 'VGRD', 'UGRD', 'O3MR', 'CAPE', 'TMP', 'PLPL', 'DZDT', 'CIN', 'HGT', 'RH', 'ICMR',
-             'SNMR', 'SPFH', 'RWMR', 'TCDC', 'ABSV']
+    names = [
+        "CLMR",
+        "GRLE",
+        "VVEL",
+        "VGRD",
+        "UGRD",
+        "O3MR",
+        "CAPE",
+        "TMP",
+        "PLPL",
+        "DZDT",
+        "CIN",
+        "HGT",
+        "RH",
+        "ICMR",
+        "SNMR",
+        "SPFH",
+        "RWMR",
+        "TCDC",
+        "ABSV",
+    ]
     means = {}
     stds = {}
     # For pressure level values
     for n in names:
-        if len(sorted([float(var.split(".", 1)[-1].split("_")[0]) for var in const.FORECAST_MEANS if
-                       "mb" in var and n in var and "-" not in var])) > 0:
+        if (
+            len(
+                sorted(
+                    [
+                        float(var.split(".", 1)[-1].split("_")[0])
+                        for var in const.FORECAST_MEANS
+                        if "mb" in var and n in var and "-" not in var
+                    ]
+                )
+            )
+            > 0
+        ):
             means[n + "_mb"] = []
             stds[n + "_mb"] = []
-            for value in sorted([float(var.split(".", 1)[-1].split("_")[0]) for var in const.FORECAST_MEANS if
-                                 "mb" in var and n in var and "-" not in var]):
+            for value in sorted(
+                [
+                    float(var.split(".", 1)[-1].split("_")[0])
+                    for var in const.FORECAST_MEANS
+                    if "mb" in var and n in var and "-" not in var
+                ]
+            ):
                 # Is floats now, but will be fixed
                 if value >= 1:
                     value = int(value)
@@ -46,14 +80,42 @@ def get_mean_stds():
             stds[n + "_mb"] = np.mean(np.stack(stds[n + "_mb"], axis=-1))
 
     # For surface values
-    for n in list(set([var.split(".", 1)[0] for var in const.FORECAST_MEANS if
-                       "surface" in var and "level" not in var and "2e06" not in var and "below" not in var and "atmos" not in var and "tropo" not in var and "iso" not in var and "planetary_boundary_layer" not in var])):
+    for n in list(
+        set(
+            [
+                var.split(".", 1)[0]
+                for var in const.FORECAST_MEANS
+                if "surface" in var
+                and "level" not in var
+                and "2e06" not in var
+                and "below" not in var
+                and "atmos" not in var
+                and "tropo" not in var
+                and "iso" not in var
+                and "planetary_boundary_layer" not in var
+            ]
+        )
+    ):
         means[n] = const.FORECAST_MEANS[n + ".surface"]
         stds[n] = const.FORECAST_STD[n + ".surface"]
 
     # For Cloud levels
-    for n in list(set([var.split(".", 1)[0] for var in const.FORECAST_MEANS if
-                       "sigma" not in var and "level" not in var and "2e06" not in var and "below" not in var and "atmos" not in var and "tropo" not in var and "iso" not in var and "planetary_boundary_layer" not in var])):
+    for n in list(
+        set(
+            [
+                var.split(".", 1)[0]
+                for var in const.FORECAST_MEANS
+                if "sigma" not in var
+                and "level" not in var
+                and "2e06" not in var
+                and "below" not in var
+                and "atmos" not in var
+                and "tropo" not in var
+                and "iso" not in var
+                and "planetary_boundary_layer" not in var
+            ]
+        )
+    ):
         if "LCDC" in n:  # or "MCDC" in n or "HCDC" in n:
             means[n] = const.FORECAST_MEANS["LCDC.low_cloud_layer"]
             stds[n] = const.FORECAST_STD["LCDC.low_cloud_layer"]
@@ -88,32 +150,56 @@ means, stds = get_mean_stds()
 
 
 def process_data(data):
-    data.update({key: np.expand_dims(np.asarray(value), axis=-1) for key, value in data.items() if
-                 key.replace("current_", "").replace("next_", "") in means.keys() and np.asarray(
-                     value).ndim == 2})  # Add third dimension for ones with 2
-    input_data = {key.replace("current_", ""): torch.from_numpy(
-        (value - means[key.replace("current_", "")]) / stds[key.replace("current_", "")]) for key, value in data.items()
-        if "current" in key and "time" not in key}
-    output_data = {key.replace("next_", ""): torch.from_numpy(
-        (value - means[key.replace("next_", "")]) / stds[key.replace("next_", "")]) for key, value in data.items() if
-        "next" in key and "time" not in key}
+    data.update(
+        {
+            key: np.expand_dims(np.asarray(value), axis=-1)
+            for key, value in data.items()
+            if key.replace("current_", "").replace("next_", "") in means.keys()
+            and np.asarray(value).ndim == 2
+        }
+    )  # Add third dimension for ones with 2
+    input_data = {
+        key.replace("current_", ""): torch.from_numpy(
+            (value - means[key.replace("current_", "")]) / stds[key.replace("current_", "")]
+        )
+        for key, value in data.items()
+        if "current" in key and "time" not in key
+    }
+    output_data = {
+        key.replace("next_", ""): torch.from_numpy(
+            (value - means[key.replace("next_", "")]) / stds[key.replace("next_", "")]
+        )
+        for key, value in data.items()
+        if "next" in key and "time" not in key
+    }
     lat_lons = np.array(
-        np.meshgrid(np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten())).T.reshape(
-        (-1, 2)
-    )
+        np.meshgrid(np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten())
+    ).T.reshape((-1, 2))
     sin_lat_lons = np.sin(lat_lons)
     cos_lat_lons = np.cos(lat_lons)
     date = pd.to_datetime(data["timestamps"][0], utc=True)
-    solar_times = [np.array(
-        [extraterrestrial_irrad(when=date.to_pydatetime(), latitude_deg=lat, longitude_deg=lon) for lat, lon in
-         lat_lons])]
+    solar_times = [
+        np.array(
+            [
+                extraterrestrial_irrad(
+                    when=date.to_pydatetime(), latitude_deg=lat, longitude_deg=lon
+                )
+                for lat, lon in lat_lons
+            ]
+        )
+    ]
     for when in pd.date_range(
-            date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq=f"1H"
+        date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq=f"1H"
     ):
         solar_times.append(
             np.array(
-                [extraterrestrial_irrad(when=when.to_pydatetime(), latitude_deg=lat, longitude_deg=lon) for lat, lon in
-                 lat_lons])
+                [
+                    extraterrestrial_irrad(
+                        when=when.to_pydatetime(), latitude_deg=lat, longitude_deg=lon
+                    )
+                    for lat, lon in lat_lons
+                ]
+            )
         )
     solar_times = np.array(solar_times)
     # Normalize to between -1 and 1
@@ -126,11 +212,21 @@ def process_data(data):
     day_of_year = pd.to_datetime(data["timestamps"][0], utc=True).dayofyear / 366.0
     sin_of_year = np.ones_like(lat_lons)[:, 0] * np.sin(day_of_year)
     cos_of_year = np.ones_like(lat_lons)[:, 0] * np.cos(day_of_year)
-    to_concat = [input_data, torch.permute(torch.from_numpy(solar_times), (1, 0)), torch.from_numpy(sin_lat_lons),
-                 torch.from_numpy(cos_lat_lons), torch.from_numpy(np.expand_dims(sin_of_year, axis=-1)),
-                 torch.from_numpy(np.expand_dims(cos_of_year, axis=-1))]  # , landsea_fixed]
+    to_concat = [
+        input_data,
+        torch.permute(torch.from_numpy(solar_times), (1, 0)),
+        torch.from_numpy(sin_lat_lons),
+        torch.from_numpy(cos_lat_lons),
+        torch.from_numpy(np.expand_dims(sin_of_year, axis=-1)),
+        torch.from_numpy(np.expand_dims(cos_of_year, axis=-1)),
+    ]  # , landsea_fixed]
     input_data = torch.concat(to_concat, dim=-1)
-    new_data = {"input": input_data.float().numpy(), "output": output_data.float().numpy(), "has_nans": not np.isnan(input_data.float().numpy()).any() and not np.isnan(output_data.float().numpy()).any()}
+    new_data = {
+        "input": input_data.float().numpy(),
+        "output": output_data.float().numpy(),
+        "has_nans": not np.isnan(input_data.float().numpy()).any()
+        and not np.isnan(output_data.float().numpy()).any(),
+    }
     return new_data
 
 
@@ -138,13 +234,27 @@ class GraphDataModule(pl.LightningDataModule):
     def __init__(self, deg: str = "2.0", batch_size: int = 1):
         super().__init__()
         self.batch_size = batch_size
-        self.dataset = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train+validation',
-                                             streaming=False)
-        features = datasets.Features({"input": datasets.Array2D(shape=(16380, 637), dtype='float32'),
-                                      "output": datasets.Array2D(shape=(16380, 605), dtype='float32'),
-                                      "has_nans": datasets.Value("bool")})
-        self.dataset = self.dataset.map(process_data, remove_columns=self.dataset.column_names, features=features,
-                                        num_proc=16, writer_batch_size=2).filter(lambda x: x["has_nans"]).with_format("torch")
+        self.dataset = datasets.load_dataset(
+            "openclimatefix/gfs-surface-pressure-2deg", split="train+validation", streaming=False
+        )
+        features = datasets.Features(
+            {
+                "input": datasets.Array2D(shape=(16380, 637), dtype="float32"),
+                "output": datasets.Array2D(shape=(16380, 605), dtype="float32"),
+                "has_nans": datasets.Value("bool"),
+            }
+        )
+        self.dataset = (
+            self.dataset.map(
+                process_data,
+                remove_columns=self.dataset.column_names,
+                features=features,
+                num_proc=16,
+                writer_batch_size=2,
+            )
+            .filter(lambda x: x["has_nans"])
+            .with_format("torch")
+        )
 
     def train_dataloader(self):
         return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=2)
@@ -152,8 +262,13 @@ class GraphDataModule(pl.LightningDataModule):
 
 class LitGraphForecaster(pl.LightningModule):
     def __init__(
-            self, lat_lons: list, feature_dim: int = 605, aux_dim: int = 32, hidden_dim: int = 64, num_blocks: int = 3,
-            lr: float = 3e-4
+        self,
+        lat_lons: list,
+        feature_dim: int = 605,
+        aux_dim: int = 32,
+        hidden_dim: int = 64,
+        num_blocks: int = 3,
+        lr: float = 3e-4,
     ):
         super().__init__()
         self.model = GraphWeatherForecaster(
@@ -186,6 +301,7 @@ class LitGraphForecaster(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
+
 @click.command()
 @click.option(
     "--num-blocks",
@@ -212,18 +328,27 @@ class LitGraphForecaster(pl.LightningModule):
     type=click.INT,
 )
 def run(num_blocks, hidden, batch, gpus):
-    hf_ds = datasets.load_dataset("openclimatefix/gfs-surface-pressure-2deg", split='train', streaming=False)
+    hf_ds = datasets.load_dataset(
+        "openclimatefix/gfs-surface-pressure-2deg", split="train", streaming=False
+    )
     example_batch = next(iter(hf_ds))
     lat_lons = np.array(
-        np.meshgrid(np.asarray(example_batch["latitude"]).flatten(),
-                    np.asarray(example_batch["longitude"]).flatten())).T.reshape(
-        (-1, 2)
-    )
+        np.meshgrid(
+            np.asarray(example_batch["latitude"]).flatten(),
+            np.asarray(example_batch["longitude"]).flatten(),
+        )
+    ).T.reshape((-1, 2))
     checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
     dset = GraphDataModule(batch_size=batch)
     model = LitGraphForecaster(lat_lons=lat_lons, num_blocks=num_blocks, hidden_dim=hidden)
-    trainer = pl.Trainer(accelerator="gpu" if gpus > 0 else "cpu", devices=gpus, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
-                         #strategy="deepspeed_stage_2_offload")
+    trainer = pl.Trainer(
+        accelerator="gpu",
+        devices=gpus,
+        max_epochs=100,
+        precision=16,
+        callbacks=[checkpoint_callback],
+    )
+    # strategy="deepspeed_stage_2_offload")
     trainer.fit(model, dset)
 
 

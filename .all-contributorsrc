@@ -1,0 +1,70 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "jacobbieker",
+      "name": "Jacob Bieker",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7170359?v=4",
+      "profile": "https://www.jacobbieker.com",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "JackKelly",
+      "name": "Jack Kelly",
+      "avatar_url": "https://avatars.githubusercontent.com/u/460756?v=4",
+      "profile": "http://jack-kelly.com",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "byphilipp",
+      "name": "byphilipp",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59995258?v=4",
+      "profile": "https://github.com/byphilipp",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "paapu88",
+      "name": "Markus Kaukonen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6195764?v=4",
+      "profile": "http://iki.fi/markus.kaukonen",
+      "contributions": [
+        "question"
+      ]
+    },
+    {
+      "login": "MoHawastaken",
+      "name": "MoHawastaken",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55447473?v=4",
+      "profile": "https://github.com/MoHawastaken",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "mishooax",
+      "name": "Mihai",
+      "avatar_url": "https://avatars.githubusercontent.com/u/47196359?v=4",
+      "profile": "http://www.ecmwf.int",
+      "contributions": [
+        "question"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "graph_weather",
+  "projectOwner": "openclimatefix",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
