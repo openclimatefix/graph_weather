@@ -24,7 +24,7 @@ ENV PATH="/conda/bin:${PATH}"
 
 RUN git clone https://github.com/openclimatefix/graph_weather.git && mv graph_weather/ gw/ && cd gw/ && mv * .. && rm -rf gw/
 
-RUN conda env create -f environment.yml
+RUN conda update -n base -c defaults conda && conda env create -f environment.yml
 
 # Switch to bash shell
 SHELL ["/bin/bash", "-c"]

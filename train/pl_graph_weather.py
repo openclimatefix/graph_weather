@@ -222,7 +222,7 @@ def run(num_blocks, hidden, batch, gpus):
     checkpoint_callback = ModelCheckpoint(dirpath="./", save_top_k=2, monitor="loss")
     dset = GraphDataModule(batch_size=batch)
     model = LitGraphForecaster(lat_lons=lat_lons, num_blocks=num_blocks, hidden_dim=hidden)
-    trainer = pl.Trainer(accelerator="gpu", devices=gpus, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
+    trainer = pl.Trainer(accelerator="gpu" if gpus > 0 else "cpu", devices=gpus, max_epochs=100, precision=16, callbacks=[checkpoint_callback])
                          #strategy="deepspeed_stage_2_offload")
     trainer.fit(model, dset)
 

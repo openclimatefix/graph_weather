@@ -1,34 +1,32 @@
-name: graph
+name: graph_weather
 channels:
-  - pyg
   - pytorch
-  - defaults
-  - conda-forge
-dependencies:
-  - cudatoolkit=11.3
-  - numpy
   - pyg
-  - python
-  - pytorch=1.11.0=py3.9_cuda11.3_cudnn8.2.0_0
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - cudatoolkit=11.6.0
+  - numcodecs
+  - pandas
+  - pip
+  - pyg=2.1.0=py310_torch_1.12.0_cu116
+  - python=3.10.6
+  - pytorch
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
-  - pytorch-spline-conv
   - scikit-learn
   - scipy
   - torchvision
   - tqdm
+  - xarray
+  - zarr
   - pip:
-      - datasets
-      - einops
-      - fsspec==2022.2.0
-      - h3==3.7.3
-      - huggingface-hub
-      - pandas
-      - pyarrow
-      - responses
-      - torch-geometric-temporal
-      - pysolar
-      - pytorch-lightning
-      - deepspeed
-      - click
+    - datasets
+    - einops
+    - fsspec
+    - h3
+    - huggingface-hub
+    - pysolar
+    - pytorch-lightning
