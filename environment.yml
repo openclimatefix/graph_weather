@@ -27,6 +27,7 @@ dependencies:
     - einops
     - fsspec
     - h3
+    - torch-geometric-temporal
     - huggingface-hub
     - pysolar
     - pytorch-lightning
