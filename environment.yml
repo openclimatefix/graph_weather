@@ -1,4 +1,4 @@
-name: graph_weather
+name: graph
 channels:
   - pytorch
   - pyg
