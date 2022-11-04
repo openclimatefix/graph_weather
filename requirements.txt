@@ -2,3 +2,4 @@ h3
 huggingface-hub
 datasets
 einops
+torch-geometric-temporal
