@@ -106,7 +106,9 @@ class Encoder(torch.nn.Module):
         self.latent_graph = self.create_latent_graph()
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
-        self.h3_nodes = torch.nn.Parameter(torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float))
+        self.h3_nodes = torch.nn.Parameter(
+            torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        )
         # Output graph
 
         self.node_encoder = MLP(
