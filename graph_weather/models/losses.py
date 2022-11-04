@@ -17,6 +17,8 @@ class NormalizedMSELoss(torch.nn.Module):
 
          Additionally weights by the cos(lat) of the feature
 
+         cos and sin should be in radians
+
         Args:
             feature_variance: Variance for each of the physical features
             lat_lons: List of lat/lon pairs, used to generate weighting
