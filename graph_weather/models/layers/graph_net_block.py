@@ -4,12 +4,13 @@ Functions for building GNN
 This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the
 US Government License
 """
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
 from torch import cat, nn
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
+from torch.utils.checkpoint import checkpoint
 
 
 class MLP(nn.Module):
@@ -21,7 +22,8 @@ class MLP(nn.Module):
         out_dim: int = 128,
         hidden_dim: int = 128,
         hidden_layers: int = 2,
-        norm_type: str = "LayerNorm",
+        norm_type: Optional[str] = "LayerNorm",
+        use_checkpointing: bool = False,
     ):
         """
         MLP
@@ -33,9 +35,11 @@ class MLP(nn.Module):
             hidden_layers: Number of hidden layers
             norm_type: Normalization type one of 'LayerNorm', 'GraphNorm',
                 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing or not
         """
 
         super(MLP, self).__init__()
+        self.use_checkpointing = use_checkpointing
 
         layers = [nn.Linear(in_dim, hidden_dim), nn.ReLU()]
         for _ in range(hidden_layers - 1):
@@ -65,7 +69,11 @@ class MLP(nn.Module):
         Returns:
             The transformed tensor
         """
-        return self.model(x)
+        if self.use_checkpointing:
+            out = checkpoint(self.model, x, use_reentrant=False)
+        else:
+            out = self.model(x)
+        return out
 
 
 #############################

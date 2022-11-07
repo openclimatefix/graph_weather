@@ -17,13 +17,14 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
-        norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        norm_type: str = "LayerNorm",
+        use_checkpointing: bool = False,
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -45,6 +46,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_decoder: Number of layers in the decoder
             norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Use gradient checkpointing to reduce model memory
         """
         super().__init__()
         self.encoder = Encoder(
@@ -58,6 +60,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
+            use_checkpointing=use_checkpointing,
         )
         self.processor = Processor(
             input_dim=node_dim,
@@ -82,6 +85,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             mlp_norm_type=norm_type,
             hidden_dim_decoder=hidden_dim_decoder,
             hidden_layers_decoder=hidden_layers_decoder,
+            use_checkpointing=use_checkpointing,
         )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
@@ -96,5 +100,5 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         """
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
-        x = self.decoder(x, features.shape[0])
+        x = self.decoder(x, features[..., : self.feature_dim])
         return x

@@ -20,11 +20,11 @@ class Processor(torch.nn.Module):
         input_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        mlp_norm_type: str = "LayerNorm",
     ):
         """
         Latent graph processor

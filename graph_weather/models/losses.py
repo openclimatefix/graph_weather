@@ -48,16 +48,10 @@ class NormalizedMSELoss(torch.nn.Module):
             MSE loss on the variance-normalized values
         """
         self.feature_variance = self.feature_variance.to(pred.device)
-        assert not torch.isnan(self.feature_variance).any()
         self.weights = self.weights.to(pred.device)
-        assert not torch.isnan(self.weights).any()
-        assert not torch.isnan(pred).any()
-        assert not torch.isnan(target).any()
 
         # pred = pred / self.feature_variance
         # target = target / self.feature_variance
-        assert not torch.isnan(pred).any()
-        assert not torch.isnan(target).any()
 
         out = (pred - target) ** 2
         assert not torch.isnan(out).any()

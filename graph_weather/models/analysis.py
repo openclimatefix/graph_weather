@@ -17,13 +17,14 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
-        norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        norm_type: str = "LayerNorm",
+        use_checkpointing: bool = False,
     ):
         """
         Graph Weather Data Assimilation model
@@ -46,6 +47,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             hidden_layers_decoder: Number of layers in the decoder
             norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing or not
         """
         super().__init__()
 
@@ -59,6 +61,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
+            use_checkpointing=use_checkpointing,
         )
         self.processor = Processor(
             input_dim=node_dim,
@@ -83,6 +86,7 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             mlp_norm_type=norm_type,
             hidden_dim_decoder=hidden_dim_decoder,
             hidden_layers_decoder=hidden_layers_decoder,
+            use_checkpointing=use_checkpointing,
         )
 
     def forward(self, features: torch.Tensor, obs_lat_lon_heights: torch.Tensor) -> torch.Tensor:

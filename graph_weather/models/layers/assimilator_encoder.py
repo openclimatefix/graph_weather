@@ -41,11 +41,12 @@ class AssimilatorEncoder(torch.nn.Module):
         input_dim: int = 2,
         output_dim: int = 256,
         output_edge_dim: int = 256,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        mlp_norm_type: str = "LayerNorm",
+        use_checkpointing: bool = False,
     ):
         """
         Encode the lat/lon data inot the isohedron graph
@@ -62,8 +63,10 @@ class AssimilatorEncoder(torch.nn.Module):
             hidden_layers_processor_edge: Number of hidden layers in the edge processors
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing
         """
         super().__init__()
+        self.use_checkpointing = use_checkpointing
         self.output_dim = output_dim
         self.input_dim = input_dim
         self.resolution = resolution
@@ -82,6 +85,7 @@ class AssimilatorEncoder(torch.nn.Module):
             hidden_dim_processor_node,
             hidden_layers_processor_node,
             mlp_norm_type,
+            self.use_checkpointing,
         )
         self.edge_encoder = MLP(
             3,  # Includes height
@@ -89,6 +93,7 @@ class AssimilatorEncoder(torch.nn.Module):
             hidden_dim_processor_edge,
             hidden_layers_processor_edge,
             mlp_norm_type,
+            self.use_checkpointing,
         )
         self.latent_edge_encoder = MLP(
             2,
@@ -96,6 +101,7 @@ class AssimilatorEncoder(torch.nn.Module):
             hidden_dim_processor_edge,
             hidden_layers_processor_edge,
             mlp_norm_type,
+            self.use_checkpointing,
         )
         self.graph_processor = GraphProcessor(
             1,

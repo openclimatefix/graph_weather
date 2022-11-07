@@ -28,13 +28,14 @@ class Decoder(AssimilatorDecoder):
         input_dim: int = 256,
         output_dim: int = 78,
         output_edge_dim: int = 256,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        mlp_norm_type: str = "LayerNorm",
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        use_checkpointing: bool = False,
     ):
         """
         Decoder from latent graph to lat/lon graph
@@ -53,6 +54,7 @@ class Decoder(AssimilatorDecoder):
             hidden_layers_decoder: Number of layers in the decoder
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing or not
         """
         super().__init__(
             lat_lons,
@@ -67,6 +69,7 @@ class Decoder(AssimilatorDecoder):
             mlp_norm_type,
             hidden_dim_decoder,
             hidden_layers_decoder,
+            use_checkpointing,
         )
 
     def forward(
@@ -82,6 +85,6 @@ class Decoder(AssimilatorDecoder):
         Returns:
             Updated features for model
         """
-        out = super().forward(processor_features, start_features)
+        out = super().forward(processor_features, start_features.shape[0])
         out = out + start_features  # residual connection
         return out

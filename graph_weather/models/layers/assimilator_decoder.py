@@ -27,18 +27,19 @@ class AssimilatorDecoder(torch.nn.Module):
 
     def __init__(
         self,
-        lat_lons,
+        lat_lons: list,
         resolution: int = 2,
         input_dim: int = 256,
         output_dim: int = 78,
         output_edge_dim: int = 256,
-        hidden_dim_processor_node=256,
-        hidden_dim_processor_edge=256,
-        hidden_layers_processor_node=2,
-        hidden_layers_processor_edge=2,
-        mlp_norm_type="LayerNorm",
-        hidden_dim_decoder=128,
-        hidden_layers_decoder=2,
+        hidden_dim_processor_node: int = 256,
+        hidden_dim_processor_edge: int = 256,
+        hidden_layers_processor_node: int = 2,
+        hidden_layers_processor_edge: int = 2,
+        mlp_norm_type: str = "LayerNorm",
+        hidden_dim_decoder: int = 128,
+        hidden_layers_decoder: int = 2,
+        use_checkpointing: bool = False,
     ):
         """
         Decoder from latent graph to lat/lon graph for assimilation of observation
@@ -57,8 +58,10 @@ class AssimilatorDecoder(torch.nn.Module):
             hidden_layers_decoder: Number of layers in the decoder
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing to reduce model size
         """
         super().__init__()
+        self.use_checkpointing = use_checkpointing
         self.num_latlons = len(lat_lons)
         self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
         self.num_h3 = len(self.base_h3_grid)
@@ -100,7 +103,9 @@ class AssimilatorDecoder(torch.nn.Module):
         # Use normal graph as its a bit simpler
         self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
-        self.edge_encoder = MLP(2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type)
+        self.edge_encoder = MLP(
+            2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type, self.use_checkpointing
+        )
         self.graph_processor = GraphProcessor(
             mp_iterations=1,
             in_dim_node=input_dim,
@@ -112,7 +117,12 @@ class AssimilatorDecoder(torch.nn.Module):
             norm_type=mlp_norm_type,
         )
         self.node_decoder = MLP(
-            input_dim, output_dim, hidden_dim_decoder, hidden_layers_decoder, None
+            input_dim,
+            output_dim,
+            hidden_dim_decoder,
+            hidden_layers_decoder,
+            None,
+            self.use_checkpointing,
         )
 
     def forward(self, processor_features: torch.Tensor, batch_size: int) -> torch.Tensor:
@@ -121,6 +131,7 @@ class AssimilatorDecoder(torch.nn.Module):
 
         Args:
             processor_features: Processed features in shape [B*Nodes, Features]
+            batch_size: Batch size
 
         Returns:
             Updated features for model
