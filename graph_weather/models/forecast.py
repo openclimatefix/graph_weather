@@ -49,6 +49,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             use_checkpointing: Use gradient checkpointing to reduce model memory
         """
         super().__init__()
+        self.feature_dim = feature_dim
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
