@@ -169,7 +169,7 @@ class Encoder(torch.nn.Module):
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 78
-        edge_attr = self.edge_encoder(self.graph.edge_attr.half())  # Update attributes based on distance
+        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
@@ -195,7 +195,7 @@ class Encoder(torch.nn.Module):
                 dim=1,
             ),
             self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr.half(), "e f -> (repeat e) f", repeat=batch_size)
+                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
             ),
         )  # New graph
 

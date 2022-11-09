@@ -137,7 +137,7 @@ class AssimilatorDecoder(torch.nn.Module):
             Updated features for model
         """
         self.graph = self.graph.to(processor_features.device)
-        edge_attr = self.edge_encoder(self.graph.edge_attr.half())  # Update attributes based on distance
+        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
 
         edge_index = torch.cat(
@@ -156,7 +156,7 @@ class AssimilatorDecoder(torch.nn.Module):
         )
         features = einops.rearrange(features, "b n f -> (b n) f")
 
-        out, _ = self.graph_processor(features.half(), edge_index, edge_attr.half())  # Message Passing
+        out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing
         # Remove the h3 nodes now, only want the latlon ones
         out = self.node_decoder(out)  # Decode to 78 from 256
         out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
