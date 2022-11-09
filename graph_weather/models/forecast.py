@@ -1,5 +1,6 @@
 """Model for forecasting weather from NWP states"""
 import torch
+from typing import Optional
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
@@ -14,6 +15,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         resolution: int = 2,
         feature_dim: int = 78,
         aux_dim: int = 24,
+        output_dim: Optional[int] = None,
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
@@ -35,6 +37,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 odd ones have octogons and heptagons as well
             feature_dim: Input feature size
             aux_dim: Number of non-NWP features (i.e. landsea mask, lat/lon, etc)
+            output_dim: Optional, output feature size, useful if want only subset of variables in output
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
             num_blocks: Number of message passing blocks in the Processor
@@ -50,6 +53,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         """
         super().__init__()
         self.feature_dim = feature_dim
+        if output_dim is None:
+            output_dim = self.feature_dim
+
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
@@ -77,7 +83,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             lat_lons=lat_lons,
             resolution=resolution,
             input_dim=node_dim,
-            output_dim=feature_dim,
+            output_dim=output_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
             hidden_layers_processor_node=hidden_layers_processor_node,
