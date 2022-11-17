@@ -175,8 +175,8 @@ def process_data(data):
     lat_lons = np.array(
         np.meshgrid(np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten())
     ).T.reshape((-1, 2))
-    sin_lat_lons = np.sin(lat_lons)
-    cos_lat_lons = np.cos(lat_lons)
+    sin_lat_lons = np.sin(lat_lons * np.pi / 180.)
+    cos_lat_lons = np.cos(lat_lons * np.pi / 180.)
     date = pd.to_datetime(data["timestamps"][0], utc=True)
     solar_times = [
         np.array(
