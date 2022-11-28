@@ -29,7 +29,7 @@ class NormalizedMSELoss(torch.nn.Module):
         assert not torch.isnan(self.feature_variance).any()
         weights = []
         for lat, lon in lat_lons:
-            weights.append(np.cos(lat))
+            weights.append(np.cos(lat * np.pi / 180.))
         self.weights = torch.tensor(weights, dtype=torch.float)
         assert not torch.isnan(self.weights).any()
 
