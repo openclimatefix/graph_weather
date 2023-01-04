@@ -277,7 +277,6 @@ class LitGraphForecaster(pl.LightningModule):
             aux_dim=aux_dim,
             hidden_dim_decoder=hidden_dim,
             hidden_dim_processor_node=hidden_dim,
-            hidden_layers_processor_edge=hidden_dim,
             hidden_dim_processor_edge=hidden_dim,
             num_blocks=num_blocks,
         )
