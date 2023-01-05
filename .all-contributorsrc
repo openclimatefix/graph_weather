@@ -59,6 +59,15 @@
       "contributions": [
         "question"
       ]
+    },
+    {
+      "login": "vitusbenson",
+      "name": "Vitus Benson",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33334860?v=4",
+      "profile": "https://github.com/vitusbenson",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
