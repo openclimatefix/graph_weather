@@ -1,9 +1,0 @@
-name: Lint Python
-
-on: [push]
-
-jobs:
-  call-run-python-linters:
-    uses: openclimatefix/.github/.github/workflows/python-lint.yml@main
-    with:
-      folder: "graph_weather"
