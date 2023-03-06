@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 import torch
 from pysolar.util import extraterrestrial_irrad
 from pytorch_lightning.callbacks import ModelCheckpoint
-from torch.utils.data import DataLoader, Dataset, IterableDataset
+from torch.utils.data import DataLoader
 
 from graph_weather import GraphWeatherForecaster
 from graph_weather.data import const
@@ -175,8 +175,8 @@ def process_data(data):
     lat_lons = np.array(
         np.meshgrid(np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten())
     ).T.reshape((-1, 2))
-    sin_lat_lons = np.sin(lat_lons * np.pi / 180.)
-    cos_lat_lons = np.cos(lat_lons * np.pi / 180.)
+    sin_lat_lons = np.sin(lat_lons * np.pi / 180.0)
+    cos_lat_lons = np.cos(lat_lons * np.pi / 180.0)
     date = pd.to_datetime(data["timestamps"][0], utc=True)
     solar_times = [
         np.array(
@@ -189,7 +189,7 @@ def process_data(data):
         )
     ]
     for when in pd.date_range(
-        date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq=f"1H"
+        date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
     ):
         solar_times.append(
             np.array(

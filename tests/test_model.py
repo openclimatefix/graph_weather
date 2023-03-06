@@ -174,7 +174,9 @@ def test_assimilator_model_grad_checkpoint():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             output_lat_lons.append((lat, lon))
-    model = GraphWeatherAssimilator(output_lat_lons=output_lat_lons, analysis_dim=24, use_checkpointing=True)
+    model = GraphWeatherAssimilator(
+        output_lat_lons=output_lat_lons, analysis_dim=24, use_checkpointing=True
+    )
 
     features = torch.randn((1, len(obs_lat_lons), 2))
     lat_lon_heights = torch.tensor(obs_lat_lons)
