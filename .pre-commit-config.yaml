@@ -14,18 +14,18 @@ repos:
   # python code formatting/linting
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     # Ruff version.
-    rev: "v0.0.253"
+    rev: "v0.0.254"
     hooks:
       - id: ruff
         args: [--fix]
   - repo: https://github.com/psf/black
-    rev: 22.6.0
+    rev: 23.1.0
     hooks:
       - id: black
         args: [--line-length, "100"]
   # yaml formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.0-alpha.4
+    rev: v3.0.0-alpha.6
     hooks:
       - id: prettier
         types: [yaml]
