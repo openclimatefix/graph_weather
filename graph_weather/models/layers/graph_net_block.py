@@ -4,13 +4,13 @@ Functions for building GNN
 This code is taken from https://github.com/CCSI-Toolset/MGN which is available under the
 US Government License
 """
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import torch
 from torch import cat, nn
+from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import MetaLayer
 from torch_scatter import scatter_sum
-from torch.utils.checkpoint import checkpoint
 
 
 class MLP(nn.Module):

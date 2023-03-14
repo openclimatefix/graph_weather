@@ -14,10 +14,9 @@ The dataloader has to do a few things for the model to work correctly
 import const
 import numpy as np
 import pandas as pd
-import torchvision.transforms as transforms
 import xarray as xr
 from pysolar.util import extraterrestrial_irrad
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 class AnalysisDataset(Dataset):
@@ -75,11 +74,11 @@ class AnalysisDataset(Dataset):
         cos_lat_lons = np.cos(lat_lons)
         date = start.time.dt.values
         day_of_year = start.time.dayofyear.values / 365.0
-        sin_of_year = np.sin(day_of_year)
-        cos_of_year = np.cos(day_of_year)
+        np.sin(day_of_year)
+        np.cos(day_of_year)
         solar_times = [np.array([extraterrestrial_irrad(date, lat, lon) for lat, lon in lat_lons])]
         for when in pd.date_range(
-            date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq=f"1H"
+            date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
         ):
             solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])
@@ -92,7 +91,7 @@ class AnalysisDataset(Dataset):
             np.array([extraterrestrial_irrad(end_date, lat, lon) for lat, lon in lat_lons])
         ]
         for when in pd.date_range(
-            end_date - pd.Timedelta("12 hours"), end_date + pd.Timedelta("12 hours"), freq=f"1H"
+            end_date - pd.Timedelta("12 hours"), end_date + pd.Timedelta("12 hours"), freq="1H"
         ):
             end_solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])

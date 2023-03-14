@@ -1,16 +1,14 @@
 """Training script for training the weather forecasting model"""
-import json
 
 import datasets
 import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
-import torchvision.transforms as transforms
 import xarray as xr
 from datasets import Array2D, Array3D, Features, Sequence, Value
 from pysolar.util import extraterrestrial_irrad
-from torch.utils.data import DataLoader, Dataset, IterableDataset
+from torch.utils.data import DataLoader, IterableDataset
 
 from graph_weather import GraphWeatherForecaster
 from graph_weather.data import const
@@ -400,7 +398,7 @@ class XrDataset(IterableDataset):
                 )
             ]
             for when in pd.date_range(
-                date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq=f"1H"
+                date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
             ):
                 solar_times.append(
                     np.array(

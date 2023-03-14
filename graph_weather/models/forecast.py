@@ -1,6 +1,7 @@
 """Model for forecasting weather from NWP states"""
-import torch
 from typing import Optional
+
+import torch
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
