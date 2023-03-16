@@ -77,7 +77,7 @@ def test_decoder():
     features = torch.randn((3, len(lat_lons), 78))
     processed = torch.randn((3 * h3.num_hexagons(2), 256))
     with torch.no_grad():
-        x = model(processed, features.shape[0])
+        x = model(processed, features)
     assert x.size() == (3, 2592, 78)
 
 
@@ -105,7 +105,7 @@ def test_end2end():
     with torch.no_grad():
         x, edge_idx, edge_attr = model(features)
         out = processor(x, edge_idx, edge_attr)
-        pred = decoder(out, features.shape[0])
+        pred = decoder(out, features)
     assert pred.size() == (4, 2592, 78)
 
 
