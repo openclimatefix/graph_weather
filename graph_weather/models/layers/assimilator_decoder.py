@@ -77,9 +77,6 @@ class AssimilatorDecoder(torch.nn.Module):
             self.h3_mapping[h + self.num_h3] = value
 
         # Build the default graph
-        nodes = torch.zeros(
-            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
-        )
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.latlon_nodes = torch.zeros((len(lat_lons), input_dim), dtype=torch.float)
         # Get connections between lat nodes and h3 nodes TODO Paper makes it seem like the 3
@@ -101,7 +98,7 @@ class AssimilatorDecoder(torch.nn.Module):
         self.h3_to_lat_distances = torch.tensor(self.h3_to_lat_distances, dtype=torch.float)
 
         # Use normal graph as its a bit simpler
-        self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
+        self.graph = Data(edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
         self.edge_encoder = MLP(
             2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type, self.use_checkpointing

@@ -199,11 +199,6 @@ class AssimilatorEncoder(torch.nn.Module):
         # Compress to between 0 and 1
 
         # Build the default graph
-        nodes = torch.zeros(
-            (len(lat_lons_heights) + h3.num_hexagons(self.resolution), self.input_dim),
-            dtype=torch.float,
-        )
-        nodes[: len(lat_lons_heights)] = features[0]
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -213,7 +208,7 @@ class AssimilatorEncoder(torch.nn.Module):
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
 
         # Use homogenous graph to make it easier
-        return Data(x=nodes, edge_index=edge_index, edge_attr=h3_distances)
+        return Data(edge_index=edge_index, edge_attr=h3_distances)
 
     def create_latent_graph(self) -> Data:
         """

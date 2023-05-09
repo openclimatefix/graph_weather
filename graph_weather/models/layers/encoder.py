@@ -92,9 +92,6 @@ class Encoder(torch.nn.Module):
         # Build the default graph
         # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
         # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
-        nodes = torch.zeros(
-            (len(lat_lons) + h3.num_hexagons(resolution), input_dim), dtype=torch.float
-        )
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -104,7 +101,7 @@ class Encoder(torch.nn.Module):
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
 
         # Use homogenous graph to make it easier
-        self.graph = Data(x=nodes, edge_index=edge_index, edge_attr=self.h3_distances)
+        self.graph = Data(edge_index=edge_index, edge_attr=self.h3_distances)
 
         self.latent_graph = self.create_latent_graph()
 
