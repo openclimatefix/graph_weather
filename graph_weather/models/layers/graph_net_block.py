@@ -183,7 +183,8 @@ class NodeProcessor(nn.Module):
         row, col = edge_index
         scatter_dim = 0
         output_size = x.size(scatter_dim)
-        out = scatter_sum(edge_attr, col, dim=scatter_dim, dim_size=output_size)  # aggregate edge message by target
+        # aggregate edge message by target
+        out = scatter_sum(edge_attr, col, dim=scatter_dim, dim_size=output_size)
         out = cat([x, out], dim=-1)
         out = self.node_mlp(out)
         out += x  # residual connection
