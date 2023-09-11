@@ -181,7 +181,10 @@ class NodeProcessor(nn.Module):
             torch.Tensor with updated node attributes
         """
         row, col = edge_index
-        out = scatter_sum(edge_attr, col, dim=0)  # aggregate edge message by target
+        scatter_dim = 0
+        output_size = x.size(scatter_dim)
+        # aggregate edge message by target
+        out = scatter_sum(edge_attr, col, dim=scatter_dim, dim_size=output_size)
         out = cat([x, out], dim=-1)
         out = self.node_mlp(out)
         out += x  # residual connection
