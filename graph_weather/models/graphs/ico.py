@@ -1,4 +1,4 @@
-'''
+"""
 Creating geodesic icosahedron with given (integer) subdivision frequency (and
 not by recursively applying Loop-like subdivision).
 
@@ -29,13 +29,13 @@ https://ieeexplore.ieee.org/document/7182720
 This code is copied in as there is an improvement in the inside_points function that
 is not merged in that speeds up generation 5-8x. See https://github.com/vedranaa/icosphere/pull/3
 
-'''
+"""
 
 import numpy as np
 
 
 def icosphere(nu=1, nr_verts=None):
-    '''
+    """
     Returns a geodesic icosahedron with subdivision frequency nu. Frequency
     nu = 1 returns regular unit icosahedron, and nu>1 preformes subdivision.
     If nr_verts is given, nu will be adjusted such that icosphere contains
@@ -52,7 +52,7 @@ def icosphere(nu=1, nr_verts=None):
     subvertices : vertex list, numpy array of shape (20+10*(nu+1)*(nu-1)/2, 3)
     subfaces : face list, numpy array of shape (10*n**2, 3)
 
-    '''
+    """
 
     # Unit icosahedron
     (vertices, faces) = icosahedron()
@@ -66,33 +66,53 @@ def icosphere(nu=1, nr_verts=None):
     # Subdividing
     if nu > 1:
         (vertices, faces) = subdivide_mesh(vertices, faces, nu)
-        vertices = vertices / np.sqrt(np.sum(vertices ** 2, axis=1, keepdims=True))
+        vertices = vertices / np.sqrt(np.sum(vertices**2, axis=1, keepdims=True))
 
     return (vertices, faces)
 
 
 def icosahedron():
-    '''' Regular unit icosahedron. '''
+    """' Regular unit icosahedron."""
 
     # 12 principal directions in 3D space: points on an unit icosahedron
     phi = (1 + np.sqrt(5)) / 2
-    vertices = np.array([
-        [0, 1, phi], [0, -1, phi], [1, phi, 0],
-        [-1, phi, 0], [phi, 0, 1], [-phi, 0, 1]]) / np.sqrt(1 + phi ** 2)
+    vertices = np.array(
+        [[0, 1, phi], [0, -1, phi], [1, phi, 0], [-1, phi, 0], [phi, 0, 1], [-phi, 0, 1]]
+    ) / np.sqrt(1 + phi**2)
     vertices = np.r_[vertices, -vertices]
 
     # 20 faces
-    faces = np.array([
-        [0, 5, 1], [0, 3, 5], [0, 2, 3], [0, 4, 2], [0, 1, 4],
-        [1, 5, 8], [5, 3, 10], [3, 2, 7], [2, 4, 11], [4, 1, 9],
-        [7, 11, 6], [11, 9, 6], [9, 8, 6], [8, 10, 6], [10, 7, 6],
-        [2, 11, 7], [4, 9, 11], [1, 8, 9], [5, 10, 8], [3, 7, 10]], dtype=int)
+    faces = np.array(
+        [
+            [0, 5, 1],
+            [0, 3, 5],
+            [0, 2, 3],
+            [0, 4, 2],
+            [0, 1, 4],
+            [1, 5, 8],
+            [5, 3, 10],
+            [3, 2, 7],
+            [2, 4, 11],
+            [4, 1, 9],
+            [7, 11, 6],
+            [11, 9, 6],
+            [9, 8, 6],
+            [8, 10, 6],
+            [10, 7, 6],
+            [2, 11, 7],
+            [4, 9, 11],
+            [1, 8, 9],
+            [5, 10, 8],
+            [3, 7, 10],
+        ],
+        dtype=int,
+    )
 
     return (vertices, faces)
 
 
 def subdivide_mesh(vertices, faces, nu):
-    '''
+    """
     Subdivides mesh by adding vertices on mesh edges and faces. Each edge
     will be divided in nu segments. (For example, for nu=2 one vertex is added
     on each mesh edge, for nu=3 two vertices are added on each mesh edge and
@@ -113,14 +133,14 @@ def subdivide_mesh(vertices, faces, nu):
 
     Author: vand at dtu.dk, 8.12.2017. Translated to python 6.4.2021
 
-    '''
+    """
 
     edges = np.r_[faces[:, :-1], faces[:, 1:], faces[:, [0, 2]]]
     edges = np.unique(np.sort(edges, axis=1), axis=0)
     F = faces.shape[0]
     V = vertices.shape[0]
     E = edges.shape[0]
-    subfaces = np.empty((F * nu ** 2, 3), dtype=int)
+    subfaces = np.empty((F * nu**2, 3), dtype=int)
     subvertices = np.empty((V + E * (nu - 1) + F * (nu - 1) * (nu - 2) // 2, 3))
 
     subvertices[:V] = vertices
@@ -143,8 +163,9 @@ def subdivide_mesh(vertices, faces, nu):
     for e in range(E):
         edge = edges[e]
         for k in range(nu - 1):
-            subvertices[V + e * (nu - 1) + k] = (w[-1 - k] * vertices[edge[0]]
-                                                 + w[k] * vertices[edge[1]])
+            subvertices[V + e * (nu - 1) + k] = (
+                w[-1 - k] * vertices[edge[0]] + w[k] * vertices[edge[1]]
+            )
 
     # At this point we have E(nu-1)+V vertices, and we add (nu-1)*(nu-2)/2
     # vertices per face (on-face vertices).
@@ -152,8 +173,10 @@ def subdivide_mesh(vertices, faces, nu):
     for f in range(F):
         # First, fixing connectivity. We get hold of the indices of all
         # vertices invoved in this subface: original, on-edges and on-faces.
-        T = np.arange(f * (nu - 1) * (nu - 2) // 2 + E * (nu - 1) + V,
-                      (f + 1) * (nu - 1) * (nu - 2) // 2 + E * (nu - 1) + V)  # will be added
+        T = np.arange(
+            f * (nu - 1) * (nu - 2) // 2 + E * (nu - 1) + V,
+            (f + 1) * (nu - 1) * (nu - 2) // 2 + E * (nu - 1) + V,
+        )  # will be added
         eAB = edge_indices[faces[f, 0]][faces[f, 1]]
         eAC = edge_indices[faces[f, 0]][faces[f, 2]]
         eBC = edge_indices[faces[f, 1]][faces[f, 2]]
@@ -161,7 +184,7 @@ def subdivide_mesh(vertices, faces, nu):
         AC = reverse(abs(eAC) * (nu - 1) + V + r, eAC < 0)  # already added
         BC = reverse(abs(eBC) * (nu - 1) + V + r, eBC < 0)  # already added
         VEF = np.r_[faces[f], AB, AC, BC, T]
-        subfaces[f * nu ** 2:(f + 1) * nu ** 2, :] = VEF[reordered_template]
+        subfaces[f * nu**2 : (f + 1) * nu**2, :] = VEF[reordered_template]
         # Now geometry, computing positions of face vertices.
         subvertices[T, :] = inside_points(subvertices[AB, :], subvertices[AC, :])
 
@@ -169,15 +192,15 @@ def subdivide_mesh(vertices, faces, nu):
 
 
 def reverse(vector, flag):
-    '''' For reversing the direction of an edge. '''
+    """' For reversing the direction of an edge."""
 
     if flag:
         vector = vector[::-1]
-    return (vector)
+    return vector
 
 
 def faces_template(nu):
-    '''
+    """
     Template for linking subfaces                  0
     in a subdivision of a face.                   / \
     Returns faces with vertex                    1---2
@@ -187,7 +210,7 @@ def faces_template(nu):
                                              6---7---8---9
                                             / \ / \ / \ / \
                                            10--11--12--13--14
-    '''
+    """
 
     faces = []
     # looping in layers of triangles
@@ -200,11 +223,11 @@ def faces_template(nu):
         # adding the last (unpaired, rightmost) triangle
         faces.append([i + vertex0, i + vertex0 + skip, i + vertex0 + skip + 1])
 
-    return (np.array(faces))
+    return np.array(faces)
 
 
 def vertex_ordering(nu):
-    '''
+    """
     Permutation for ordering of                    0
     face vertices which transformes               / \
     reading-order indexing into indexing         3---6
@@ -214,7 +237,7 @@ def vertex_ordering(nu):
                                              5---13--14--8
                                             / \ / \ / \ / \
                                            1---9--10--11---2
-    '''
+    """
 
     left = [j for j in range(3, nu + 2)]
     right = [j for j in range(nu + 2, 2 * nu + 1)]
@@ -224,11 +247,11 @@ def vertex_ordering(nu):
     o = [0]  # topmost corner
     for i in range(nu - 1):
         o.append(left[i])
-        o = o + inside[i * (i - 1) // 2:i * (i + 1) // 2]
+        o = o + inside[i * (i - 1) // 2 : i * (i + 1) // 2]
         o.append(right[i])
     o = o + [1] + bottom + [2]
 
-    return (np.array(o))
+    return np.array(o)
 
 
 def inside_points(vAB, vAC):
@@ -258,8 +281,8 @@ def inside_points(vAB, vAC):
         j = i + 1
         interp_multipliers = (np.arange(1, j) / j)[:, None]
         out.append(
-            np.multiply(interp_multipliers, vAC[i, None]) +
-            np.multiply(1 - interp_multipliers, vAB[i, None])
+            np.multiply(interp_multipliers, vAC[i, None])
+            + np.multiply(1 - interp_multipliers, vAB[i, None])
         )
     return np.concatenate(out)
 
