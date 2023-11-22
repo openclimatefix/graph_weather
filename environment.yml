@@ -6,27 +6,28 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cudatoolkit=11.6.0
+  - cudatoolkit=12.1
   - numcodecs
   - pandas
   - pip
-  - pyg=2.1.0=py310_torch_1.12.0_cu116
-  - python=3.10.6
+  - pyg
+  - python=3.11
   - pytorch
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
+  - pytorch-spline-conv
   - scikit-learn
   - scipy
   - torchvision
   - tqdm
   - xarray
   - zarr
+  - h3-py
   - pip:
       - datasets
       - einops
       - fsspec
-      - h3
       - torch-geometric-temporal
       - huggingface-hub
       - pysolar
