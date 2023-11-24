@@ -3,7 +3,6 @@ from typing import Optional
 
 import torch
 from huggingface_hub import PyTorchModelHubMixin
-
 from graph_weather.models import Decoder, Encoder, Processor
 
 
@@ -99,10 +98,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Compute the new state of the forecast
-
         Args:
             features: The input features, aligned with the order of lat_lons_heights
-
         Returns:
             The next state in the forecast
         """
