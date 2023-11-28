@@ -48,6 +48,8 @@ class Encoder(torch.nn.Module):
         hidden_layers_processor_edge=2,
         mlp_norm_type="LayerNorm",
         use_checkpointing: bool = False,
+        input_graph: Data = None,
+        latent_graph: Data = None,
     ):
         """
         Encode the lat/lon data inot the isohedron graph
@@ -65,6 +67,8 @@ class Encoder(torch.nn.Module):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Whether to use gradient checkpointing to use less memory
+            input_graph: Input graph to use, if None, will generate a default one
+            latent_graph: Latent graph to use, if None, will generate a default one
         """
         super().__init__()
         self.use_checkpointing = use_checkpointing

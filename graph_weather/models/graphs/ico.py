@@ -32,6 +32,8 @@ is not merged in that speeds up generation 5-8x. See https://github.com/vedranaa
 """
 
 import numpy as np
+import torch
+from torch_geometric.data import Data
 
 
 def icosphere(nu=1, nr_verts=None):
@@ -294,5 +296,60 @@ def generate_icosphere_graph(resolution=1):
     vertices, faces = icosphere(resolution)
     edges = np.r_[faces[:, :-1], faces[:, 1:], faces[:, [0, 2]]]
     edges = np.unique(np.sort(edges, axis=1), axis=0)
-    return NotImplementedError("TODO: Make into PyTorch Tensors and return")
     return vertices, edges
+
+
+def generate_icosphere_mapping(lat_lons, resolution=1):
+    """
+    Generate mapping from lat/lon to icosphere index.
+
+    Args:
+        lat_lons: List of (lat,lon) points
+        resolution: Icosphere resolution level
+    """
+    num_latlons = len(lat_lons)
+    vertices, faces = icosphere(resolution)
+    # TODO Actually make this work
+    h3_mapping = {}
+    h_index = len(vertices)
+    for h in vertices:
+        if h not in h3_mapping:
+            h_index -= 1
+            h3_mapping[h] = h_index + num_latlons
+    # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
+    # Should have vertical and horizontal difference
+    h3_distances = []
+    for idx, h3_point in enumerate(h3_grid):
+        lat_lon = lat_lons[idx]
+        distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
+        h3_distances.append([np.sin(distance), np.cos(distance)])
+    h3_distances = torch.tensor(h3_distances, dtype=torch.float)
+    return h3_mapping, h3_distances
+
+def generate_latent_ico_graph(h3_mapping, h3_distances):
+    """
+    Generate latent h3 graph.
+
+    Args:
+        base_h3_map: Mapping from h3 index to index in latent graph
+        h3_mapping: Mapping from lat/lon to h3 index
+        h3_distances: Distances between lat/lon and h3 index
+
+    Returns:
+        Latent h3 graph
+    """
+    # Get connectivity of the graph
+    edge_sources = []
+    edge_targets = []
+    edge_attrs = []
+    for h3_index in h3_mapping:
+        h_points = h3.k_ring(h3_index, 1)
+        for h in h_points:  # Already includes itself
+            distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
+            edge_attrs.append([np.sin(distance), np.cos(distance)])
+            edge_sources.append(h3_mapping[h3_index])
+            edge_targets.append(h3_mapping[h])
+    edge_sources = np.array(edge_sources)
+    edge_targets = np.array(edge_targets)
+    edge_attrs = np.array(edge_attrs)
+    return edge_sources, edge_targets, edge_attrs
