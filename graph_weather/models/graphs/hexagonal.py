@@ -18,6 +18,7 @@ def generate_hexagonal_grid(resolution: int = 2) -> np.ndarray:
     base_h3_map = {h_i: i for i, h_i in enumerate(base_h3_grid)}
     return np.array(base_h3_grid), base_h3_map
 
+
 def generate_h3_mapping(lat_lons: list, resolution: int = 2) -> dict:
     """Generate mapping from lat/lon to h3 index.
 

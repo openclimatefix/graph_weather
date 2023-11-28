@@ -326,6 +326,7 @@ def generate_icosphere_mapping(lat_lons, resolution=1):
     h3_distances = torch.tensor(h3_distances, dtype=torch.float)
     return h3_mapping, h3_distances
 
+
 def generate_latent_ico_graph(h3_mapping, h3_distances):
     """
     Generate latent h3 graph.

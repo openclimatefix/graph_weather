@@ -170,6 +170,4 @@ class CustomCellAreaWeightedLossFunction(CellAreaWeightedLossFunction):
             target values of shape [T, C, H, W].
         """
 
-        return CustomCellAreaWeightedLossAutogradFunction.apply(
-            invar, outvar, self.area
-        )
+        return CustomCellAreaWeightedLossAutogradFunction.apply(invar, outvar, self.area)
