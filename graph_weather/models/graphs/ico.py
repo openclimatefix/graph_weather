@@ -299,7 +299,7 @@ def generate_icosphere_graph(resolution=1):
     return vertices, edges
 
 
-def generate_icosphere_mapping(lat_lons, resolutions=(1,2,3,4,5,6,7)):
+def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 3, 4, 5, 6, 7)):
     """
     Generate mapping from lat/lon to icosphere index.
 
@@ -326,7 +326,6 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1,2,3,4,5,6,7)):
     # TODO Align the verticies so the same positions line up
     # TODO Create Data object where there is a minimal amount of verticies (the overlapping ones are the same)
     # TODO Create mapping from the lat/lon to the icosphere nodes
-
 
     return h3_mapping, h3_distances
 
