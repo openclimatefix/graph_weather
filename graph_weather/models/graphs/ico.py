@@ -270,7 +270,7 @@ def inside_points(vAB, vAC):
     """
 
     out = []
-    if vAB.shape[0] == 1: # Optimized code fails for nu=2
+    if vAB.shape[0] == 1:  # Optimized code fails for nu=2
         v = []
         for i in range(1, vAB.shape[0]):
             w = np.arange(1, i + 1) / (i + 1)
@@ -306,6 +306,7 @@ def generate_icosphere_graph(resolution=1):
     edges = np.unique(np.sort(edges, axis=1), axis=0)
     return vertices, edges
 
+
 vertex, edges = generate_icosphere_graph(2)
 print(f"Vertices: {vertex.shape}")
 print(f"Edges: {edges.shape}")
@@ -317,6 +318,7 @@ print(f"Edges: {vertex2}")
 # Check if the first 12 vertices are the same
 print(f"Vertices: {np.isclose(vertex2[:12], vertex)}")
 exit()
+
 
 def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 3, 4, 5, 6, 7)):
     """
