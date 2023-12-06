@@ -318,7 +318,7 @@ print(f"Edges: {vertex2}")
 print(f"Vertices: {np.isclose(vertex2[:12], vertex)}")
 exit()
 
-def generate_icosphere_mapping(lat_lons, resolutions=(1,2,3,4,5,6,7)):
+def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 3, 4, 5, 6, 7)):
     """
     Generate mapping from lat/lon to icosphere index.
 
@@ -347,7 +347,6 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1,2,3,4,5,6,7)):
     # Should just need to deduplicate the edges, after combining them all
     # TODO Create Data object where there is a minimal amount of verticies (the overlapping ones are the same)
     # TODO Create mapping from the lat/lon to the icosphere nodes
-
 
     return h3_mapping, h3_distances
 
