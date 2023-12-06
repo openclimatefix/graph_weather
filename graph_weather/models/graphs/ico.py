@@ -303,6 +303,14 @@ def generate_icosphere_mapping(lat_lons, resolution=1):
     """
     Generate mapping from lat/lon to icosphere index.
 
+    GraphCast maps from lat/lon directly to all the different icosphere levels
+    And maps back from all te different icosphere levels to lat/lon
+    Nodes are shared to an extant, in that the base nodes (12) are connected to all the other layers and has more
+    incoming edges than each of the further refined ones. In the most extreme case, the finest resolution
+    icosphere nodes have only the incoming edges from the nearby nodes. For 6 different layers, each layer adds 5
+    more incoming edges to the nodes in the above layers. So the top layer nodes have 30 incoming edges, for the finest
+    one, it has 5 incoming edges. This is a bipartite graph, so the edges are between the lat/lon nodes and the icosphere
+
     Args:
         lat_lons: List of (lat,lon) points
         resolution: Icosphere resolution level
