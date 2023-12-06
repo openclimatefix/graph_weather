@@ -299,7 +299,7 @@ def generate_icosphere_graph(resolution=1):
     return vertices, edges
 
 
-def generate_icosphere_mapping(lat_lons, resolution=1):
+def generate_icosphere_mapping(lat_lons, resolutions=(1,2,3,4,5,6,7)):
     """
     Generate mapping from lat/lon to icosphere index.
 
@@ -313,25 +313,21 @@ def generate_icosphere_mapping(lat_lons, resolution=1):
 
     Args:
         lat_lons: List of (lat,lon) points
-        resolution: Icosphere resolution level
+        resolutions: Icosphere resolution levels, first 7 levels correspond to Graphcast levels
     """
     num_latlons = len(lat_lons)
-    vertices, faces = icosphere(resolution)
-    # TODO Actually make this work
-    h3_mapping = {}
-    h_index = len(vertices)
-    for h in vertices:
-        if h not in h3_mapping:
-            h_index -= 1
-            h3_mapping[h] = h_index + num_latlons
-    # Now have the h3 grid mapping, the bipartite graph of edges connecting lat/lon to h3 nodes
-    # Should have vertical and horizontal difference
-    h3_distances = []
-    for idx, h3_point in enumerate(h3_grid):
-        lat_lon = lat_lons[idx]
-        distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
-        h3_distances.append([np.sin(distance), np.cos(distance)])
-    h3_distances = torch.tensor(h3_distances, dtype=torch.float)
+    verticies_per_level = []
+    edges_per_level = []
+    for resolution in resolutions:
+        vertices, edges = generate_icosphere_graph(resolution)
+        verticies_per_level.append(vertices)
+        edges_per_level.append(edges)
+
+    # TODO Align the verticies so the same positions line up
+    # TODO Create Data object where there is a minimal amount of verticies (the overlapping ones are the same)
+    # TODO Create mapping from the lat/lon to the icosphere nodes
+
+
     return h3_mapping, h3_distances
 
 
