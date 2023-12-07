@@ -331,7 +331,8 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16, 32, 64)) -
     verticies = verticies_per_level[-1] # The last layer has all the verticies of the ones above
     edges = np.unique(np.sort(np.concatenate(edges_per_level), axis=1), axis=0)
     # TODO Create mapping from the lat/lon to the icosphere nodes
-    ico_graph = Data(x=torch.tensor(verticies, dtype=torch.float), edge_index=torch.tensor(edges, dtype=torch.long).t().contiguous())
+    ico_graph = Data(pos=torch.tensor(verticies, dtype=torch.float),
+                     edge_index=torch.tensor(edges, dtype=torch.long).t().contiguous())
     return ico_graph
 
 
