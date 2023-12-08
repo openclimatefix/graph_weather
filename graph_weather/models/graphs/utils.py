@@ -143,6 +143,7 @@ def rad2deg(rad):
     """
     return rad * 180 / np.pi
 
+
 def azimuthal_angle(lon: Tensor) -> Tensor:
     """
     Gives the azimuthal angle of a point on the sphere
@@ -179,9 +180,7 @@ def polar_angle(lat: Tensor) -> Tensor:
     return angle
 
 
-def geospatial_rotation(
-    invar: Tensor, theta: Tensor, axis: str, unit: str = "rad"
-) -> Tensor:
+def geospatial_rotation(invar: Tensor, theta: Tensor, axis: str, unit: str = "rad") -> Tensor:
     """Rotation using right hand rule
 
     Parameters
@@ -296,9 +295,7 @@ def add_edge_features(graph: Data, pos: Tensor, normalize: bool = True) -> Data:
     # normalize using the longest edge
     if normalize:
         max_disp_norm = torch.max(disp_norm)
-        graph["edge_attr"] = torch.cat(
-            (disp / max_disp_norm, disp_norm / max_disp_norm), dim=-1
-        )
+        graph["edge_attr"] = torch.cat((disp / max_disp_norm, disp_norm / max_disp_norm), dim=-1)
     else:
         graph["edge_attr"] = torch.cat((disp, disp_norm), dim=-1)
     return graph
@@ -322,9 +319,7 @@ def add_node_features(graph: Data, pos: Tensor) -> Data:
     """
     latlon = xyz2latlon(pos)
     lat, lon = latlon[:, 0], latlon[:, 1]
-    graph["x"] = torch.stack(
-        (torch.cos(lat), torch.sin(lon), torch.cos(lon)), dim=-1
-    )
+    graph["x"] = torch.stack((torch.cos(lat), torch.sin(lon), torch.cos(lon)), dim=-1)
     return graph
 
 
@@ -383,5 +378,5 @@ def plot_graph(graph: Data, **kwargs):
     for angle in range(0, 360):
         ax.view_init(30, angle)
         plt.draw()
-        plt.pause(.01)
+        plt.pause(0.01)
     plt.show()
