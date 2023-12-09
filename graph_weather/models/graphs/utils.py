@@ -349,7 +349,7 @@ def generate_grid_to_mesh(lat_lons: torch.Tensor, mesh: Data, max_edge_length: O
     grid2mesh = HeteroData()
     grid2mesh["grid"].pos = torch.tensor(cartesian_grid, dtype=torch.float)
     grid2mesh["mesh"].pos = mesh.pos
-    grid2mesh["grid", "to", "mesh"].edge_index = torch.tensor([src, dst], dtype=torch.long)
+    grid2mesh["grid", "g2m", "mesh"].edge_index = torch.tensor([src, dst], dtype=torch.long)
     # Add edge features
     grid2mesh = add_edge_features(grid2mesh, (grid2mesh["grid"].pos, grid2mesh["mesh"].pos))
     return grid2mesh
@@ -368,14 +368,14 @@ def generate_mesh_to_grid(lat_lons: torch.Tensor, mesh: Data):
     src = [
         p
         for i in indices
-        for p in mesh.pos[i]
+        for p in mesh.pos[i] # TODO Need to fix this to be the faces in the mesh
     ]
     dst = [i for i in range(len(cartesian_grid)) for _ in range(3)]
 
     mesh2grid = HeteroData()
     mesh2grid["mesh"].pos = mesh.pos
     mesh2grid["grid"].pos = torch.tensor(cartesian_grid, dtype=torch.float)
-    mesh2grid["mesh", "to", "grid"].edge_index = torch.tensor([src, dst], dtype=torch.long)
+    mesh2grid["mesh", "m2g", "grid"].edge_index = torch.tensor([src, dst], dtype=torch.long)
     # Add edge features
     mesh2grid = add_edge_features(mesh2grid, (mesh2grid["mesh"].pos, mesh2grid["grid"].pos))
 

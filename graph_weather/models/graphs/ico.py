@@ -32,7 +32,7 @@ is not merged in that speeds up generation 5-8x. See https://github.com/vedranaa
 """
 
 import numpy as np
-import torch
+from typing import Tuple
 from torch_geometric.data import Data, HeteroData
 from graph_weather.models.graphs.utils import generate_grid_to_mesh, generate_mesh_to_grid
 
@@ -300,7 +300,7 @@ def generate_icosphere_graph(resolution=1):
     return vertices, edges
 
 
-def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirectional=True) -> Data:
+def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirectional=True) -> Tuple[HeteroData, Data, HeteroData]:
     """
     Generate mapping from lat/lon to icosphere index.
 
@@ -384,39 +384,7 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirecti
     grid_to_mesh = generate_grid_to_mesh(lat_lons, ico_graph, max_edge_length=max_edge_len)
     mesh_to_grid = generate_mesh_to_grid(lat_lons, ico_graph)
 
-    return ico_graph
+    return grid_to_mesh, ico_graph, mesh_to_grid
 
 
 generate_icosphere_mapping([(0, 0), (0, 1), (1, 0), (1, 1)])
-
-
-
-
-
-def generate_latent_ico_graph(h3_mapping, h3_distances):
-    """
-    Generate latent h3 graph.
-
-    Args:
-        base_h3_map: Mapping from h3 index to index in latent graph
-        h3_mapping: Mapping from lat/lon to h3 index
-        h3_distances: Distances between lat/lon and h3 index
-
-    Returns:
-        Latent h3 graph
-    """
-    # Get connectivity of the graph
-    edge_sources = []
-    edge_targets = []
-    edge_attrs = []
-    for h3_index in h3_mapping:
-        h_points = h3.k_ring(h3_index, 1)
-        for h in h_points:  # Already includes itself
-            distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
-            edge_attrs.append([np.sin(distance), np.cos(distance)])
-            edge_sources.append(h3_mapping[h3_index])
-            edge_targets.append(h3_mapping[h])
-    edge_sources = np.array(edge_sources)
-    edge_targets = np.array(edge_targets)
-    edge_attrs = np.array(edge_attrs)
-    return edge_sources, edge_targets, edge_attrs
