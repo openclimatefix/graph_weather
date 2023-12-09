@@ -20,9 +20,11 @@ There are some adaptions for PyTorch Geometric data structures instead.
 """
 
 import torch
+from typing import Optional, Tuple
 from torch import Tensor, testing
 import numpy as np
 from torch_geometric.data import Data, HeteroData
+from sklearn.neighbors import NearestNeighbors
 
 
 def latlon2xyz(latlon: Tensor, radius: float = 1, unit: str = "deg") -> Tensor:
@@ -307,7 +309,7 @@ def add_node_features(graph: Data, pos: Tensor) -> Data:
 
     Parameters
     ----------
-    graph : DGLGraph
+    graph : Data
         The graph to add node features to.
     pos : Tensor
         The node positions.
@@ -321,6 +323,63 @@ def add_node_features(graph: Data, pos: Tensor) -> Data:
     lat, lon = latlon[:, 0], latlon[:, 1]
     graph["x"] = torch.stack((torch.cos(lat), torch.sin(lon), torch.cos(lon)), dim=-1)
     return graph
+
+
+def generate_grid_to_mesh(lat_lons: torch.Tensor, mesh: Data, max_edge_length: Optional[float] = None) -> HeteroData:
+    if max_edge_length is None:
+        max_edge_len = np.max(
+            get_edge_len(mesh.pos[mesh.edge_index[:, 0]], mesh.pos[mesh.edge_index[:, 1]])
+        )
+    else:
+        max_edge_len = max_edge_length
+
+    # create the grid2mesh bipartite graph
+    cartesian_grid = latlon2xyz(lat_lons)
+    n_nbrs = 4
+    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(mesh.pos)
+    distances, indices = neighbors.kneighbors(cartesian_grid)
+
+    src, dst = [], []
+    for i in range(len(cartesian_grid)):
+        for j in range(n_nbrs):
+            if distances[i][j] <= 0.6 * max_edge_len:
+                src.append(i)
+                dst.append(indices[i][j])
+    # This is in COO format now, and it is not bidirectional, so no copying
+    grid2mesh = HeteroData()
+    grid2mesh["grid"].pos = torch.tensor(cartesian_grid, dtype=torch.float)
+    grid2mesh["mesh"].pos = mesh.pos
+    grid2mesh["grid", "to", "mesh"].edge_index = torch.tensor([src, dst], dtype=torch.long)
+    # Add edge features
+    grid2mesh = add_edge_features(grid2mesh, (grid2mesh["grid"].pos, grid2mesh["mesh"].pos))
+    return grid2mesh
+
+
+def generate_mesh_to_grid(lat_lons: torch.Tensor, mesh: Data):
+    # create the mesh2grid bipartite graph
+    cartesian_grid = latlon2xyz(lat_lons)
+    n_nbrs = 1
+    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
+        mesh.pos
+    )
+    _, indices = neighbors.kneighbors(cartesian_grid)
+    indices = indices.flatten()
+
+    src = [
+        p
+        for i in indices
+        for p in mesh.pos[i]
+    ]
+    dst = [i for i in range(len(cartesian_grid)) for _ in range(3)]
+
+    mesh2grid = HeteroData()
+    mesh2grid["mesh"].pos = mesh.pos
+    mesh2grid["grid"].pos = torch.tensor(cartesian_grid, dtype=torch.float)
+    mesh2grid["mesh", "to", "grid"].edge_index = torch.tensor([src, dst], dtype=torch.long)
+    # Add edge features
+    mesh2grid = add_edge_features(mesh2grid, (mesh2grid["mesh"].pos, mesh2grid["grid"].pos))
+
+    return mesh2grid
 
 
 def plot_graph(graph: Data, **kwargs):

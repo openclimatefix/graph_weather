@@ -33,9 +33,8 @@ is not merged in that speeds up generation 5-8x. See https://github.com/vedranaa
 
 import numpy as np
 import torch
-from torch_geometric.data import Data
-from graph_weather.models.graphs.utils import deg2rad, latlon2xyz, xyz2latlon, get_edge_len
-from sklearn.neighbors import NearestNeighbors
+from torch_geometric.data import Data, HeteroData
+from graph_weather.models.graphs.utils import generate_grid_to_mesh, generate_mesh_to_grid
 
 
 def icosphere(nu=1, nr_verts=None):
@@ -368,9 +367,6 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirecti
     )
     u, c = np.unique(edges, axis=0, return_counts=True)
     print(f"First 20 duplicates: {u[c > 1][:20]}")
-    xyz_grid = latlon2xyz(torch.tensor(lat_lons, dtype=torch.float))
-    # Find the closest vertex to each point
-    vertex_mapping = np.argmin(np.sum(np.abs(verticies - xyz_grid[:, None]), axis=2), axis=1)
     # Features will need to be in the same lat/lon order as given, and added to the verticies
     ico_graph = Data(
         pos=torch.tensor(verticies, dtype=torch.float),
@@ -381,43 +377,20 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirecti
             ico_graph.pos[edges_per_level[-1][:, 0]], ico_graph.pos[edges_per_level[-1][:, 1]]
         )
     )
-    # create the grid2mesh bipartite graph
-    cartesian_grid = latlon2xyz(lat_lons)
-    n_nbrs = 4
-    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(ico_graph.pos)
-    distances, indices = neighbors.kneighbors(cartesian_grid)
-
-    src, dst = [], []
-    for i in range(len(cartesian_grid)):
-        for j in range(n_nbrs):
-            if distances[i][j] <= 0.6 * max_edge_len:
-                src.append(i)
-                dst.append(indices[i][j])
     # Check that the graph is valid
     ico_graph.validate(raise_on_error=True)
+
+    # Generate grid to mesh and mesh to graph
+    grid_to_mesh = generate_grid_to_mesh(lat_lons, ico_graph, max_edge_length=max_edge_len)
+    mesh_to_grid = generate_mesh_to_grid(lat_lons, ico_graph)
+
     return ico_graph
 
 
 generate_icosphere_mapping([(0, 0), (0, 1), (1, 0), (1, 1)])
 
 
-def get_grid_to_mesh(lat_lons: torch.Tensor, mesh: Data):
-    max_edge_len = np.max(
-        get_edge_len(mesh.pos[mesh.edge_index[:, 0]], mesh.pos[mesh.edge_index[:, 1]])
-    )
 
-    # create the grid2mesh bipartite graph
-    cartesian_grid = latlon2xyz(lat_lons)
-    n_nbrs = 4
-    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(mesh.pos)
-    distances, indices = neighbors.kneighbors(cartesian_grid)
-
-    src, dst = [], []
-    for i in range(len(cartesian_grid)):
-        for j in range(n_nbrs):
-            if distances[i][j] <= 0.6 * max_edge_len:
-                src.append(i)
-                dst.append(indices[i][j])
 
 
 def generate_latent_ico_graph(h3_mapping, h3_distances):
