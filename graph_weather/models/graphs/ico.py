@@ -390,9 +390,6 @@ def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirecti
 generate_icosphere_mapping([(0, 0), (0, 1), (1, 0), (1, 1)])
 
 
-
-
-
 def generate_latent_ico_graph(h3_mapping, h3_distances):
     """
     Generate latent h3 graph.
