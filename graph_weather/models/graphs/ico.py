@@ -300,7 +300,9 @@ def generate_icosphere_graph(resolution=1):
     return vertices, edges
 
 
-def generate_icosphere_mapping(lat_lons, resolutions=(1, 2, 4, 8, 16), bidirectional=True) -> Tuple[HeteroData, Data, HeteroData]:
+def generate_icosphere_mapping(
+    lat_lons, resolutions=(1, 2, 4, 8, 16), bidirectional=True
+) -> Tuple[HeteroData, Data, HeteroData]:
     """
     Generate mapping from lat/lon to icosphere index.
 

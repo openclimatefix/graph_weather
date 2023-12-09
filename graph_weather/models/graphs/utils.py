@@ -325,7 +325,9 @@ def add_node_features(graph: Data, pos: Tensor) -> Data:
     return graph
 
 
-def generate_grid_to_mesh(lat_lons: torch.Tensor, mesh: Data, max_edge_length: Optional[float] = None) -> HeteroData:
+def generate_grid_to_mesh(
+    lat_lons: torch.Tensor, mesh: Data, max_edge_length: Optional[float] = None
+) -> HeteroData:
     if max_edge_length is None:
         max_edge_len = np.max(
             get_edge_len(mesh.pos[mesh.edge_index[:, 0]], mesh.pos[mesh.edge_index[:, 1]])
@@ -359,16 +361,12 @@ def generate_mesh_to_grid(lat_lons: torch.Tensor, mesh: Data):
     # create the mesh2grid bipartite graph
     cartesian_grid = latlon2xyz(lat_lons)
     n_nbrs = 1
-    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
-        mesh.pos
-    )
+    neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(mesh.pos)
     _, indices = neighbors.kneighbors(cartesian_grid)
     indices = indices.flatten()
 
     src = [
-        p
-        for i in indices
-        for p in mesh.pos[i] # TODO Need to fix this to be the faces in the mesh
+        p for i in indices for p in mesh.pos[i]  # TODO Need to fix this to be the faces in the mesh
     ]
     dst = [i for i in range(len(cartesian_grid)) for _ in range(3)]
 
