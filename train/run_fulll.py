@@ -75,8 +75,7 @@ class XrDataset(Dataset):
 with open("hf_forecasts.json", "r") as f:
     files = json.load(f)
 files = [
-    "zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/"
-    + f
+    "zip:///::https://huggingface.co/datasets/openclimatefix/gfs-reforecast/resolve/main/" + f
     for f in files
 ]
 data = (
@@ -88,9 +87,7 @@ data = (
 )
 print(data)
 # print("Done coarsening")
-lat_lons = np.array(np.meshgrid(data.latitude.values, data.longitude.values)).T.reshape(
-    -1, 2
-)
+lat_lons = np.array(np.meshgrid(data.latitude.values, data.longitude.values)).T.reshape(-1, 2)
 
 if torch.cuda.is_available():
     device = "cuda"
