@@ -1,2 +1,6 @@
 .idea/
 *.nc
+*.pt
+*.pyc
+.DS_Store
+*.txt

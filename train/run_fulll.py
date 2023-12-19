@@ -1,5 +1,10 @@
 """Training script for training the weather forecasting model"""
 import json
+import os
+import sys
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
 
 import numpy as np
 import torch
@@ -31,8 +36,8 @@ class XrDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, item):
-        start_idx = np.random.randint(0, 15)
-        data = self.data.isel(reftime=item, time=slice(start_idx, start_idx + 1))
+        start_idx = np.random.randint(0, 14)
+        data = self.data.isel(reftime=item, time=slice(start_idx, start_idx + 2))
 
         start = data.isel(time=0)
         end = data.isel(time=1)
@@ -83,7 +88,14 @@ data = (
 print(data)
 # print("Done coarsening")
 lat_lons = np.array(np.meshgrid(data.latitude.values, data.longitude.values)).T.reshape(-1, 2)
-device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+
+if torch.cuda.is_available():
+    device = "cuda"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+
 # Get the variance of the variables
 feature_variances = []
 for var in data.data_vars:
@@ -93,7 +105,7 @@ criterion = NormalizedMSELoss(
     lat_lons=lat_lons, feature_variance=feature_variances, device=device
 ).to(device)
 means = []
-dataset = DataLoader(XrDataset(), batch_size=1, num_workers=32)
+dataset = DataLoader(XrDataset(), batch_size=1)
 model = GraphWeatherForecaster(lat_lons, feature_dim=597, num_blocks=6).to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
