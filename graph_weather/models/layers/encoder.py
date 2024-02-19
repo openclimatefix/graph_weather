@@ -21,6 +21,7 @@ or mildly randomize graph connectivity in encoder, as a kind of edge Dropout
 
 
 """
+
 from typing import Tuple
 
 import einops

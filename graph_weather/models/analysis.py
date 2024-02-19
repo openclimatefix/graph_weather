@@ -1,4 +1,5 @@
 """Model for forecasting weather from NWP states"""
+
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
