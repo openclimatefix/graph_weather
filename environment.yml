@@ -6,7 +6,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cudatoolkit=12.1
+  - pytorch-cuda=12.1
   - numcodecs
   - pandas
   - pip
