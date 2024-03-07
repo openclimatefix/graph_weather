@@ -6,7 +6,9 @@ import torch
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
 
-    def __init__(self, feature_variance: list, lat_lons: list, device="cpu", normalize: bool = False):
+    def __init__(
+        self, feature_variance: list, lat_lons: list, device="cpu", normalize: bool = False
+    ):
         """
         Normalized MSE Loss as described in the paper
 
@@ -52,9 +54,9 @@ class NormalizedMSELoss(torch.nn.Module):
         self.weights = self.weights.to(pred.device)
 
         out = (pred - target) ** 2
-        
+
         if self.normalize:
-             out = out / self.feature_variance
+            out = out / self.feature_variance
 
         assert not torch.isnan(out).any()
         # Mean of the physical variables

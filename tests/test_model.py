@@ -202,6 +202,7 @@ def test_forecaster_and_loss_grad_checkpoint():
     assert not torch.isnan(out).any()
     loss.backward()
 
+
 def test_normalized_loss():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -209,11 +210,13 @@ def test_normalized_loss():
             lat_lons.append((lat, lon))
 
     # Generate output as strictly positive random features
-    out = torch.rand((2, len(lat_lons), 78))+0.0001
-    feature_variance = (out ** 2)
+    out = torch.rand((2, len(lat_lons), 78)) + 0.0001
+    feature_variance = out**2
     target = torch.zeros((2, len(lat_lons), 78))
 
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=feature_variance, normalize=True)
+    criterion = NormalizedMSELoss(
+        lat_lons=lat_lons, feature_variance=feature_variance, normalize=True
+    )
     loss = criterion(out, target)
 
     assert not torch.isnan(loss)
