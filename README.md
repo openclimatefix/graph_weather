@@ -30,11 +30,14 @@ for lat in range(-90, 90, 1):
         lat_lons.append((lat, lon))
 model = GraphWeatherForecaster(lat_lons)
 
-features = torch.randn((2, len(lat_lons), 78))
+# Generate 78 random features + 24 non-NWP features (i.e. landsea mask)
+features = torch.randn((2, len(lat_lons), 102))
 
+target = torch.randn((2, len(lat_lons), 78))
 out = model(features)
+
 criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
-loss = criterion(out, features)
+loss = criterion(out, target)
 loss.backward()
 ```
 
