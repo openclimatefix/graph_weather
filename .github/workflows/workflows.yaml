@@ -28,7 +28,7 @@ jobs:
 
       - name: Install PyTorch ${{ matrix.torch-version }}+cpu
         run: |
-          pip install torch==${{ matrix.torch-version}}+cpu torchvision==${{ matrix.torchvision-version}}+cpu --index-url https://download.pytorch.org/whl/cpu
+          pip install torch==${{ matrix.torch-version}} torchvision==${{ matrix.torchvision-version}} --index-url https://download.pytorch.org/whl/cpu
       - name: Install internal dependencies
         run: |
           pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-${{ matrix.torch-version}}+cpu.html
