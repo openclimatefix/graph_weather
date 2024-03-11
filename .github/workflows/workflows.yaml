@@ -18,7 +18,11 @@ jobs:
             torchvision-version: 0.15.1
           - torch-version: 2.2.0
             torchvision-version: 0.17.0
-
+        exclude:
+          - python-version: "3.12"
+            torch-version: 2.0.0
+          - python-version: "3.12"
+            torch-version: 2.1.0
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -54,11 +58,11 @@ jobs:
           echo "Will be looking at coverage of dir  graph_weather"
           #
           # install pytest-cov
-          pip install coverage==6.2 # https://github.com/nedbat/coveragepy/issues/1312
+          pip install coverage==7.4.3
           pip install pytest-cov
           #
           # make PYTESTCOV
-          export PYTESTCOV="--cov=graph_weather--cov-report=xml"
+          export PYTESTCOV="--cov=graph_weather tests/ --cov-report=xml"
           # echo results and save env var for other jobs
           echo "pytest-cov options that will be used are: $PYTESTCOV"
           echo "PYTESTCOV=$PYTESTCOV" >> $GITHUB_ENV
