@@ -1,4 +1,5 @@
 """Weather loss functions"""
+
 import numpy as np
 import torch
 

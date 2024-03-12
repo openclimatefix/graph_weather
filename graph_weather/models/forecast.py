@@ -1,4 +1,5 @@
 """Model for forecasting weather from NWP states"""
+
 from typing import Optional
 
 import torch
