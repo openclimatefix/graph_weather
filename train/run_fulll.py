@@ -1,4 +1,5 @@
 """Training script for training the weather forecasting model"""
+
 import json
 import os
 import sys
