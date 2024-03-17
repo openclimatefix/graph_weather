@@ -1,7 +1,8 @@
 import openmeteo_requests  # Importing required libraries
-import requests_cache
 import pandas as pd
+import requests_cache
 from retry_requests import retry
+
 
 class WeatherDataFetcher:
     BASE_URL = "https://api.open-meteo.com/v1/"  # Base URL for OpenMeteo API
@@ -9,7 +10,7 @@ class WeatherDataFetcher:
     def __init__(self):
         # Initialize the WeatherDataFetcher class
         # Setup the Open-Meteo API client with cache and retry on error
-        cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+        cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
         retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
         self.openmeteo = openmeteo_requests.Client(session=retry_session)
 
@@ -21,12 +22,12 @@ class WeatherDataFetcher:
             return responses[0]  # Return the first response (assuming only one location)
         except openmeteo_requests.OpenMeteoRequestsError as e:
             # Handle OpenMeteoRequestsError exceptions
-            if 'No data is available for this location' in str(e):
+            if "No data is available for this location" in str(e):
                 print(f"Error: No data available for the location for model '{NWP}'.")
             else:
                 print(f"Error: {e}")
             return None
-        
+
     def fetch_historical_data(self, params):
         # Fetch historical weather data from OpenMeteo API
         BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -47,7 +48,7 @@ class WeatherDataFetcher:
             "temperature_2m": hourly.Variables(0).ValuesAsNumpy(),
             "relative_humidity_2m": hourly.Variables(1).ValuesAsNumpy(),
             "precipitation": hourly.Variables(2).ValuesAsNumpy(),
-            "cloud_cover": hourly.Variables(3).ValuesAsNumpy()
+            "cloud_cover": hourly.Variables(3).ValuesAsNumpy(),
         }
 
         # Extract time information
@@ -55,7 +56,7 @@ class WeatherDataFetcher:
             start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
             end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
             freq=pd.Timedelta(seconds=hourly.Interval()),
-            inclusive="left"
+            inclusive="left",
         )
 
         # Create a dictionary for hourly data
@@ -83,15 +84,20 @@ def main():
 
     # Specify parameters for weather data fetch
     NWP = "gfs"  # Choose NWP model
-    
+
     # NWP models =  ["dwd-icon", "gfs", "ecmwf", "meteofrance", "jma", "metno", "gem", "bom", "cma"]
 
     params = {
         "latitude": 40.77,  # Latitude of the location
         "longitude": -73.91,  # Longitude of the location
-        "hourly": ["temperature_2m", "relative_humidity_2m", "precipitation", "cloud_cover"],  # Variables to fetch
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "precipitation",
+            "cloud_cover",
+        ],  # Variables to fetch
         "start_date": "2023-12-21",  # Start date for data
-        "end_date": "2024-03-15"  # End date for data
+        "end_date": "2024-03-15",  # End date for data
     }
 
     # Fetch weather data for specified model and parameters
