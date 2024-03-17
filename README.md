@@ -47,6 +47,7 @@ well.
 
 ```python
 import torch
+import numpy as np
 from graph_weather import GraphWeatherAssimilator
 from graph_weather.models.losses import NormalizedMSELoss
 
