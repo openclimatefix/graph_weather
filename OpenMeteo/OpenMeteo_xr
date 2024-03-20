@@ -39,9 +39,9 @@ class WeatherDataFetcher:
                 "start_date": start_date,
                 "end_date": end_date
             }
-            try: 
+            try:
                 responses = self.openmeteo.weather_api(url, params=params)
-              
+
             except:
                 break
             res = [lat for lat in lat_chunk.tolist()]
