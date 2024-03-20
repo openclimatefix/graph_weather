@@ -1,0 +1,82 @@
+import openmeteo_requests
+import requests_cache
+import pandas as pd
+from retry_requests import retry
+import numpy as np
+import xarray as xr
+from typing import Tuple, List
+
+class WeatherDataFetcher:
+    def __init__(self):
+        # Setup the Open-Meteo API client with cache and retry on error
+        cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+        retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+        self.openmeteo = openmeteo_requests.Client(session=retry_session)
+
+    def generate_lat_lon_grid(self, lat_range: Tuple[float, float] = (-90, 90), lon_range: Tuple[float, float] = (-180, 180), lat_step: float = 0.25, lon_step: float = 0.25) -> Tuple[np.ndarray, np.ndarray]:
+        latitudes = np.arange(lat_range[0], lat_range[1] + lat_step, lat_step)
+        longitudes = np.arange(lon_range[0], lon_range[1] + lon_step, lon_step)
+        return latitudes, longitudes
+
+    def fetch_world_grid_data(self, start_date: str, end_date: str, weather_variables: List[str]) -> xr.Dataset:
+        # Generate latitude and longitude grid
+        latitudes, longitudes = self.generate_lat_lon_grid()
+
+        # Split the grid into smaller chunks (adjust as needed)
+        chunk_size = 200
+        latitude_chunks = [latitudes[i:i+chunk_size] for i in range(0, len(latitudes), chunk_size)]
+        longitude_chunks = [longitudes[i:i+chunk_size] for i in range(0, len(longitudes), chunk_size)]
+
+        all_data = []
+        lat = []
+        lon = []
+        # Make API requests for each chunk of latitude and longitude values
+        for lat_chunk, lon_chunk in zip(latitude_chunks, longitude_chunks):
+            params = {
+                "latitude": lat_chunk.tolist(),
+                "longitude": lon_chunk.tolist(),
+                "hourly": weather_variables,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+            try: 
+                responses = self.openmeteo.weather_api(url, params=params)
+              
+            except:
+                break
+            res = [lat for lat in lat_chunk.tolist()]
+            lat+=res
+            res = [lon for lon in lat_chunk.tolist()]
+            lon+=res
+            # Process responses as needed
+            for response in responses:
+                data = {
+                    "latitude": response.Latitude(),
+                    "longitude": response.Longitude(),
+                    "date": pd.date_range(
+                        start=pd.to_datetime(response.Hourly().Time(), unit="s", utc=True),
+                        end=pd.to_datetime(response.Hourly().TimeEnd(), unit="s", utc=True),
+                        freq=pd.Timedelta(seconds=response.Hourly().Interval()),
+                        inclusive="left"
+                    )
+                }
+                for var in weather_variables:
+                    data[var] = response.Hourly().Variables(weather_variables.index(var)).ValuesAsNumpy()
+
+                all_data.append(data)
+        print(len(lat))
+        print(all_data[0]["visibility"])
+        # Create an xarray dataset from the collected data
+        dataset = xr.Dataset(
+            {var: (["latitude", "longitude", "date"], np.array(all_data[i][var])) for i,var in zip(range(len(all_data)),weather_variables)},
+            coords={"latitude": lat, "longitude": lon, "date": np.array(all_data[i]["date"] for i in range((len(all_data))))}
+        )
+        return dataset
+
+# Example usage:
+fetcher = WeatherDataFetcher()
+start_date = "2024-01-01"
+end_date = "2024-01-10"
+weather_variables = ["temperature_2m", "precipitation", "visibility", "cloud_cover"]
+world_grid_data = fetcher.fetch_world_grid_data(start_date, end_date, weather_variables)
+print(world_grid_data)
