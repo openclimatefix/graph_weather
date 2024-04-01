@@ -2,11 +2,9 @@ name: graph
 channels:
   - pytorch
   - pyg
-  - nvidia
   - conda-forge
   - defaults
 dependencies:
-  - pytorch-cuda=12.1
   - numcodecs
   - pandas
   - pip
@@ -24,6 +22,8 @@ dependencies:
   - xarray
   - zarr
   - h3-py
+  - numpy
+  - torch==2.2.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
   - pip:
       - datasets
       - einops
@@ -32,3 +32,6 @@ dependencies:
       - huggingface-hub
       - pysolar
       - pytorch-lightning
+      - click
+
+      
