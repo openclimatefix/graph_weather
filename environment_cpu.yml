@@ -33,5 +33,3 @@ dependencies:
       - pysolar
       - pytorch-lightning
       - click
-
-      
