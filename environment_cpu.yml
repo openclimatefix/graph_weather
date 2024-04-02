@@ -9,8 +9,8 @@ dependencies:
   - pandas
   - pip
   - pyg
-  - python=3.11
-  - pytorch
+  - python=3.12
+  - pytorch cpuonly -c pytorch
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
@@ -23,7 +23,6 @@ dependencies:
   - zarr
   - h3-py
   - numpy
-  - torch==2.2.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
   - pip:
       - datasets
       - einops

@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 ENV CONDA_ENV_NAME=graph
-ENV PYTHON_VERSION=3.10
+ENV PYTHON_VERSION=3.12
 
 # Basic setup
 RUN apt update && apt install -y bash \
