@@ -10,7 +10,8 @@ dependencies:
   - pip
   - pyg
   - python=3.12
-  - pytorch cpuonly -c pytorch
+  - pytorch
+  - cpuonly
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
