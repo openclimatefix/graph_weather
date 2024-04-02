@@ -1,0 +1,35 @@
+name: graph
+channels:
+  - pytorch
+  - pyg
+  - conda-forge
+  - defaults
+dependencies:
+  - numcodecs
+  - pandas
+  - pip
+  - pyg
+  - python=3.12
+  - pytorch
+  - cpuonly
+  - pytorch-cluster
+  - pytorch-scatter
+  - pytorch-sparse
+  - pytorch-spline-conv
+  - scikit-learn
+  - scipy
+  - torchvision
+  - tqdm
+  - xarray
+  - zarr
+  - h3-py
+  - numpy
+  - pip:
+      - datasets
+      - einops
+      - fsspec
+      - torch-geometric-temporal
+      - huggingface-hub
+      - pysolar
+      - pytorch-lightning
+      - click

@@ -11,7 +11,7 @@ dependencies:
   - pandas
   - pip
   - pyg
-  - python=3.11
+  - python=3.12
   - pytorch
   - pytorch-cluster
   - pytorch-scatter
@@ -24,6 +24,7 @@ dependencies:
   - xarray
   - zarr
   - h3-py
+  - numpy
   - pip:
       - datasets
       - einops
@@ -32,3 +33,4 @@ dependencies:
       - huggingface-hub
       - pysolar
       - pytorch-lightning
+      - click
