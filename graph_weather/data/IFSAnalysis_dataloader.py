@@ -21,16 +21,19 @@ IFS_STD = {
     "vertical_velocity": 0.08577341,
 }
 
+
 class IFSAnalisysDataset(Dataset):
     def __init__(self, filepath: str, features: list, start_year: int = 2016, end_year: int = 2022):
         super().__init__()
-        assert start_year <= end_year, f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
-        assert start_year >= 2016 and start_year <= 2022, "Time data range from 2016 to 2022"
-        assert end_year >= 2016 and end_year <= 2022, "Time data range from 2016 to 2022"
-        self.data = xr.open_zarr(filepath)
-        self.data = self.data.sel(time=slice(str(start_year), str(end_year)))  # Filter data by start and end years
+        self.data = xr.open_zarr('gs://weatherbench2/datasets/hres_t0/2016-2022-6h-64x32_equiangular_conservative.zarr')
+        self.data = self.data.sel(time=slice(f"{start_year}-01-01", f"{end_year}-12-31"))  # Filter data by start and end years
 
-        self.NWP_features = features
+        self.NWP_features = [   "geopotential",
+                                "specific_humidity",
+                                "temperature",
+                                "u_component_of_wind",
+                                "v_component_of_wind",
+                                "vertical_velocity" ]
 
     def __len__(self):
         return len(self.data["time"])
