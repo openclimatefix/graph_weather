@@ -2,8 +2,10 @@
 
 The dataloader has to do a few things for the model to work correctly
 
-1. Load the land-0sea mask, orography dataset, regridded from 0.1 to the correct resolution
-2. Calculate the top-of-atmosphere solar radiation for each location at fcurrent time and 10 other
+1. Load the land-0sea mask, orography dataset, regridded from 0.1 to the 
+correct resolution
+2. Calculate the top-of-atmosphere solar radiation for each location at 
+fcurrent time and 10 other
  times +- 12 hours
 3. Add day-of-year, sin(lat), cos(lat), sin(lon), cos(lon) as well
 3. Batch data as either in geometric batches, or more normally
@@ -124,7 +126,8 @@ class AnalysisDataset(Dataset):
             ],
             axis=-1,
         )
-        # Not want to predict non-physics variables -> Output only the data variables? Would be simpler, and just add in the new ones each time
+        # Not want to predict non-physics variables -> Output only the data variables? 
+        # Would be simpler, and just add in the new ones each time
 
         output_data = np.stack(
             [
@@ -154,9 +157,13 @@ class AnalysisDataset(Dataset):
 obs_data = xr.open_zarr(
     "/home/jacob/Development/prepbufr.gdas.20160101.t00z.nr.48h.raw.zarr", consolidated=True
 )
-# TODO Embedding? These should stay consistent across all of the inputs, so can just load the values, not the strings?
-# Should only take in the quality markers, observations, reported observation time relative to start point
+
+# TODO Embedding? These should stay consistent across all of the inputs, so can just load the values
+#  not the strings?
+# Should only take in the quality markers, observations, reported observation time relative to start
+# point
 # Observation errors, and background values, lat/lon/height/speed of observing thing
+
 print(obs_data)
 print(obs_data.hdr_inst_typ.values)
 print(obs_data.hdr_irpt_typ.values)

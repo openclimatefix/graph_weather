@@ -1,6 +1,7 @@
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning import Trainer
+from torch.utils.data import DataLoader, Dataset
 
 from graph_weather import GraphWeatherForecaster
 
@@ -31,11 +32,6 @@ class LitModel(pl.LightningModule):
 
     def forward(self, x):
         return self.model(x)
-
-
-# Fake data
-from torch.utils.data import DataLoader, Dataset
-
 
 class FakeDataset(Dataset):
     def __init__(self):

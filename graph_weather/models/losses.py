@@ -25,6 +25,8 @@ class NormalizedMSELoss(torch.nn.Module):
         Args:
             feature_variance: Variance for each of the physical features
             lat_lons: List of lat/lon pairs, used to generate weighting
+            device: checks for device whether it supports gpu or not
+            normalize: option for normalize
         """
         # TODO Rescale by nominal static air density at each pressure level
         super().__init__()

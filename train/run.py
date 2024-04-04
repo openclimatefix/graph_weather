@@ -1,5 +1,7 @@
 """Training script for training the weather forecasting model"""
 
+import time
+
 import datasets
 import numpy as np
 import pandas as pd
@@ -22,7 +24,7 @@ def worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
-def get_mean_stds():
+def get_mean_stds():  # noqa: D103
     names = [
         "CLMR",
         "GRLE",
@@ -333,7 +335,7 @@ class XrDataset(IterableDataset):
             seed=np.random.randint(low=-1000, high=10000), buffer_size=4
         )
         for data in iter(self.dataset):
-            # TODO Currently leaves out lat/lon/Sun irradience, and land/sea mask and topographic data
+        #TODO Currently leaves out lat/lon/Sun irradience, and land/sea mask and topographic data
             data.update(
                 {
                     key: np.expand_dims(np.asarray(value), axis=-1)
@@ -468,7 +470,7 @@ model = GraphWeatherForecaster(
 ).to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
-import time
+
 
 for epoch in range(100):  # loop over the dataset multiple times
     running_loss = 0.0
