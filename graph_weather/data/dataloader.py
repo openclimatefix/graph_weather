@@ -2,9 +2,9 @@
 
 The dataloader has to do a few things for the model to work correctly
 
-1. Load the land-0sea mask, orography dataset, regridded from 0.1 to the 
+1. Load the land-0sea mask, orography dataset, regridded from 0.1 to the
 correct resolution
-2. Calculate the top-of-atmosphere solar radiation for each location at 
+2. Calculate the top-of-atmosphere solar radiation for each location at
 fcurrent time and 10 other
  times +- 12 hours
 3. Add day-of-year, sin(lat), cos(lat), sin(lon), cos(lon) as well
@@ -126,7 +126,7 @@ class AnalysisDataset(Dataset):
             ],
             axis=-1,
         )
-        # Not want to predict non-physics variables -> Output only the data variables? 
+        # Not want to predict non-physics variables -> Output only the data variables?
         # Would be simpler, and just add in the new ones each time
 
         output_data = np.stack(

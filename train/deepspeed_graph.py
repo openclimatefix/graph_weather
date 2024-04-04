@@ -33,6 +33,7 @@ class LitModel(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
+
 class FakeDataset(Dataset):
     def __init__(self):
         super(FakeDataset, self).__init__()

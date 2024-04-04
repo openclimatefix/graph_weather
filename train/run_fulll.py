@@ -19,6 +19,7 @@ from graph_weather.models.losses import NormalizedMSELoss
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
+
 class XrDataset(Dataset):
     def __init__(self):
         super().__init__()
