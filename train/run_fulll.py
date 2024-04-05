@@ -33,6 +33,7 @@ class XrDataset(Dataset):
         __len__: Get the length of the dataset.
         __getitem__: Get an item from the dataset by index.
     """
+
     def __init__(self):
         """
         Initialize the XrDataset object by loading data from Hugging Face datasets.

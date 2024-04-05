@@ -1,4 +1,4 @@
-"""Module for training the Graph Weather forecaster model using PyTorch Lightning.""" 
+"""Module for training the Graph Weather forecaster model using PyTorch Lightning."""
 
 import pytorch_lightning as pl
 import torch
@@ -25,6 +25,7 @@ class LitModel(pl.LightningModule):
     Methods:
         __init__: Initialize the LitModel object.
     """
+
     def __init__(self, lat_lons, feature_dim, aux_dim):
         """
         Initialize the LitModel object.
@@ -88,6 +89,7 @@ class FakeDataset(Dataset):
         __len__: Return the length of the dataset.
         __getitem__: Get an item from the dataset.
     """
+
     def __init__(self):
         """
         Initialize the FakeDataset object.

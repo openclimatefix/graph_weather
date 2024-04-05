@@ -259,6 +259,7 @@ class GraphDataModule(pl.LightningDataModule):
         __init__: Initialize the GraphDataModule object by loading and processing data.
         train_dataloader: Create training dataloader.
     """
+
     def __init__(self, deg: str = "2.0", batch_size: int = 1):
         """
         Initialize the GraphDataModule object by loading and processing data.
@@ -316,6 +317,7 @@ class LitGraphForecaster(pl.LightningModule):
         training_step: Training step.
         configure_optimizers: Configure the optimizer for training.
     """
+
     def __init__(
         self,
         lat_lons: list,
@@ -375,7 +377,7 @@ class LitGraphForecaster(pl.LightningModule):
         Returns:
             torch.Tensor: Loss tensor.
         """
-        
+
         x, y = batch["input"], batch["output"]
         if torch.isnan(x).any() or torch.isnan(y).any():
             return None

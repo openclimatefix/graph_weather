@@ -37,6 +37,7 @@ class AnalysisDataset(Dataset):
         __len__: Get the length of the dataset.
         __getitem__: Get an item from the dataset.
     """
+
     def __init__(self, filepaths, invariant_path, mean, std, coarsen: int = 8):
         """
         Initialize the AnalysisDataset object.

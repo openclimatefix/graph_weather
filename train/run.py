@@ -173,6 +173,7 @@ class XrDataset(IterableDataset):
         __init__: Initialize the XrDataset object by loading data from Hugging Face datasets.
         __iter__: Iterate through the dataset.
     """
+
     def __init__(self, resolution="2.0deg"):
         """
         Initialize the XrDataset object by loading data from Hugging Face datasets.
