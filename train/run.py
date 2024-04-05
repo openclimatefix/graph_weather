@@ -21,6 +21,15 @@ const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_ST
 
 
 def worker_init_fn(worker_id):
+    """
+    Initialize the random seed for each worker.
+
+    Args:
+        worker_id (int): The ID of the worker.
+
+    Returns:
+        None
+    """
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
@@ -150,7 +159,28 @@ def get_mean_stds():  # noqa: D103
 
 
 class XrDataset(IterableDataset):
+    """
+    Dataset class for loading data from Hugging Face datasets.
+
+    Attributes:
+        dataset : Dataset containing the loaded data.
+        means : Dictionary containing mean values.
+        stds : Dictionary containing standard deviation values.
+        landsea: Dataset containing land-sea mask data.
+        landsea_fixed : Tensor containing fixed land-sea mask data.
+
+    Methods:
+        __init__: Initialize the XrDataset object by loading data from Hugging Face datasets.
+        __iter__: Iterate through the dataset.
+    """
     def __init__(self, resolution="2.0deg"):
+        """
+        Initialize the XrDataset object by loading data from Hugging Face datasets.
+
+        Args:
+            resolution : Resolution of the dataset.
+
+        """
         super().__init__()
         if "2deg" in resolution:
             LATITUDE = 91

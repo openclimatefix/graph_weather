@@ -22,7 +22,25 @@ from torch.utils.data import Dataset
 
 
 class AnalysisDataset(Dataset):
+    """
+    Dataset class for analysis data.
+
+    Args:
+        filepaths: List of file paths.
+        invariant_path: Path to the invariant file.
+        mean: Mean value.
+        std  Standard deviation value.
+        coarsen : Coarsening factor. Defaults to 8.
+
+    Methods:
+        __init__: Initialize the AnalysisDataset object.
+        __len__: Get the length of the dataset.
+        __getitem__: Get an item from the dataset.
+    """
     def __init__(self, filepaths, invariant_path, mean, std, coarsen: int = 8):
+        """
+        Initialize the AnalysisDataset object.
+        """
         super().__init__()
         self.filepaths = sorted(filepaths)
         self.invariant_path = invariant_path

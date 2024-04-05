@@ -21,7 +21,22 @@ sys.path.append(BASE_DIR)
 
 
 class XrDataset(Dataset):
+    """
+    Dataset class for loading data from Hugging Face datasets.
+
+    Attributes:
+        filepaths : List of file paths to the data.
+        data : Dataset containing the loaded data.
+
+    Methods:
+        __init__: Initialize the XrDataset object by loading data from Hugging Face datasets.
+        __len__: Get the length of the dataset.
+        __getitem__: Get an item from the dataset by index.
+    """
     def __init__(self):
+        """
+        Initialize the XrDataset object by loading data from Hugging Face datasets.
+        """
         super().__init__()
         with open("hf_forecasts.json", "r") as f:
             files = json.load(f)

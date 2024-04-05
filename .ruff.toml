@@ -1,6 +1,6 @@
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 lint.select = ["E", "F", "D", "I"]
-lint.ignore = ["D200","D202","D210","D212","D415","D105","D101","D107","D103","D102","D100"]
+lint.ignore = ["D200","D202","D210","D212","D415","D105"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 lint.fixable = ["A", "B", "C", "D", "E", "F", "I"]
