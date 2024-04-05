@@ -3,9 +3,7 @@
 import json
 import os
 import sys
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
+import time
 
 import numpy as np
 import torch
@@ -18,9 +16,28 @@ from graph_weather import GraphWeatherForecaster
 from graph_weather.data import const
 from graph_weather.models.losses import NormalizedMSELoss
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+
 
 class XrDataset(Dataset):
+    """
+    Dataset class for loading data from Hugging Face datasets.
+
+    Attributes:
+        filepaths : List of file paths to the data.
+        data : Dataset containing the loaded data.
+
+    Methods:
+        __init__: Initialize the XrDataset object by loading data from Hugging Face datasets.
+        __len__: Get the length of the dataset.
+        __getitem__: Get an item from the dataset by index.
+    """
+
     def __init__(self):
+        """
+        Initialize the XrDataset object by loading data from Hugging Face datasets.
+        """
         super().__init__()
         with open("hf_forecasts.json", "r") as f:
             files = json.load(f)
@@ -110,7 +127,7 @@ dataset = DataLoader(XrDataset(), batch_size=1)
 model = GraphWeatherForecaster(lat_lons, feature_dim=597, num_blocks=6).to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
-import time
+
 
 for epoch in range(100):  # loop over the dataset multiple times
     running_loss = 0.0

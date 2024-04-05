@@ -1,5 +1,7 @@
 """Training script for training the weather forecasting model"""
 
+import time
+
 import datasets
 import numpy as np
 import pandas as pd
@@ -19,10 +21,19 @@ const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_ST
 
 
 def worker_init_fn(worker_id):
+    """
+    Initialize the random seed for each worker.
+
+    Args:
+        worker_id (int): The ID of the worker.
+
+    Returns:
+        None
+    """
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
-def get_mean_stds():
+def get_mean_stds():  # noqa: D103
     names = [
         "CLMR",
         "GRLE",
@@ -148,7 +159,29 @@ def get_mean_stds():
 
 
 class XrDataset(IterableDataset):
+    """
+    Dataset class for loading data from Hugging Face datasets.
+
+    Attributes:
+        dataset : Dataset containing the loaded data.
+        means : Dictionary containing mean values.
+        stds : Dictionary containing standard deviation values.
+        landsea: Dataset containing land-sea mask data.
+        landsea_fixed : Tensor containing fixed land-sea mask data.
+
+    Methods:
+        __init__: Initialize the XrDataset object by loading data from Hugging Face datasets.
+        __iter__: Iterate through the dataset.
+    """
+
     def __init__(self, resolution="2.0deg"):
+        """
+        Initialize the XrDataset object by loading data from Hugging Face datasets.
+
+        Args:
+            resolution : Resolution of the dataset.
+
+        """
         super().__init__()
         if "2deg" in resolution:
             LATITUDE = 91
@@ -333,7 +366,7 @@ class XrDataset(IterableDataset):
             seed=np.random.randint(low=-1000, high=10000), buffer_size=4
         )
         for data in iter(self.dataset):
-            # TODO Currently leaves out lat/lon/Sun irradience, and land/sea mask and topographic data
+            # TODO Currently leaves out lat/lon/Sun irradience, land/sea mask and topographic data
             data.update(
                 {
                     key: np.expand_dims(np.asarray(value), axis=-1)
@@ -468,7 +501,7 @@ model = GraphWeatherForecaster(
 ).to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 print("Done Setup")
-import time
+
 
 for epoch in range(100):  # loop over the dataset multiple times
     running_loss = 0.0

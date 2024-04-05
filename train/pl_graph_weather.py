@@ -19,10 +19,25 @@ const.FORECAST_STD = {var: np.asarray(value) for var, value in const.FORECAST_ST
 
 
 def worker_init_fn(worker_id):
+    """
+    Initialize random seed for worker.
+
+    Args:
+        worker_id (int): ID of the worker.
+
+    Returns:
+        None
+    """
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
 def get_mean_stds():
+    """
+    Calculate means and standard deviations for forecast variables.
+
+    Returns:
+        means and standard deviations dict for forecast variables
+    """
     names = [
         "CLMR",
         "GRLE",
@@ -151,6 +166,7 @@ means, stds = get_mean_stds()
 
 
 def process_data(data):
+    """Process the input data."""
     data.update(
         {
             key: np.expand_dims(np.asarray(value), axis=-1)
@@ -232,7 +248,26 @@ def process_data(data):
 
 
 class GraphDataModule(pl.LightningDataModule):
+    """
+    LightningDataModule for loading graph data.
+
+    Attributes:
+        batch_size : Batch size for the dataloader.
+        dataset : Dataset containing the loaded data.
+
+    Methods:
+        __init__: Initialize the GraphDataModule object by loading and processing data.
+        train_dataloader: Create training dataloader.
+    """
+
     def __init__(self, deg: str = "2.0", batch_size: int = 1):
+        """
+        Initialize the GraphDataModule object by loading and processing data.
+
+        Args:
+            deg : Resolution of the dataset.
+            batch_size : Batch size for the dataloader.
+        """
         super().__init__()
         self.batch_size = batch_size
         self.dataset = datasets.load_dataset(
@@ -258,10 +293,31 @@ class GraphDataModule(pl.LightningDataModule):
         )
 
     def train_dataloader(self):
+        """
+        Create training dataloader.
+
+        Returns:
+            torch.utils.data.DataLoader: Training dataloader.
+        """
         return DataLoader(self.dataset, batch_size=self.batch_size, num_workers=2)
 
 
 class LitGraphForecaster(pl.LightningModule):
+    """
+    LightningModule for graph-based weather forecasting.
+
+    Attributes:
+        model (GraphWeatherForecaster): Graph weather forecaster model.
+        criterion (NormalizedMSELoss): Loss criterion for training.
+        lr : Learning rate for optimizer.
+
+    Methods:
+        __init__: Initialize the LitGraphForecaster object.
+        forward: Forward pass of the model.
+        training_step: Training step.
+        configure_optimizers: Configure the optimizer for training.
+    """
+
     def __init__(
         self,
         lat_lons: list,
@@ -271,6 +327,17 @@ class LitGraphForecaster(pl.LightningModule):
         num_blocks: int = 3,
         lr: float = 3e-4,
     ):
+        """
+        Initialize the LitGraphForecaster object with the required args.
+
+        Args:
+            lat_lons : List of latitude and longitude values.
+            feature_dim : Dimensionality of the input features.
+            aux_dim : Dimensionality of auxiliary features.
+            hidden_dim : Dimensionality of hidden layers in the model.
+            num_blocks : Number of graph convolutional blocks in the model.
+            lr (float): Learning rate for optimizer.
+        """
         super().__init__()
         self.model = GraphWeatherForecaster(
             lat_lons,
@@ -288,9 +355,29 @@ class LitGraphForecaster(pl.LightningModule):
         self.save_hyperparameters()
 
     def forward(self, x):
+        """
+        Forward pass .
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor.
+        """
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
+        """
+        Training step.
+
+        Args:
+            batch (dict): Batch of data containing input and output tensors.
+            batch_idx (int): Index of the current batch.
+
+        Returns:
+            torch.Tensor: Loss tensor.
+        """
+
         x, y = batch["input"], batch["output"]
         if torch.isnan(x).any() or torch.isnan(y).any():
             return None
@@ -299,6 +386,12 @@ class LitGraphForecaster(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
+        """
+        Configure the optimizer.
+
+        Returns:
+            torch.optim.Optimizer: Optimizer instance.
+        """
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
 
@@ -328,6 +421,18 @@ class LitGraphForecaster(pl.LightningModule):
     type=click.INT,
 )
 def run(num_blocks, hidden, batch, gpus):
+    """
+    Trainig process.
+
+    Args:
+        num_blocks : Number of blocks.
+        hidden: Hidden dimension.
+        batch : Batch size.
+        gpus : Number of GPUs.
+
+    Returns:
+        None
+    """
     hf_ds = datasets.load_dataset(
         "openclimatefix/gfs-surface-pressure-2deg", split="train", streaming=False
     )

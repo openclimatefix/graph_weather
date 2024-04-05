@@ -39,7 +39,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 odd ones have octogons and heptagons as well
             feature_dim: Input feature size
             aux_dim: Number of non-NWP features (i.e. landsea mask, lat/lon, etc)
-            output_dim: Optional, output feature size, useful if want only subset of variables in output
+            output_dim: Optional, output feature size, useful if want only subset of variables in
+            output
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
             num_blocks: Number of message passing blocks in the Processor
