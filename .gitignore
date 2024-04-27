@@ -4,3 +4,6 @@
 *.pyc
 .DS_Store
 *.txt
+# pixi environments
+.pixi
+

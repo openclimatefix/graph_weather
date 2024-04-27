@@ -20,7 +20,7 @@ setup(
     extras_requires={"vis": ["matplotlib"], "data": ["pysolar"]},
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author_email="jacob@openclimatefix.org",
+    author_email="jacob@bieker.tech",
     description="Weather Forecasting with Graph Neural Networks",
     classifiers=[
         "Development Status :: 4 - Beta",
