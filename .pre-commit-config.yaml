@@ -3,7 +3,7 @@ default_language_version:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       # list of supported hooks: https://pre-commit.com/hooks.html
       - id: trailing-whitespace
@@ -14,12 +14,12 @@ repos:
   # python code formatting/linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: "v0.3.2"
+    rev: "v0.4.1"
     hooks:
       - id: ruff
         args: [--fix]
   - repo: https://github.com/psf/black
-    rev: 24.2.0
+    rev: 24.4.0
     hooks:
       - id: black
         args: [--line-length, "100"]
