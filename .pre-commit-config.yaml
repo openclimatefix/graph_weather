@@ -14,12 +14,12 @@ repos:
   # python code formatting/linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: "v0.4.1"
+    rev: "v0.4.4"
     hooks:
       - id: ruff
         args: [--fix]
   - repo: https://github.com/psf/black
-    rev: 24.4.0
+    rev: 24.4.2
     hooks:
       - id: black
         args: [--line-length, "100"]
