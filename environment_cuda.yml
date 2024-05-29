@@ -6,12 +6,12 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pytorch-cuda=12.1
+  - pytorch-cuda
   - numcodecs
   - pandas
   - pip
   - pyg
-  - python=3.12
+  - python
   - pytorch
   - pytorch-cluster
   - pytorch-scatter
