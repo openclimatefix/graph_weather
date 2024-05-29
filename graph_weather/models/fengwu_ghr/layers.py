@@ -126,8 +126,7 @@ class MetaModel(nn.Module):
         x += self.pos_embedding.to(device, dtype=x.dtype)
 
         x = self.transformer(x)
-
-        print(x.shape)
+        
         x = self.reshaper(x)
 
         return x

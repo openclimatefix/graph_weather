@@ -6,3 +6,4 @@
 *.txt
 # pixi environments
 .pixi
+.vscode/

@@ -9,7 +9,7 @@ dependencies:
   - pandas
   - pip
   - pyg
-  - python=3.12
+  - python
   - pytorch
   - cpuonly
   - pytorch-cluster
