@@ -3,8 +3,18 @@ import numpy as np
 import torch
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
-from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Decoder, Encoder, Processor
+from graph_weather.models import (
+    AssimilatorDecoder,
+    AssimilatorEncoder,
+    Decoder,
+    Encoder,
+    Processor,
+)
 from graph_weather.models.losses import NormalizedMSELoss
+from graph_weather.models.gencast.utils.noise import (
+    generate_isotropic_noise,
+    sample_noise_level,
+)
 
 
 def test_encoder():
@@ -149,7 +159,9 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    criterion = NormalizedMSELoss(
+        lat_lons=lat_lons, feature_variance=torch.randn((78,))
+    )
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -190,7 +202,9 @@ def test_forecaster_and_loss_grad_checkpoint():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    criterion = NormalizedMSELoss(
+        lat_lons=lat_lons, feature_variance=torch.randn((78,))
+    )
     model = GraphWeatherForecaster(lat_lons, use_checkpointing=True)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -222,3 +236,16 @@ def test_normalized_loss():
     assert not torch.isnan(loss)
     # Since feature_variance = out**2 and target = 0, we expect loss = weights
     assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
+
+
+def test_gencast_noise():
+    num_lat = 32
+    num_samples = 5
+    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(
+        num_lat=num_lat, num_samples=target_residuals.shape[-1]
+    )
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()

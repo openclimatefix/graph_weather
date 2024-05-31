@@ -9,7 +9,7 @@ dependencies:
   - pandas
   - pip
   - pyg
-  - python=3.12
+  - python
   - pytorch
   - cpuonly
   - pytorch-cluster
@@ -24,6 +24,7 @@ dependencies:
   - zarr
   - h3-py
   - numpy
+  - pyshtools
   - pip:
       - datasets
       - einops
