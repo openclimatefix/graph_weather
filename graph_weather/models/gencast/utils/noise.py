@@ -8,7 +8,7 @@ def generate_isotropic_noise(num_lat, num_samples=1):
     """Generate isotropic noise on the grid.
 
     Sample the equivalent of white noise on a sphere and project it onto a grid using
-    Driscoll and Healy, 1994 algorithm. The power spectrum is normalized to have variance 1. 
+    Driscoll and Healy, 1994 algorithm. The power spectrum is normalized to have variance 1.
     We need to assume lons = 2* lats.
 
     Args:
@@ -32,7 +32,7 @@ def sample_noise_level(sigma_min=0.02, sigma_max=88, rho=7):
     """Generate random sample of noise level.
 
     Sample a noise level according to the distribution described in the paper.
-    Notice that the default values are valid only for training and need to be 
+    Notice that the default values are valid only for training and need to be
     modified for sampling.
 
     Args:
