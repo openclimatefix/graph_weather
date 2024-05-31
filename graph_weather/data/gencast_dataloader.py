@@ -222,7 +222,7 @@ class BatchedGenCastDataset(Dataset):
         max_year=2018,
         time_step=2,
         batch_size=32,
-    ):  
+    ):
         """
         Initialize the GenCast dataset object.
         """

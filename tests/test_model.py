@@ -159,9 +159,7 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(
-        lat_lons=lat_lons, feature_variance=torch.randn((78,))
-    )
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -202,9 +200,7 @@ def test_forecaster_and_loss_grad_checkpoint():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(
-        lat_lons=lat_lons, feature_variance=torch.randn((78,))
-    )
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons, use_checkpointing=True)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -243,9 +239,7 @@ def test_gencast_noise():
     num_samples = 5
     target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(
-        num_lat=num_lat, num_samples=target_residuals.shape[-1]
-    )
+    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
