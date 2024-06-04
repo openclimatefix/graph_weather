@@ -4,3 +4,4 @@ datasets
 einops
 torch-geometric-temporal
 pyshtools
+trimesh
