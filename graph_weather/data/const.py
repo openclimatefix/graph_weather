@@ -5641,6 +5641,11 @@ FORECAST_DIFF_MIN = {
     "WILT.surface": -0.004800006747245789,
 }
 
+# Means and stds computed from gs://weatherbench2/datasets/era5/1959-2022-6h-64x32_equiangular_conservative.zarr.
+# The atmospheric variables are numpy arrays at 13 vertical pressure levels
+# corresponding to the levels of the WeatherBench (Rasp et al., 2020) benchmark:
+# 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, and 1000 hPa.
+# ERA5_DIFF_MEAN and ERA5_DIFF_STD are the means and stds of 12h timesteps differences.
 
 ERA5_MEANS = {
     "geopotential": np.array(
