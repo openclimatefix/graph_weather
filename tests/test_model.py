@@ -3,7 +3,14 @@ import numpy as np
 import torch
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
-from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Decoder, Encoder, Processor
+from graph_weather.models import (
+    AssimilatorDecoder,
+    AssimilatorEncoder,
+    Decoder,
+    Encoder,
+    Processor,
+    MetaModel,
+)
 from graph_weather.models.losses import NormalizedMSELoss
 
 
@@ -222,3 +229,13 @@ def test_normalized_loss():
     assert not torch.isnan(loss)
     # Since feature_variance = out**2 and target = 0, we expect loss = weights
     assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
+
+
+def test_meta_model():
+    model = MetaModel(image_size=100, patch_size=10, depth=1, heads=1, mlp_dim=7, channels=3)
+    features = torch.randn((1, 3, 100, 100))
+
+    out = model(features)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == (1, 3, 100, 100)
