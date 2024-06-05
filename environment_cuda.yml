@@ -36,3 +36,4 @@ dependencies:
       - pytorch-lightning
       - click
       - trimesh
+      - rtree

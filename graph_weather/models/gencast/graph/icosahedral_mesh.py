@@ -13,8 +13,7 @@
 # limitations under the License.
 """Utils for creating icosahedral meshes."""
 
-import itertools
-from typing import List, NamedTuple, Sequence, Tuple
+from typing import List, NamedTuple, Tuple
 
 import numpy as np
 from scipy.spatial import transform
@@ -33,28 +32,6 @@ class TriangularMesh(NamedTuple):
 
     vertices: np.ndarray
     faces: np.ndarray
-
-
-def merge_meshes(mesh_list: Sequence[TriangularMesh]) -> TriangularMesh:
-    """Merges all meshes into one. Assumes the last mesh is the finest.
-
-    Args:
-       mesh_list: Sequence of meshes, from coarse to fine refinement levels. The
-         vertices and faces may contain those from preceding, coarser levels.
-
-    Returns:
-       `TriangularMesh` for which the vertices correspond to the highest
-       resolution mesh in the hierarchy, and the faces are the join set of the
-       faces at all levels of the hierarchy.
-    """
-    for mesh_i, mesh_ip1 in itertools.pairwise(mesh_list):
-        num_nodes_mesh_i = mesh_i.vertices.shape[0]
-        assert np.allclose(mesh_i.vertices, mesh_ip1.vertices[:num_nodes_mesh_i])
-
-    return TriangularMesh(
-        vertices=mesh_list[-1].vertices,
-        faces=np.concatenate([mesh.faces for mesh in mesh_list], axis=0),
-    )
 
 
 def get_hierarchy_of_triangular_meshes_for_sphere(splits: int) -> List[TriangularMesh]:

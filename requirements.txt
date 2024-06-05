@@ -5,3 +5,4 @@ einops
 torch-geometric-temporal
 pyshtools
 trimesh
+rtree
