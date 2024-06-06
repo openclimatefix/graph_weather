@@ -31,10 +31,10 @@ class IFSAnalisysDataset(Dataset):
     Dataset for IFSAnalysis.
 
     Args:
-            filepath (str): path of the dataset.
-            features (list): list of features.
-            start_year (int, optional): initial year. Defaults to 2016.
-            end_year (int, optional): ending year. Defaults to 2022.
+            filepath: path of the dataset.
+            features: list of features.
+            start_year: initial year. Defaults to 2016.
+            end_year: ending year. Defaults to 2022.
     """
 
     def __init__(self, filepath: str, features: list, start_year: int = 2016, end_year: int = 2022):
