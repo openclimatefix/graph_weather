@@ -1,8 +1,11 @@
 """Build the three graphs for GenCast.
 
+The following code is a port of several components from GraphCast's original
+graph generation to PyG and PyTorch. The graphs are:
 - g2m: grid to mesh.
 - mesh: icosphere refinement.
 - m2g: mesh to grid.
+- khop: k-hop neighbours mesh.
 """
 
 import numpy as np
@@ -11,6 +14,30 @@ from torch_geometric.data import Data, HeteroData
 from torch_geometric.transforms import TwoHop
 
 from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
+
+# Some configs from graphcast:
+_spatial_features_kwargs = dict(
+    add_node_positions=False,
+    add_node_latitude=True,
+    add_node_longitude=True,
+    add_relative_positions=True,
+    relative_longitude_local_coordinates=True,
+    relative_latitude_local_coordinates=True,
+)
+
+# radius_query_fraction_edge_length: Scalar that will be multiplied by the
+#   length of the longest edge of the finest mesh to define the radius of
+#   connectivity to use in the Grid2Mesh graph. Reasonable values are
+#   between 0.6 and 1. 0.6 reduces the number of grid points feeding into
+#   multiple mesh nodes and therefore reduces edge count and memory use, but
+#   1 gives better predictions.
+# mesh2grid_edge_normalization_factor: Allows explicitly controlling edge
+#   normalization for mesh2grid edges. If None, defaults to max edge length.
+#   This supports using pre-trained model weights with a different graph
+#   structure to what it was trained on.
+
+radius_query_fraction_edge_length = 0.6
+mesh2grid_edge_normalization_factor = None
 
 
 def _get_max_edge_distance(mesh):
@@ -21,45 +48,45 @@ def _get_max_edge_distance(mesh):
 
 class GraphBuilder:
     """
-    Class for building GenCast graphs.
+    Class for building GenCast's graphs.
 
-    Args: # TODO: check!
-        obs_path: dataset path.
-        atmospheric_features: list of features depending on pressure levels.
-        single_features: list of features not depending on pressure levels.
-        static_features: list of features not depending on time.
-        max_year (optional): max year to include in training set. Defaults to 2018.
-        time_step (optional): time step between predictions.
-                    E.g. 12h steps correspond to time_step = 2 in a 6h dataset. Defaults to 2.
+    Attributes:
+        g2m_graph (pyg.data.HeteroData): heterogeneous directed graph connecting the grid nodes
+            to the mesh nodes.
+        mesh_graph (pyg.data.Data): undirected graph connecting the mesh nodes.
+        m2g_graph (pyg.data.HeteroData): heterogeneous directed graph connecting the mesh nodes
+            to the grid nodes.
+        khop_mesh_graph (pyg.data.Data): augmented version of mesh_graph in which every node is
+            connected to its 2^num_hops neighbours.
+        grid_nodes_dim (int): dimension of the grid nodes features.
+        mesh_nodes_dim (int): dimension of the mesh nodes features.
+        mesh_edges_dim (int): dimension of the mesh edges features.
+        g2m_edges_dim (int): dimension of the "grid to mesh" edges features.
+        m2g_edges_dim (int): dimension of the "mesh to grid" edges features.
     """
 
-    def __init__(self, grid_lat, grid_lon, splits=5, num_hops=0, device="cpu"):
-        """Initialize the GraphBuilder object."""
+    def __init__(
+        self,
+        grid_lon: np.ndarray,
+        grid_lat: np.ndarray,
+        splits: int = 5,
+        num_hops: int = 0,
+        device: str = "cpu",
+    ):
+        """Initialize the GraphBuilder object.
 
-        self._spatial_features_kwargs = dict(
-            add_node_positions=False,
-            add_node_latitude=True,
-            add_node_longitude=True,
-            add_relative_positions=True,
-            relative_longitude_local_coordinates=True,
-            relative_latitude_local_coordinates=True,
-        )
+        Args:
+            grid_lon: 1D np.ndarray containing the list of longitudes.
+            grid_lat: 1D np.ndarray containing the list of latitudes.
+            splits: number of times to split the icosphere to build the mesh. Defaults to 5.
+            num_hops: if num_hops=k then khop_mesh_graph will be the 2^k-neighbours version of
+                the mesh. Defaults to 0.
+            device: the device to which the graph will be moved.
+        """
 
+        self._spatial_features_kwargs = _spatial_features_kwargs
+        self.add_edge_features_to_khop = True
         self.device = device
-
-        # radius_query_fraction_edge_length: Scalar that will be multiplied by the
-        #   length of the longest edge of the finest mesh to define the radius of
-        #   connectivity to use in the Grid2Mesh graph. Reasonable values are
-        #   between 0.6 and 1. 0.6 reduces the number of grid points feeding into
-        #   multiple mesh nodes and therefore reduces edge count and memory use, but
-        #   1 gives better predictions.
-        # mesh2grid_edge_normalization_factor: Allows explicitly controlling edge
-        #   normalization for mesh2grid edges. If None, defaults to max edge length.
-        #   This supports using pre-trained model weights with a different graph
-        #   structure to what it was trained on.
-
-        radius_query_fraction_edge_length = 0.6
-        mesh2grid_edge_normalization_factor = None
 
         # Specification of the mesh.
         _icosahedral_refinements = icosahedral_mesh.get_hierarchy_of_triangular_meshes_for_sphere(
@@ -240,28 +267,38 @@ class GraphBuilder:
         m2g_graph = HeteroData()
         m2g_graph["mesh_nodes"].x = torch.tensor(
             senders_node_features, dtype=torch.float32, device=self.device
-        ) 
-        m2g_graph["grid_nodes"].x =  torch.tensor(
+        )
+        m2g_graph["grid_nodes"].x = torch.tensor(
             receivers_node_features, dtype=torch.float32, device=self.device
-        ) 
+        )
         m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_index = torch.tensor(
-            np.stack([senders, receivers]),
-            dtype=torch.long,
-            device=self.device
+            np.stack([senders, receivers]), dtype=torch.long, device=self.device
         )
         m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_attr = torch.tensor(
-            edge_features,
-            dtype=torch.float32,
-            device=self.device
+            edge_features, dtype=torch.float32, device=self.device
         )
-        
+
         return m2g_graph
 
     def _init_khop_mesh_graph(self):
         """Build k-hop Mesh graph."""
+
         transform = TwoHop()
         khop_mesh_graph = self.mesh_graph
         for _ in range(self.num_hops):
             khop_mesh_graph = transform(khop_mesh_graph)
-        # TODO: should we add the edge features?
+
+        if self.add_edge_features_to_khop:
+            senders = khop_mesh_graph.edge_index[0]
+            receivers = khop_mesh_graph.edge_index[1]
+            _, edge_features = model_utils.get_graph_spatial_features(
+                node_lat=self._mesh_nodes_lat,
+                node_lon=self._mesh_nodes_lon,
+                senders=senders,
+                receivers=receivers,
+                **self._spatial_features_kwargs,
+            )
+            khop_mesh_graph.edge_attr = torch.tensor(
+                edge_features, dtype=torch.float32, device=self.device
+            )
         return khop_mesh_graph
