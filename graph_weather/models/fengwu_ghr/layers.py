@@ -1,3 +1,5 @@
+import numpy as np
+from scipy.interpolate import griddata, interpn
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
@@ -8,6 +10,39 @@ from torch import nn
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
+
+
+def grid_interpolate(lat_lons: list, z: torch.Tensor,
+                     height, width,
+                     method: str = "cubic"):
+    # TODO 1. CPU only
+    #      2. The mesh is a rectangle, not a sphere
+
+    xi = np.arange(0.5, width, 1)/width*360
+    yi = np.arange(0.5, height, 1)/height*180
+
+    xi, yi = np.meshgrid(xi, yi)
+    z = rearrange(z, "b n c -> n b c")
+    z = griddata(
+        lat_lons, z, (xi, yi),
+        fill_value=0, method=method)
+    z = rearrange(z, "h w b c -> b c h w")  # hw ?
+    z = torch.tensor(z)
+    return z
+
+def grid_extrapolate(lat_lons, z,
+                     height, width,
+                     method: str = "cubic"):
+    xi = np.arange(0.5, width, 1)/width*360
+    yi = np.arange(0.5, height, 1)/height*180
+    z = rearrange(z, "b c h w -> h w b c")
+    z = z.detach().numpy()
+    z= interpn((xi,yi),z, lat_lons,
+               bounds_error=False,
+                method=method)
+    z = rearrange(z, "n b c -> b n c")
+    z = torch.tensor(z)
+    return z
 
 
 def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
@@ -56,7 +91,8 @@ class Attention(nn.Module):
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(
+            t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -75,7 +111,8 @@ class Transformer(nn.Module):
         for _ in range(depth):
             self.layers.append(
                 nn.ModuleList(
-                    [Attention(dim, heads=heads, dim_head=dim_head), FeedForward(dim, mlp_dim)]
+                    [Attention(dim, heads=heads, dim_head=dim_head),
+                     FeedForward(dim, mlp_dim)]
                 )
             )
 
@@ -87,20 +124,31 @@ class Transformer(nn.Module):
 
 
 class MetaModel(nn.Module):
-    def __init__(self, *, image_size, patch_size, depth, heads, mlp_dim, channels=3, dim_head=64):
+    def __init__(self, lat_lons: list, *,
+                 patch_size, depth,
+                 heads, mlp_dim,
+                 resolution=(721, 1440),
+                 channels=3, dim_head=64,
+                 interp_method='cubic'):
         super().__init__()
-        image_height, image_width = pair(image_size)
+        image_height, image_width = pair(resolution)
         patch_height, patch_width = pair(patch_size)
 
         assert (
             image_height % patch_height == 0 and image_width % patch_width == 0
         ), "Image dimensions must be divisible by the patch size."
 
+        # interpolate
+        self.interpolate = lambda z: grid_interpolate(
+            lat_lons, z, image_height, image_width,
+            method=interp_method)
+
         patch_dim = channels * patch_height * patch_width
         dim = patch_dim
         self.to_patch_embedding = nn.Sequential(
             Rearrange(
-                "b c (h p_h) (w p_w) -> b (h w) (p_h p_w c)", p_h=patch_height, p_w=patch_width
+                "b c (h p_h) (w p_w) -> b (h w) (p_h p_w c)",
+                p_h=patch_height, p_w=patch_width
             ),
             nn.LayerNorm(patch_dim),  # TODO Do we need this?
             nn.Linear(patch_dim, dim),  # TODO Do we need this?
@@ -125,14 +173,27 @@ class MetaModel(nn.Module):
             )
         )
 
-    def forward(self, img):
-        device = img.device
+        # extrapolate
+        self.extrapolate = lambda z: grid_extrapolate(
+            lat_lons, z, image_height, image_width,
+            method=interp_method)
 
-        x = self.to_patch_embedding(img)
-        x += self.pos_embedding.to(device, dtype=x.dtype)
+
+    def forward(self, x):
+        device = x.device
+        dtype = x.dtype
+
+        x = self.interpolate(x.to("cpu"))
+        x = x.to(device, dtype=dtype)
+
+        x = self.to_patch_embedding(x)
+        x += self.pos_embedding.to(device, dtype=dtype)
 
         x = self.transformer(x)
 
         x = self.reshaper(x)
+
+        x = self.extrapolate(x.to("cpu"))
+        x = x.to(device, dtype=dtype)
 
         return x
