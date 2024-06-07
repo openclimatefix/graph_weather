@@ -13,11 +13,12 @@ from graph_weather.models import (
     ImageMetaModel,
 )
 from graph_weather.models.losses import NormalizedMSELoss
+
 from graph_weather.models.gencast.utils.noise import (
     generate_isotropic_noise,
     sample_noise_level,
 )
-from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
+from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss
 
 def test_encoder():
     lat_lons = []
@@ -298,3 +299,26 @@ def test_gencast_graph():
     assert not torch.isnan(graphs.mesh_graph.edge_attr).any()
     assert graphs.khop_mesh_graph.x.shape[0] == 12
     assert graphs.khop_mesh_graph.edge_attr.shape[0] == 12*10
+
+def test_gencast_loss():
+    grid_lat = torch.arange(-90, 90, 1)
+    grid_lon = torch.arange(0, 360, 1)
+    pressure_levels = torch.tensor(
+        [50., 100., 150., 200., 250, 300, 400, 500, 600, 700, 850, 925, 1000.]
+        )
+    single_features_weights = torch.tensor([1, 0.1, 0.1, 0.1, 0.1])
+    num_atmospheric_features = 6
+    batch_size = 3
+    features_dim = len(pressure_levels)*num_atmospheric_features + len(single_features_weights)
+
+    loss = WeightedMSELoss(
+        grid_lat=grid_lat,
+        pressure_levels=pressure_levels,
+        num_atmospheric_features=num_atmospheric_features,
+        single_features_weights=single_features_weights
+        )
+    
+    preds = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
+    noise_levels = torch.rand((batch_size, 1))
+    targets = torch.rand((batch_size,  len(grid_lon), len(grid_lat), features_dim))
+    assert loss.forward(preds, targets, noise_levels) is not None
