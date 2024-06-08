@@ -113,7 +113,7 @@ class GenCastDataset(Dataset):
         )
         local_mean_time = hour_of_day_grid + ds["longitude"].values[None, :, None] * 4 / 60.0
         sin_local_mean_time, cos_local_mean_time = self._sin_cos_emb(local_mean_time / 24.0)
-        
+
         # Stack clock features
         clock_input_data = np.stack(
             [sin_day_of_year, cos_day_of_year, sin_local_mean_time, cos_local_mean_time], axis=-1
@@ -181,7 +181,7 @@ class GenCastDataset(Dataset):
         raw_targets = np.concatenate([ds_target_atm, ds_target_single], axis=-1)
 
         # Normalize target residuals
-        raw_target_residuals = raw_targets - raw_inputs[1, :, :, :raw_targets.shape[-1]]
+        raw_target_residuals = raw_targets - raw_inputs[1, :, :, : raw_targets.shape[-1]]
         target_residuals = self._normalize(raw_target_residuals, self.diff_means, self.diff_stds)
         target_residuals = np.nan_to_num(target_residuals).astype(np.float32)
 
