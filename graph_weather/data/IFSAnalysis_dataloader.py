@@ -1,3 +1,7 @@
+"""
+The dataloader for IFS analysis.
+"""
+
 import numpy as np
 import torchvision.transforms as transforms
 import xarray as xr
@@ -23,7 +27,21 @@ IFS_STD = {
 
 
 class IFSAnalisysDataset(Dataset):
+    """
+    Dataset for IFSAnalysis.
+
+    Args:
+            filepath: path of the dataset.
+            features: list of features.
+            start_year: initial year. Defaults to 2016.
+            end_year: ending year. Defaults to 2022.
+    """
+
     def __init__(self, filepath: str, features: list, start_year: int = 2016, end_year: int = 2022):
+        """
+        Initialize the dataset object.
+        """
+
         super().__init__()
         assert (
             start_year <= end_year
@@ -46,15 +64,15 @@ class IFSAnalisysDataset(Dataset):
         end = self.data.isel(time=idx + 1)
 
         # Extract NWP features
-        input_data = self.nwp_features_extraction(start)
-        output_data = self.nwp_features_extraction(end)
+        input_data = self._nwp_features_extraction(start)
+        output_data = self._nwp_features_extraction(end)
 
         return (
             (transforms).ToTensor()(input_data).view(-1, input_data.shape[-1]),
             (transforms).ToTensor()(output_data).view(-1, output_data.shape[-1]),
         )
 
-    def nwp_features_extraction(self, data):
+    def _nwp_features_extraction(self, data):
         data_cube = np.stack(
             [
                 (data[f"{var}"].values - IFS_MEAN[f"{var}"]) / (IFS_STD[f"{var}"] + 1e-6)

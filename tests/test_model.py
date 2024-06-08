@@ -12,6 +12,10 @@ from graph_weather.models import (
     MetaModel,
 )
 from graph_weather.models.losses import NormalizedMSELoss
+from graph_weather.models.gencast.utils.noise import (
+    generate_isotropic_noise,
+    sample_noise_level,
+)
 
 
 def test_encoder():
@@ -229,6 +233,17 @@ def test_normalized_loss():
     assert not torch.isnan(loss)
     # Since feature_variance = out**2 and target = 0, we expect loss = weights
     assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
+
+
+def test_gencast_noise():
+    num_lat = 32
+    num_samples = 5
+    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
 
 
 def test_meta_model():

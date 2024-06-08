@@ -3,3 +3,4 @@ huggingface-hub
 datasets
 einops
 torch-geometric-temporal
+pyshtools
