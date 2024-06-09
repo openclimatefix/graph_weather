@@ -71,7 +71,7 @@ class GraphBuilder:
         grid_lat: np.ndarray,
         splits: int = 5,
         num_hops: int = 0,
-        device: str = "cpu",
+        device: torch.device = torch.device("cpu"),
     ):
         """Initialize the GraphBuilder object.
 
