@@ -1,6 +1,6 @@
 """Build the three graphs for GenCast.
 
-The following code is a port of several components from GraphCast's original graph generation 
+The following code is a port of several components from GraphCast's original graph generation
 (https://github.com/google-deepmind/graphcast) to PyG and PyTorch. The graphs are:
 - g2m: grid to mesh.
 - mesh: icosphere refinement.
