@@ -13,6 +13,31 @@ from torch_geometric.utils import scatter
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
+from torch_geometric.nn import knn
+from torch_geometric.utils import scatter
+
+
+def knn_interpolate(x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor,
+                    k: int = 3, num_workers: int = 1):
+    with torch.no_grad():
+        assign_index = knn(pos_x, pos_y, k,
+                           num_workers=num_workers)
+        y_idx, x_idx = assign_index[0], assign_index[1]
+        diff = pos_x[x_idx] - pos_y[y_idx]
+        squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
+        weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
+
+    
+    # print((x[x_idx]*weights).shape)
+    # print(weights.shape)
+    den = scatter(weights, y_idx, 0, pos_y.size(0), reduce='sum')
+    # print(den.shape)
+    y = scatter(x[x_idx] * weights, y_idx, 0, pos_y.size(0), reduce='sum')
+    
+    
+    y = y / den
+
+    return y
 
 def knn_interpolate(
     x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor, k: int = 4, num_workers: int = 1
@@ -352,3 +377,28 @@ class WrapperMetaModel(nn.Module):
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
 
         return x
+
+class MetaModel(nn.Module):
+    def __init__(self, lat_lons: list, *,
+                 patch_size, depth,
+                 heads, mlp_dim,
+                 resolution=(721, 1440),
+                 channels=3, dim_head=64,
+                 interp_method='cubic'):
+        super().__init__()
+        resolution = pair(resolution)
+        b=3
+        n=len(lat_lons)
+        d=7
+        x=torch.randn((b,n,d))
+        x=rearrange(x,"b n d -> n (b d)")
+        
+        pos_x= torch.tensor(lat_lons)
+        pos_y = torch.cartesian_prod(
+            torch.arange(0.5,resolution[0],1),
+            torch.arange(0.5,resolution[1],1)
+        )
+        x = knn_interpolate(x,pos_x,pos_y)
+        x = rearrange(x,"m (b d) -> b m d", b=b,d=d)
+        print(x.shape)
+       
