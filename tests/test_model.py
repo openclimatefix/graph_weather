@@ -10,6 +10,7 @@ from graph_weather.models import (
     Encoder,
     Processor,
     MetaModel,
+    ImageMetaModel
 )
 from graph_weather.models.losses import NormalizedMSELoss
 
@@ -235,20 +236,36 @@ def test_normalized_loss():
         loss, criterion.weights.expand_as(out.mean(-1)).mean())
 
 
+def test_image_meta_model():
+    batch = 2
+    channels = 3
+    size = 900
+    image = torch.randn((batch, channels, size, size))
+    model = ImageMetaModel(image_size=size,
+                           patch_size=10,
+                           depth=1, heads=1, mlp_dim=7,
+                           channels=channels)
+
+    out = model(image)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == (batch, channels,size,size)
+
+
 def test_meta_model():
     lat_lons = []
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
 
-    batch =2
+    batch = 2
     channels = 3
     model = MetaModel(lat_lons,
                       resolution=4, patch_size=2,
                       depth=1, heads=1, mlp_dim=7, channels=channels)
-    features = torch.randn((batch,len(lat_lons), channels))
+    features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
-    #assert not torch.isnan(out).any()
-    #assert not torch.isnan(out).any()
-    assert out.size() == (batch,len(lat_lons),  channels)
+    # assert not torch.isnan(out).any()
+    # assert not torch.isnan(out).any()
+    assert out.size() == (batch, len(lat_lons),  channels)
