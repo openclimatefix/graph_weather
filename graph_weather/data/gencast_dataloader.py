@@ -58,7 +58,7 @@ class GenCastDataset(Dataset):
         self.output_features_dim = len(atmospheric_features) * len(self.pressure_levels) + len(
             single_features
         )
-        self.input_features_dim = self.output_features_dim + len(static_features)
+        self.input_features_dim = self.output_features_dim + len(static_features) + 4
 
         self.time_step = time_step  # e.g. 12h steps correspond to time_step = 2 in a 6h dataset
 

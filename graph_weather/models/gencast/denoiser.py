@@ -62,7 +62,7 @@ class Denoiser(torch.nn.Module):
 
         # Initialize Encoder
         self.encoder = Encoder(
-            grid_dim=self.graphs.grid_nodes_dim + 2 * input_features_dim,
+            grid_dim=output_features_dim + 2 * input_features_dim + self.graphs.grid_nodes_dim,
             mesh_dim=self.graphs.mesh_nodes_dim,
             edge_dim=self.graphs.g2m_edges_dim,
             hidden_dims=hidden_dims,
@@ -89,9 +89,11 @@ class Denoiser(torch.nn.Module):
         exp_noise_shape = (batch_size, 1)
 
         if not all(
-            corrupted_targets.shape == exp_targets_shape,
-            prev_inputs.shape == exp_inputs_shape,
-            noise_levels.shape == exp_noise_shape,
+            [
+                corrupted_targets.shape == exp_targets_shape,
+                prev_inputs.shape == exp_inputs_shape,
+                noise_levels.shape == exp_noise_shape,
+            ]
         ):
             raise ValueError(
                 "The shapes of the input tensors don't match with the initialization parameters: "
