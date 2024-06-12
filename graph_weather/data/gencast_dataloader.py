@@ -20,15 +20,6 @@ from graph_weather.models.gencast.utils.noise import generate_isotropic_noise, s
 class GenCastDataset(Dataset):
     """
     Dataset class for GenCast training data.
-
-    Args:
-        obs_path: dataset path.
-        atmospheric_features: list of features depending on pressure levels.
-        single_features: list of features not depending on pressure levels.
-        static_features: list of features not depending on time.
-        max_year: max year to include in training set. Defaults to 2018.
-        time_step: time step between predictions.
-                    E.g. 12h steps correspond to time_step = 2 in a 6h dataset. Defaults to 2.
     """
 
     def __init__(
@@ -42,17 +33,32 @@ class GenCastDataset(Dataset):
     ):
         """
         Initialize the GenCast dataset object.
+
+        Args:
+            obs_path: dataset path.
+            atmospheric_features: list of features depending on pressure levels.
+            single_features: list of features not depending on pressure levels.
+            static_features: list of features not depending on time.
+            max_year: max year to include in training set. Defaults to 2018.
+            time_step: time step between predictions.
+                        E.g. 12h steps correspond to time_step = 2 in a 6h dataset. Defaults to 2.
         """
         super().__init__()
         self.data = xr.open_zarr(obs_path, chunks={})
         self.max_year = max_year
 
-        self.num_lon = len(self.data["longitude"].values)
-        self.num_lat = len(self.data["latitude"].values)
+        self.grid_lon = self.data["longitude"].values
+        self.grid_lat = self.data["latitude"].values
+        self.num_lon = len(self.grid_lon)
+        self.num_lat = len(self.grid_lat)
         self.num_vars = len(self.data.keys())
         self.pressure_levels = np.array(self.data["level"].values).astype(
             np.float32
         )  # Need them for loss weighting
+        self.output_features_dim = len(atmospheric_features) * len(self.pressure_levels) + len(
+            single_features
+        )
+        self.input_features_dim = self.output_features_dim + len(static_features)
 
         self.time_step = time_step  # e.g. 12h steps correspond to time_step = 2 in a 6h dataset
 

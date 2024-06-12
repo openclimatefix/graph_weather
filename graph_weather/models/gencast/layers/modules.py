@@ -73,7 +73,7 @@ class InteractionNetwork(MessagePassing):
     The underlying graph is a directed graph.
 
     Note:
-        We don't need to update edges in GenCast, hence we skip that.
+        We don't need to update edges in GenCast, hence we skip it.
     """
 
     def __init__(

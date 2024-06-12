@@ -2,6 +2,7 @@
 
 import numpy as np
 import pyshtools as pysh
+import torch
 
 
 def generate_isotropic_noise(num_lat, num_samples=1):
@@ -48,3 +49,35 @@ def sample_noise_level(sigma_min=0.02, sigma_max=88, rho=7):
         sigma_max ** (1 / rho) + u * (sigma_min ** (1 / rho) - sigma_max ** (1 / rho))
     ) ** rho
     return noise_level
+
+
+class Preconditioner(torch.nn.Module):
+    """Collection of preconditioning functions.
+
+    These functions are described in Karras (2022), table 1.
+    """
+
+    def __init__(self, sigma_data: float = 1):
+        """Initialize the preconditioning functions.
+
+        Args:
+            sigma_data (float): Karras suggests 0.5, GenCast 1. Defaults to 1.
+        """
+        super().__init__()
+        self.sigma_data = sigma_data
+
+    def c_skip(self, sigma):
+        """Scaling factor for skip connection."""
+        return self.sigma_data / (sigma**2 + self.sigma_data**2)
+
+    def c_out(self, sigma):
+        """Scaling factor for output."""
+        return sigma * self.sigma_data / torch.sqrt(sigma**2 + self.sigma_data**2)
+
+    def c_in(self, sigma):
+        """Scaling factor for input."""
+        return 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
+
+    def c_noise(self, sigma):
+        """Scaling factor for noise level."""
+        return 1 / 4 * torch.log(sigma)
