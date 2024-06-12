@@ -325,5 +325,5 @@ def test_gencast_loss():
 
     preds = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
     noise_levels = torch.rand((batch_size, 1))
-    targets = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
-    assert loss.forward(preds, targets, noise_levels) is not None
+    targets = torch.rand((batch_size,  len(grid_lon), len(grid_lat), features_dim))
+    assert loss.forward(preds, noise_levels, targets) is not None
