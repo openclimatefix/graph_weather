@@ -15,6 +15,7 @@ from torch_geometric.data import Batch
 from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
+from graph_weather.models.gencast.layers.processor import Processor
 from graph_weather.models.gencast.utils.noise import Preconditioner
 
 
@@ -73,6 +74,20 @@ class Denoiser(torch.nn.Module):
             mesh_dim=self.graphs.mesh_nodes_dim,
             edge_dim=self.graphs.g2m_edges_dim,
             hidden_dims=hidden_dims,
+            activation_layer=torch.nn.SiLU,
+            use_layer_norm=True,
+        )
+
+        # Initialize Processor
+        self.processor = Processor(
+            latent_dim=hidden_dims[-1],
+            edges_dim=self.graphs.mesh_edges_dim,
+            hidden_dims=hidden_dims,
+            num_blocks=num_blocks,
+            num_heads=num_heads,
+            num_frequencies=32,
+            base_period=16,
+            noise_emb_dim=16,
             activation_layer=torch.nn.SiLU,
             use_layer_norm=True,
         )
@@ -159,7 +174,29 @@ class Denoiser(torch.nn.Module):
         return output_grid_nodes
 
     def _run_processor(self, latent_mesh_nodes, noise_levels):
-        # TODO: add processor.
+        # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
+        batch_size = latent_mesh_nodes.shape[0]
+        num_nodes = latent_mesh_nodes.shape[1]
+        mesh_batched = Batch.from_data_list([self.graphs.khop_mesh_graph] * batch_size)
+
+        # load features.
+        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
+        input_edge_attr = mesh_batched.edge_attr
+        edge_index = mesh_batched.edge_index
+
+        # repeat noise levels for each node.
+        noise_levels = einops.repeat(noise_levels, "b f -> (b n) f", n = num_nodes)
+
+        # run the processor.
+        latent_mesh_nodes = self.processor.forward(
+            latent_mesh_nodes=latent_mesh_nodes,
+            input_edge_attr=input_edge_attr,
+            edge_index = edge_index,
+            noise_levels = noise_levels,
+        )
+
+        # restore nodes dimension: [b, n, f]
+        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
         return latent_mesh_nodes
 
     def _f_theta(self, grid_features, noise_levels):

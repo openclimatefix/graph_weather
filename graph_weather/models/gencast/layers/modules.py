@@ -1,8 +1,10 @@
 """Modules"""
+import math
 
 import torch
 import torch.nn as nn
 from torch_geometric.nn import MessagePassing
+from torch_geometric.nn.conv import TransformerConv
 
 
 class MLP(nn.Module):
@@ -148,4 +150,186 @@ class InteractionNetwork(MessagePassing):
             edge_index, x=x, edge_attr=edge_attr, size=(x[0].shape[0], x[1].shape[0])
         )
         out = self.mlp_nodes(torch.cat((x[1], aggr), dim=-1))
+        return out
+
+
+class FourierEmbedding(nn.Module):
+    """Fourier embedding module."""
+
+    def __init__(self, output_dim: int, num_frequencies: int, base_period: int):
+        """Initialize the Fourier Embedder.
+
+        Args:
+            output_dim (int): output dimension.
+            num_frequencies (int): number of frequencies for sin/cos embedding.
+            base_period (int): max period for sin/cos embedding.
+        """
+        super().__init__()
+        self.mlp = torch.nn.Sequential(
+            nn.Linear(2 * num_frequencies, output_dim, bias=True),
+            nn.SiLU(),
+            nn.Linear(output_dim, output_dim, bias=True),
+        )
+        self.num_frequencies = num_frequencies
+        self.base_period = base_period
+
+    def fourier_features(self, t):
+        """
+        Create sinusoidal embeddings.
+        """
+        freqs = torch.exp(
+            -math.log(self.base_period)
+            * torch.arange(start=0, end=self.num_frequencies, dtype=torch.float32)
+            / self.num_frequencies
+        ).to(device=t.device)
+        args = t * freqs[None, :]
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+        return embedding
+
+    def forward(self, t):
+        """Apply fourier features and mlp to the input."""
+        t = self.fourier_features(t)
+        t = self.mlp(t)
+        return t
+
+
+class ConditionalLayerNorm(nn.Module):
+    """Conditional Layer Normalization.
+
+    This module is a variant of Layer Normalization: an elementwise affine transformation is applied
+    to the output of the LayerNorm, with parameters computed as Linears of some conditioning params.
+    """
+
+    def __init__(
+        self,
+        conditioning_dim: int,
+        features_dim: int,
+    ):
+        """Initialize Conditional Layer Normalization module.
+
+        Args:
+            conditioning_dim (int): dimension of the conditioning parameter.
+            features_dim (int): dimension of the input features.
+        """
+        super().__init__()
+
+        # Initialize linear layers
+        self.linear_scale = nn.Linear(conditioning_dim, features_dim, bias=True)
+        self.linear_bias = nn.Linear(conditioning_dim, features_dim, bias=True)
+
+        # Initialize the LayerNorm
+        self.norm = nn.LayerNorm(features_dim, eps=1e-05, elementwise_affine=False)
+
+    def forward(self, x: torch.Tensor, cond_param: torch.Tensor) -> torch.Tensor:
+        """Apply ConditionalLayerNorm to input.
+
+        Input and conditioning parameter must have same batch size.
+
+        Args:
+            x (torch.Tensor): input.
+            cond_param (torch.Tensor): conditioning parameter.
+        """
+
+        # check shapes.
+        if not x.shape[0] == cond_param.shape[0]:
+            raise ValueError(
+                "Expected same batch dimension for the input and the conditioning "
+                f"parameter, got {x.shape[0]} and {cond_param.shape[0]}"
+            )
+
+        # compute parameters and normalize.
+        scale = self.linear_scale(cond_param)
+        bias = self.linear_scale(cond_param)
+        x_norm = self.norm(x)
+
+        assert scale.shape[1] == x_norm.shape[1]
+
+        # apply elementwise affine transformation.
+        out = scale * x_norm + bias
+        return out
+
+
+class CondTransformerBlock(nn.Module):
+    """
+    A single transformer block for graph neural networks.
+
+    This module implements a transformer block tailored for graph structures, following the
+    methodology outlined in the paper "Masked Label Prediction: Unified Message Passing Model
+    for Semi-Supervised Classification." The implementation aligns with the principles described
+    in this paper, providing an adaptation of the transformer's attention mechanism to
+    graph data.
+
+    Note: The GenCast paper does not provide specific details regarding the implementation of the
+    transformer architecture for graphs.
+    """
+
+    def __init__(
+        self,
+        conditioning_dim: int | None,
+        input_dim: int,
+        output_dim: int,
+        edges_dim: int,
+        num_heads: int,
+        concat: bool = True,
+        beta: bool = True,
+        activation_function: torch.nn.Module | None = nn.ReLU,
+    ):
+        """Initialize Conditional Layer Normalization module.
+
+        Args:
+            conditioning_dim (int, optional): dimension of the conditioning parameter. If None the
+                layer normalization will not be applied.
+            input_dim (int): dimension of the input features.
+            output_dim (int): dimension of the output features.
+            edges_dim (int): dimension of the edge features.
+            num_heads (int): number of heads for multi-head attention.
+            concat (bool): if true concatenate the outputs of each head, otherwise average them.
+                Defaults to True.
+            beta (bool): if true apply the beta weighting described in the paper. Defauls to True.
+            activation_function (torch.nn.Module, optional): activation function applied before
+                returning the output. If None skip the activation function. Defaults to nn.ReLU.
+        """
+        super().__init__()
+
+        # Initialize layers
+        self.transformer_conv = TransformerConv(
+            in_channels=input_dim,
+            out_channels=output_dim,
+            heads=num_heads,
+            concat=concat,
+            beta=beta,
+            edge_dim=edges_dim,
+        )
+
+        self.activation = activation_function
+
+        if conditioning_dim is not None:
+            final_dim = num_heads * output_dim if self.concat else output_dim
+            self.cond_norm = ConditionalLayerNorm(
+                conditioning_dim=conditioning_dim, features_dim=final_dim
+            )
+        else:
+            self.cond_norm = None
+
+    def forward(
+        self, x: torch.Tensor, edge_index, edge_attr, cond_param: torch.Tensor
+    ) -> torch.Tensor:
+        """Apply CondTransformerBlock to input.
+
+        Input and conditioning parameter must have same batch size.
+
+        Args:
+            x (torch.Tensor): tensor containing nodes features.
+            edge_index (torch.Tensor): edge index tensor.
+            edge_attr (torch.Tensor): tensor containing edges features.
+            cond_param (torch.Tensor): conditioning parameter.
+
+        """
+        x = self.transformer_conv(x=x, edge_index=edge_index, edge_attr=edge_attr)
+
+        if self.cond_norm is not None:
+            x = self.cond_norm(x, cond_param)
+
+        if self.activation is not None:
+            out = self.activation(x)
         return out
