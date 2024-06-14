@@ -1,8 +1,6 @@
 from scipy.interpolate import griddata
 from torch_geometric.nn import knn
 from torch_geometric.utils import scatter
-import numpy as np
-from scipy.interpolate import griddata, interpn
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
@@ -17,7 +15,7 @@ def pair(t):
 
 
 def knn_interpolate(x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor,
-                    k: int = 3, num_workers: int = 1):
+                    k: int = 4, num_workers: int = 1):
     with torch.no_grad():
         assign_index = knn(pos_x, pos_y, k,
                            num_workers=num_workers)
@@ -26,49 +24,12 @@ def knn_interpolate(x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor,
         squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
         weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
-    # print((x[x_idx]*weights).shape)
-    # print(weights.shape)
     den = scatter(weights, y_idx, 0, pos_y.size(0), reduce='sum')
-    # print(den.shape)
     y = scatter(x[x_idx] * weights, y_idx, 0, pos_y.size(0), reduce='sum')
 
     y = y / den
 
     return y
-
-
-def grid_interpolate(lat_lons: list, z: torch.Tensor,
-                     height, width,
-                     method: str = "cubic"):
-    # TODO 1. CPU only
-    #      2. The mesh is a rectangle, not a sphere
-
-    xi = np.arange(0.5, width, 1)/width*360
-    yi = np.arange(0.5, height, 1)/height*180
-
-    xi, yi = np.meshgrid(xi, yi)
-    z = rearrange(z, "b n c -> n b c")
-    z = griddata(
-        lat_lons, z, (xi, yi),
-        fill_value=0, method=method)
-    z = rearrange(z, "h w b c -> b c h w")  # hw ?
-    z = torch.tensor(z)
-    return z
-
-
-def grid_extrapolate(lat_lons, z,
-                     height, width,
-                     method: str = "cubic"):
-    xi = np.arange(0.5, width, 1)/width*360
-    yi = np.arange(0.5, height, 1)/height*180
-    z = rearrange(z, "b c h w -> h w b c")
-    z = z.detach().numpy()
-    z = interpn((xi, yi), z, lat_lons,
-                bounds_error=False,
-                method=method)
-    z = rearrange(z, "n b c -> b n c")
-    z = torch.tensor(z)
-    return z
 
 
 def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
@@ -210,19 +171,19 @@ class MetaModel(nn.Module):
     def __init__(self, lat_lons: list, *,
                  patch_size, depth,
                  heads, mlp_dim,
-                 resolution=(721, 1440),
-                 channels=3, dim_head=64,
-                 interp_method='cubic'):
+                 image_size=(721, 1440),
+                 channels=3, dim_head=64):
         super().__init__()
-        self.resolution = pair(resolution)
+        self.image_size = pair(image_size)
 
         self.pos_x = torch.tensor(lat_lons)
         self.pos_y = torch.cartesian_prod(
-            torch.arange(0, self.resolution[0], 1),
-            torch.arange(0, self.resolution[1], 1)
+            (torch.arange(-self.image_size[0]/2,
+                         self.image_size[0]/2, 1)/self.image_size[0]*180).to(torch.long),
+            (torch.arange(0, self.image_size[1], 1)/self.image_size[1]*360).to(torch.long)
         )
 
-        self.image_model = ImageMetaModel(image_size=resolution,
+        self.image_model = ImageMetaModel(image_size=image_size,
                                           patch_size=patch_size,
                                           depth=depth,
                                           heads=heads,
@@ -235,39 +196,12 @@ class MetaModel(nn.Module):
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(x, "(h w) (b c) -> b c h w", b=b, c=c,
-                      w=self.resolution[0],
-                      h=self.resolution[1])
-
+        x = rearrange(x, "(w h) (b c) -> b c w h", b=b, c=c,
+                      w=self.image_size[0],
+                      h=self.image_size[1])
         x = self.image_model(x)
 
-        x = rearrange(x, "b c h w -> (h w) (b c)")
+        x = rearrange(x, "b c w h -> (w h) (b c)")
         x = knn_interpolate(x, self.pos_y, self.pos_x)
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
-
         return x
-
-
-class MetaModel2(nn.Module):
-    def __init__(self, lat_lons: list, *,
-                 patch_size, depth,
-                 heads, mlp_dim,
-                 resolution=(721, 1440),
-                 channels=3, dim_head=64,
-                 interp_method='cubic'):
-        super().__init__()
-        resolution = pair(resolution)
-        b = 3
-        n = len(lat_lons)
-        d = 7
-        x = torch.randn((b, n, d))
-        x = rearrange(x, "b n d -> n (b d)")
-
-        pos_x = torch.tensor(lat_lons)
-        pos_y = torch.cartesian_prod(
-            torch.arange(0, resolution[0], 1),
-            torch.arange(0, resolution[1], 1)
-        )
-        x = knn_interpolate(x, pos_x, pos_y)
-        x = rearrange(x, "m (b d) -> b m d", b=b, d=d)
-        print(x.shape)

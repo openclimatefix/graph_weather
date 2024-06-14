@@ -239,18 +239,19 @@ def test_normalized_loss():
 def test_image_meta_model():
     batch = 2
     channels = 3
-    size = 900
+    size = 4
+    patch_size = 2
     image = torch.randn((batch, channels, size, size))
     model = ImageMetaModel(image_size=size,
-                           patch_size=10,
-                           depth=1, heads=1, mlp_dim=7,
-                           channels=channels)
+                           patch_size=patch_size,
+                           channels=channels,
+                           depth=1, heads=1, mlp_dim=7
+                           )
 
     out = model(image)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
     assert out.size() == (batch, channels,size,size)
-
 
 def test_meta_model():
     lat_lons = []
@@ -260,12 +261,14 @@ def test_meta_model():
 
     batch = 2
     channels = 3
+    image_size=20
+    patch_size=4
     model = MetaModel(lat_lons,
-                      resolution=4, patch_size=2,
+                      image_size=image_size, patch_size=patch_size,
                       depth=1, heads=1, mlp_dim=7, channels=channels)
     features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
-    # assert not torch.isnan(out).any()
-    # assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
     assert out.size() == (batch, len(lat_lons),  channels)
