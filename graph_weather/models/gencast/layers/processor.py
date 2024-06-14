@@ -43,6 +43,7 @@ class Processor(torch.nn.Module):
                 Defaults to True.
         """
         super().__init__()
+        self.latent_dim = latent_dim
         if latent_dim % num_heads != 0:
             raise ValueError("The latent dimension should be divisible by the number of heads.")
 
@@ -69,24 +70,25 @@ class Processor(torch.nn.Module):
                     conditioning_dim=noise_emb_dim,
                     input_dim=latent_dim,
                     output_dim=latent_dim // num_heads,
-                    edges_dim=edges_dim,
+                    edges_dim=hidden_dims[-1],
                     num_heads=num_heads,
                     concat=True,
                     beta=True,
-                    activation_function=activation_layer,
+                    activation_layer=activation_layer,
                 )
             )
 
         # averaging multi-head attention
-        self.transformers.append(
+        self.cond_transformers.append(
             CondTransformerBlock(
                 conditioning_dim=noise_emb_dim,
                 input_dim=latent_dim,
                 output_dim=latent_dim,
+                edges_dim=hidden_dims[-1],
                 num_heads=num_heads,
                 concat=False,
                 beta=True,
-                activation_function=None,
+                activation_layer=None,
             )
         )
 
@@ -132,4 +134,5 @@ class Processor(torch.nn.Module):
                 edge_attr=edges_emb,
                 cond_param=noise_emb,
             )
+
         return latent_mesh_nodes

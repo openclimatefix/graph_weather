@@ -148,6 +148,9 @@ class Denoiser(torch.nn.Module):
         # restore nodes dimension: [b, n, f]
         latent_grid_nodes = einops.rearrange(latent_grid_nodes, "(b n) f -> b n f", b=batch_size)
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(latent_grid_nodes).any()
+        assert not torch.isnan(latent_mesh_nodes).any()
         return latent_grid_nodes, latent_mesh_nodes
 
     def _run_decoder(self, latent_mesh_nodes, latent_grid_nodes):
@@ -171,6 +174,8 @@ class Denoiser(torch.nn.Module):
 
         # restore nodes dimension: [b, n, f]
         output_grid_nodes = einops.rearrange(output_grid_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(output_grid_nodes).any()
         return output_grid_nodes
 
     def _run_processor(self, latent_mesh_nodes, noise_levels):
@@ -186,7 +191,7 @@ class Denoiser(torch.nn.Module):
 
         # repeat noise levels for each node.
         noise_levels = einops.repeat(noise_levels, "b f -> (b n) f", n = num_nodes)
-
+      
         # run the processor.
         latent_mesh_nodes = self.processor.forward(
             latent_mesh_nodes=latent_mesh_nodes,
@@ -197,6 +202,8 @@ class Denoiser(torch.nn.Module):
 
         # restore nodes dimension: [b, n, f]
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(latent_mesh_nodes).any()
         return latent_mesh_nodes
 
     def _f_theta(self, grid_features, noise_levels):
@@ -225,8 +232,10 @@ class Denoiser(torch.nn.Module):
                 dimension.
             noise_levels (torch.Tensor): the noise level used for corruption.
         """
-        # check shapes.
+        # check shapes and noise.
         self._check_shapes(corrupted_targets, prev_inputs, noise_levels)
+        if not (noise_levels>0).any():
+            raise ValueError("All the noise levels must be strictly positive.")
 
         # flatten lon/lat dimensions.
         prev_inputs = einops.rearrange(prev_inputs, "b lon lat f -> b (lon lat) f")

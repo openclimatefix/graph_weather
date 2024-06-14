@@ -1,4 +1,5 @@
 """Modules"""
+
 import math
 
 import torch
@@ -272,7 +273,7 @@ class CondTransformerBlock(nn.Module):
         num_heads: int,
         concat: bool = True,
         beta: bool = True,
-        activation_function: torch.nn.Module | None = nn.ReLU,
+        activation_layer: torch.nn.Module | None = nn.ReLU,
     ):
         """Initialize Conditional Layer Normalization module.
 
@@ -286,7 +287,7 @@ class CondTransformerBlock(nn.Module):
             concat (bool): if true concatenate the outputs of each head, otherwise average them.
                 Defaults to True.
             beta (bool): if true apply the beta weighting described in the paper. Defauls to True.
-            activation_function (torch.nn.Module, optional): activation function applied before
+            activation_layer (torch.nn.Module, optional): activation function applied before
                 returning the output. If None skip the activation function. Defaults to nn.ReLU.
         """
         super().__init__()
@@ -301,10 +302,10 @@ class CondTransformerBlock(nn.Module):
             edge_dim=edges_dim,
         )
 
-        self.activation = activation_function
+        self.activation = activation_layer() if activation_layer is not None else None
 
         if conditioning_dim is not None:
-            final_dim = num_heads * output_dim if self.concat else output_dim
+            final_dim = num_heads * output_dim if concat else output_dim
             self.cond_norm = ConditionalLayerNorm(
                 conditioning_dim=conditioning_dim, features_dim=final_dim
             )
@@ -331,5 +332,6 @@ class CondTransformerBlock(nn.Module):
             x = self.cond_norm(x, cond_param)
 
         if self.activation is not None:
-            out = self.activation(x)
-        return out
+            x = self.activation(x)
+
+        return x

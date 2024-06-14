@@ -350,8 +350,8 @@ def test_gencast_denoiser():
     ).eval()
 
     corrupted_targets = torch.randn((batch_size, len(grid_lon), len(grid_lat), output_features_dim))
-    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2 * input_features_dim))
-    noise_levels = torch.randn((batch_size, 1))
+    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2*input_features_dim))
+    noise_levels = torch.rand((batch_size, 1))
 
     with torch.no_grad():
         preds = denoiser(
@@ -365,4 +365,4 @@ def test_gencast_fourier():
     output_dim = 20
     fourier_embedder = FourierEmbedding(output_dim=output_dim, num_frequencies=32, base_period=16)
     t = torch.rand((batch_size,1))
-    assert fourier_embedder(t).shape ==(batch_size, output_dim)
+    assert fourier_embedder(t).shape == (batch_size, output_dim)

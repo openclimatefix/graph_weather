@@ -289,8 +289,8 @@ class GraphBuilder:
             khop_mesh_graph = transform(khop_mesh_graph)
 
         if self.add_edge_features_to_khop:
-            senders = khop_mesh_graph.edge_index[0]
-            receivers = khop_mesh_graph.edge_index[1]
+            senders = khop_mesh_graph.edge_index[0].cpu()
+            receivers = khop_mesh_graph.edge_index[1].cpu()
             _, edge_features = model_utils.get_graph_spatial_features(
                 node_lat=self._mesh_nodes_lat,
                 node_lon=self._mesh_nodes_lon,
