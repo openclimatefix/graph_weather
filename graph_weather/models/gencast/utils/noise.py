@@ -26,7 +26,7 @@ def generate_isotropic_noise(num_lat, num_samples=1):
     for i in range(num_samples):
         clm = pysh.SHCoeffs.from_random(power)
         grid[:, :, i] = clm.expand(grid="DH2", extend=False).to_array().transpose()
-    return grid
+    return grid.astype(np.float32)
 
 
 def sample_noise_level(sigma_min=0.02, sigma_max=88, rho=7):
