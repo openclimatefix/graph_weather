@@ -1,6 +1,3 @@
-from scipy.interpolate import griddata
-from torch_geometric.nn import knn
-from torch_geometric.utils import scatter
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
@@ -15,18 +12,18 @@ def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
 
-def knn_interpolate(x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor,
-                    k: int = 4, num_workers: int = 1):
+def knn_interpolate(
+    x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor, k: int = 4, num_workers: int = 1
+):
     with torch.no_grad():
-        assign_index = knn(pos_x, pos_y, k,
-                           num_workers=num_workers)
+        assign_index = knn(pos_x, pos_y, k, num_workers=num_workers)
         y_idx, x_idx = assign_index[0], assign_index[1]
         diff = pos_x[x_idx] - pos_y[y_idx]
         squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
         weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
-    den = scatter(weights, y_idx, 0, pos_y.size(0), reduce='sum')
-    y = scatter(x[x_idx] * weights, y_idx, 0, pos_y.size(0), reduce='sum')
+    den = scatter(weights, y_idx, 0, pos_y.size(0), reduce="sum")
+    y = scatter(x[x_idx] * weights, y_idx, 0, pos_y.size(0), reduce="sum")
 
     y = y / den
 
@@ -78,8 +75,7 @@ class Attention(nn.Module):
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(
-            t, "b n (h d) -> b h n d", h=self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -354,37 +350,49 @@ class WrapperMetaModel(nn.Module):
         return x
 
 class MetaModel(nn.Module):
-    def __init__(self, lat_lons: list, *,
-                 patch_size, depth,
-                 heads, mlp_dim,
-                 image_size=(721, 1440),
-                 channels=3, dim_head=64):
+    def __init__(
+        self,
+        lat_lons: list,
+        *,
+        patch_size,
+        depth,
+        heads,
+        mlp_dim,
+        image_size=(721, 1440),
+        channels=3,
+        dim_head=64
+    ):
         super().__init__()
         self.image_size = pair(image_size)
 
         self.pos_x = torch.tensor(lat_lons)
         self.pos_y = torch.cartesian_prod(
-            (torch.arange(-self.image_size[0]/2,
-                         self.image_size[0]/2, 1)/self.image_size[0]*180).to(torch.long),
-            (torch.arange(0, self.image_size[1], 1)/self.image_size[1]*360).to(torch.long)
+            (
+                torch.arange(-self.image_size[0] / 2, self.image_size[0] / 2, 1)
+                / self.image_size[0]
+                * 180
+            ).to(torch.long),
+            (torch.arange(0, self.image_size[1], 1) / self.image_size[1] * 360).to(torch.long),
         )
 
-        self.image_model = ImageMetaModel(image_size=image_size,
-                                          patch_size=patch_size,
-                                          depth=depth,
-                                          heads=heads,
-                                          mlp_dim=mlp_dim,
-                                          channels=channels,
-                                          dim_head=dim_head)
+        self.image_model = ImageMetaModel(
+            image_size=image_size,
+            patch_size=patch_size,
+            depth=depth,
+            heads=heads,
+            mlp_dim=mlp_dim,
+            channels=channels,
+            dim_head=dim_head,
+        )
 
     def forward(self, x):
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(x, "(w h) (b c) -> b c w h", b=b, c=c,
-                      w=self.image_size[0],
-                      h=self.image_size[1])
+        x = rearrange(
+            x, "(w h) (b c) -> b c w h", b=b, c=c, w=self.image_size[0], h=self.image_size[1]
+        )
         x = self.image_model(x)
 
         x = rearrange(x, "b c w h -> (w h) (b c)")
