@@ -1,4 +1,3 @@
-from scipy.interpolate import griddata
 from torch_geometric.nn import knn
 from torch_geometric.utils import scatter
 import torch

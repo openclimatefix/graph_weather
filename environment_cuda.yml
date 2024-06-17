@@ -25,6 +25,7 @@ dependencies:
   - zarr
   - h3-py
   - numpy
+  - pyshtools
   - pip:
       - datasets
       - einops

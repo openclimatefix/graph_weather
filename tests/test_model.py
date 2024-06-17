@@ -13,6 +13,10 @@ from graph_weather.models import (
     ImageMetaModel
 )
 from graph_weather.models.losses import NormalizedMSELoss
+from graph_weather.models.gencast.utils.noise import (
+    generate_isotropic_noise,
+    sample_noise_level,
+)
 
 
 def test_encoder():
