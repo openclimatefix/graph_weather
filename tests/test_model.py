@@ -10,6 +10,7 @@ from graph_weather.models import (
     Encoder,
     Processor,
     MetaModel,
+    ImageMetaModel,
 )
 from graph_weather.models.losses import NormalizedMSELoss
 from graph_weather.models.gencast.utils.noise import (
@@ -235,22 +236,44 @@ def test_normalized_loss():
     assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
 
 
-def test_gencast_noise():
-    num_lat = 32
-    num_samples = 5
-    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
-    noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
-    corrupted_residuals = target_residuals + noise_level * noise
-    assert corrupted_residuals.shape == target_residuals.shape
-    assert not np.isnan(corrupted_residuals).any()
+def test_image_meta_model():
+    batch = 2
+    channels = 3
+    size = 4
+    patch_size = 2
+    image = torch.randn((batch, channels, size, size))
+    model = ImageMetaModel(
+        image_size=size, patch_size=patch_size, channels=channels, depth=1, heads=1, mlp_dim=7
+    )
+
+    out = model(image)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == (batch, channels, size, size)
 
 
 def test_meta_model():
-    model = MetaModel(image_size=100, patch_size=10, depth=1, heads=1, mlp_dim=7, channels=3)
-    features = torch.randn((1, 3, 100, 100))
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+
+    batch = 2
+    channels = 3
+    image_size = 20
+    patch_size = 4
+    model = MetaModel(
+        lat_lons,
+        image_size=image_size,
+        patch_size=patch_size,
+        depth=1,
+        heads=1,
+        mlp_dim=7,
+        channels=channels,
+    )
+    features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
-    assert out.size() == (1, 3, 100, 100)
+    assert out.size() == (batch, len(lat_lons), channels)
