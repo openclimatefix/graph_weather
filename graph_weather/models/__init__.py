@@ -1,6 +1,6 @@
 """Models"""
 
-from .fengwu_ghr.layers import MetaModel,ImageMetaModel
+from .fengwu_ghr.layers import ImageMetaModel, MetaModel
 from .layers.assimilator_decoder import AssimilatorDecoder
 from .layers.assimilator_encoder import AssimilatorEncoder
 from .layers.decoder import Decoder
