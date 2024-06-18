@@ -266,11 +266,11 @@ class CondTransformerBlock(nn.Module):
 
     def __init__(
         self,
-        conditioning_dim: int | None,
         input_dim: int,
         output_dim: int,
-        edges_dim: int,
         num_heads: int,
+        conditioning_dim: int | None = None,
+        edges_dim: int | None = None,
         concat: bool = True,
         beta: bool = True,
         activation_layer: torch.nn.Module | None = nn.ReLU,
@@ -278,12 +278,14 @@ class CondTransformerBlock(nn.Module):
         """Initialize Conditional Layer Normalization module.
 
         Args:
-            conditioning_dim (int, optional): dimension of the conditioning parameter. If None the
-                layer normalization will not be applied.
             input_dim (int): dimension of the input features.
             output_dim (int): dimension of the output features.
             edges_dim (int): dimension of the edge features.
             num_heads (int): number of heads for multi-head attention.
+            conditioning_dim (int, optional): dimension of the conditioning parameter. If None the
+                layer normalization will not be applied.
+            edges_dim (int, optional): dimension of the edges features. If None edges features will
+                not be used inside TransformerConv.
             concat (bool): if true concatenate the outputs of each head, otherwise average them.
                 Defaults to True.
             beta (bool): if true apply the beta weighting described in the paper. Defauls to True.
@@ -313,7 +315,11 @@ class CondTransformerBlock(nn.Module):
             self.cond_norm = None
 
     def forward(
-        self, x: torch.Tensor, edge_index, edge_attr, cond_param: torch.Tensor
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor | None = None,
+        cond_param: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Apply CondTransformerBlock to input.
 
@@ -322,8 +328,8 @@ class CondTransformerBlock(nn.Module):
         Args:
             x (torch.Tensor): tensor containing nodes features.
             edge_index (torch.Tensor): edge index tensor.
-            edge_attr (torch.Tensor): tensor containing edges features.
-            cond_param (torch.Tensor): conditioning parameter.
+            edge_attr (torch.Tensor, optional): tensor containing edges features.
+            cond_param (torch.Tensor, optional): conditioning parameter.
 
         """
         x = self.transformer_conv(x=x, edge_index=edge_index, edge_attr=edge_attr)

@@ -8,11 +8,13 @@ The following code is a port of several components from GraphCast's original gra
 - khop: k-hop neighbours mesh.
 """
 
+import gc
+
 import numpy as np
 import torch
 from torch_geometric.data import Data, HeteroData
-from torch_geometric.transforms import TwoHop
 
+# from torch_geometric.transforms import TwoHop
 from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
 
 # Some configs from graphcast:
@@ -72,20 +74,23 @@ class GraphBuilder:
         splits: int = 5,
         num_hops: int = 0,
         device: torch.device = torch.device("cpu"),
+        add_edge_features_to_khop=True,
     ):
         """Initialize the GraphBuilder object.
 
         Args:
-            grid_lon: 1D np.ndarray containing the list of longitudes.
-            grid_lat: 1D np.ndarray containing the list of latitudes.
-            splits: number of times to split the icosphere to build the mesh. Defaults to 5.
-            num_hops: if num_hops=k then khop_mesh_graph will be the 2^k-neighbours version of
+            grid_lon (np.ndarray): 1D np.ndarray containing the list of longitudes.
+            grid_lat: (np.ndarray) 1D np.ndarray containing the list of latitudes.
+            splits (int): number of times to split the icosphere to build the mesh. Defaults to 5.
+            num_hops (int): if num_hops=k then khop_mesh_graph will be the k-neighbours version of
                 the mesh. Defaults to 0.
             device: the device to which the graph will be moved.
+            add_edge_features_to_khop (bool): if true compute edge features for the k-hop neighbours
+                graph. Defaults to False.
         """
 
         self._spatial_features_kwargs = _spatial_features_kwargs
-        self.add_edge_features_to_khop = True
+        self.add_edge_features_to_khop = add_edge_features_to_khop
         self.device = device
 
         # Specification of the mesh.
@@ -282,11 +287,40 @@ class GraphBuilder:
 
     def _init_khop_mesh_graph(self):
         """Build k-hop Mesh graph."""
+        # PyG:
+        # transform = TwoHop()
+        # khop_mesh_graph = self.mesh_graph
+        # for _ in range(self.num_hops):
+        #    khop_mesh_graph = transform(khop_mesh_graph)
 
-        transform = TwoHop()
-        khop_mesh_graph = self.mesh_graph
-        for _ in range(self.num_hops):
-            khop_mesh_graph = transform(khop_mesh_graph)
+        edge_index = self.mesh_graph.edge_index
+        adj = torch.sparse_coo_tensor(
+            edge_index,
+            values=torch.ones_like(edge_index[0], dtype=torch.float32),
+            size=(self._num_mesh_nodes, self._num_mesh_nodes),
+        ).to("cpu")  # for some reason cpu is more memory efficient
+
+        adj_k = adj.coalesce()
+        for _ in range(self.num_hops - 1):
+            adj_k = adj_k + torch.sparse.mm(adj_k, adj)
+            adj_k = adj_k.coalesce()
+            # remove self loops
+            new_indices = adj_k.indices()
+            mask = new_indices[0] != new_indices[1]
+            new_indices = new_indices[:, mask]
+            new_values = torch.ones_like(adj_k.values()[mask])
+            adj_k = torch.sparse_coo_tensor(
+                indices=new_indices, values=new_values, size=adj_k.shape
+            ).coalesce()
+            # cleaning
+            del mask, new_indices, new_values
+            gc.collect()
+    
+
+        khop_mesh_graph = Data(x=self.mesh_graph.x, edge_index=adj_k.indices().to(self.device))
+        del adj_k, adj
+        gc.collect()
+
 
         if self.add_edge_features_to_khop:
             senders = khop_mesh_graph.edge_index[0].cpu()

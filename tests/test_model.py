@@ -1,6 +1,7 @@
 import h3
 import numpy as np
 import torch
+from torch_geometric.transforms import TwoHop
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
 from graph_weather.models import (
@@ -295,15 +296,21 @@ def test_gencast_noise():
 def test_gencast_graph():
     grid_lat = np.arange(-90, 90, 1)
     grid_lon = np.arange(0, 360, 1)
-    graphs = GraphBuilder(grid_lon=grid_lon, grid_lat=grid_lat, splits=0, num_hops=1)
+    graphs = GraphBuilder(grid_lon=grid_lon, grid_lat=grid_lat, splits=4, num_hops=8)
+    
+    # compare khop sparse implementation with pyg.
+    transform = TwoHop()
+    khop_mesh_graph_pyg = graphs.mesh_graph
+    for i in range(3): #8-hop mesh
+        khop_mesh_graph_pyg = transform(khop_mesh_graph_pyg)
 
-    assert graphs.mesh_graph.x.shape[0] == 12
-    assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360 * 180
-    assert graphs.m2g_graph["mesh_nodes"].x.shape[0] == 12
+    assert graphs.mesh_graph.x.shape[0] == 2562
+    assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360*180
+    assert graphs.m2g_graph["mesh_nodes"].x.shape[0] == 2562
     assert not torch.isnan(graphs.mesh_graph.edge_attr).any()
-    assert graphs.khop_mesh_graph.x.shape[0] == 12
-    assert graphs.khop_mesh_graph.edge_attr.shape[0] == 12 * 10
-
+    assert graphs.khop_mesh_graph.x.shape[0] == 2562
+    assert torch.allclose(graphs.khop_mesh_graph.x, khop_mesh_graph_pyg.x)
+    assert torch.allclose(graphs.khop_mesh_graph.edge_index, khop_mesh_graph_pyg.edge_index)
 
 def test_gencast_loss():
     grid_lat = torch.arange(-90, 90, 1)
