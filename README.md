@@ -1,6 +1,6 @@
 # Graph Weather
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 Implementation of the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, an implementation
 of a modified model that assimilates raw or processed observations into analysis files.
@@ -104,6 +104,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/dongZheX"><img src="https://avatars.githubusercontent.com/u/36361726?v=4?s=100" width="100px;" alt="dongZheX"/><br /><sub><b>dongZheX</b></sub></a><br /><a href="#question-dongZheX" title="Answering Questions">💬</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/sabbir2331"><img src="https://avatars.githubusercontent.com/u/25061297?v=4?s=100" width="100px;" alt="sabbir2331"/><br /><sub><b>sabbir2331</b></sub></a><br /><a href="#question-sabbir2331" title="Answering Questions">💬</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rnwzd"><img src="https://avatars.githubusercontent.com/u/58804597?v=4?s=100" width="100px;" alt="Lorenzo Breschi"/><br /><sub><b>Lorenzo Breschi</b></sub></a><br /><a href="https://github.com/openclimatefix/graph_weather/commits?author=rnwzd" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
