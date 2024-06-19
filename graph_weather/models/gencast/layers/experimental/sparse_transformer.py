@@ -137,7 +137,9 @@ class SparseTransformer(nn.Module):
             **kwargs: ignored by the module.
 
         """
-        x = x + self.sparse_attention.forward(x=x, adj=dglsp.spmatrix(indices=edge_index))
+        x = x + self.sparse_attention.forward(
+            x=x, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
+        )
         x = self.cond_norm_1(x, cond_param)
         x = x + self.mlp(x)
         x = self.cond_norm_2(x, cond_param)
