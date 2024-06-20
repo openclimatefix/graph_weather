@@ -9,6 +9,11 @@ import torch
 
 from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBlock, FourierEmbedding
 
+try:
+    from graph_weather.models.gencast.layers.experimental import SparseTransformer
+except ImportError:
+    has_dgl = False
+
 
 class Processor(torch.nn.Module):
     """GenCast's Processor."""
@@ -98,7 +103,9 @@ class Processor(torch.nn.Module):
                 )
             )
         else:
-            from graph_weather.models.gencast.layers.experimental import SparseTransformer
+            if not has_dgl:
+                raise ValueError("Please install DGL to use sparsity.")
+
             for _ in range(num_blocks - 1):
                 # concatenating multi-head attention
                 self.cond_transformers.append(
@@ -110,7 +117,6 @@ class Processor(torch.nn.Module):
                         activation_layer=activation_layer,
                     )
                 )
-                
 
     def _check_args(self, latent_mesh_nodes, noise_levels, input_edge_attr):
         if not latent_mesh_nodes.shape[-1] == self.latent_dim:
@@ -127,9 +133,7 @@ class Processor(torch.nn.Module):
             )
 
         if (input_edge_attr is not None) and (self.edges_dim is None):
-            raise ValueError(
-                "To use input_edge_attr initialize the processor with edges_dim."
-            )
+            raise ValueError("To use input_edge_attr initialize the processor with edges_dim.")
 
     def forward(
         self,

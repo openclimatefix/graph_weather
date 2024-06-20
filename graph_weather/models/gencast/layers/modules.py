@@ -240,7 +240,7 @@ class ConditionalLayerNorm(nn.Module):
 
         # compute parameters and normalize.
         scale = self.linear_scale(cond_param)
-        bias = self.linear_scale(cond_param)
+        bias = self.linear_bias(cond_param)
         x_norm = self.norm(x)
 
         assert scale.shape[1] == x_norm.shape[1]
