@@ -9,8 +9,10 @@ from graph_weather.models import (
     Decoder,
     Encoder,
     Processor,
-    MetaModel,
     ImageMetaModel,
+    MetaModel,
+    WrapperImageModel,
+    WrapperMetaModel
 )
 from graph_weather.models.losses import NormalizedMSELoss
 from graph_weather.models.gencast.utils.noise import (
@@ -147,7 +149,8 @@ def test_assimilator_model():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             output_lat_lons.append((lat, lon))
-    model = GraphWeatherAssimilator(output_lat_lons=output_lat_lons, analysis_dim=24)
+    model = GraphWeatherAssimilator(
+        output_lat_lons=output_lat_lons, analysis_dim=24)
 
     features = torch.randn((1, len(obs_lat_lons), 2))
     lat_lon_heights = torch.tensor(obs_lat_lons)
@@ -161,7 +164,8 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    criterion = NormalizedMSELoss(
+        lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -202,7 +206,8 @@ def test_forecaster_and_loss_grad_checkpoint():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    criterion = NormalizedMSELoss(
+        lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons, use_checkpointing=True)
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
@@ -233,7 +238,8 @@ def test_normalized_loss():
 
     assert not torch.isnan(loss)
     # Since feature_variance = out**2 and target = 0, we expect loss = weights
-    assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
+    assert torch.isclose(
+        loss, criterion.weights.expand_as(out.mean(-1)).mean())
 
 
 def test_image_meta_model():
@@ -243,13 +249,35 @@ def test_image_meta_model():
     patch_size = 2
     image = torch.randn((batch, channels, size, size))
     model = ImageMetaModel(
-        image_size=size, patch_size=patch_size, channels=channels, depth=1, heads=1, mlp_dim=7
+        image_size=size, patch_size=patch_size,
+        channels=channels, depth=1, heads=1, mlp_dim=7,
+        dim_head=64
     )
 
     out = model(image)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
-    assert out.size() == (batch, channels, size, size)
+    assert out.size() == image.size()
+
+
+def test_wrapper_image_meta_model():
+    batch = 2
+    channels = 3
+    size = 4
+    patch_size = 2
+    model = ImageMetaModel(
+        image_size=size, patch_size=patch_size,
+        channels=channels, depth=1, heads=1, mlp_dim=7,
+        dim_head=64
+    )
+    scale_factor = 3
+    big_image = torch.randn((batch, channels,
+                             size*scale_factor, size*scale_factor))
+    big_model = WrapperImageModel(model, scale_factor)
+    out = big_model(big_image)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == big_image.size()
 
 
 def test_meta_model():
@@ -270,10 +298,42 @@ def test_meta_model():
         heads=1,
         mlp_dim=7,
         channels=channels,
+        dim_head=64
     )
     features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
-    assert out.size() == (batch, len(lat_lons), channels)
+    assert out.size() == features.size()
+
+
+def test_wrapper_meta_model():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+
+    batch = 2
+    channels = 3
+    image_size = 20
+    patch_size = 4
+    scale_factor=3
+    model = MetaModel(
+        lat_lons,
+        image_size=image_size,
+        patch_size=patch_size,
+        depth=1,
+        heads=1,
+        mlp_dim=7,
+        channels=channels,
+        dim_head=64
+    )
+
+    big_features = torch.randn((batch, len(lat_lons), channels))
+    big_model = WrapperMetaModel(lat_lons, model, scale_factor)
+    out = big_model(big_features)
+
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == big_features.size()

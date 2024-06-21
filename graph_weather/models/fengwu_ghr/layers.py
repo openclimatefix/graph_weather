@@ -76,7 +76,8 @@ class Attention(nn.Module):
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(
+            t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -95,7 +96,8 @@ class Transformer(nn.Module):
         for _ in range(depth):
             self.layers.append(
                 nn.ModuleList(
-                    [Attention(dim, heads=heads, dim_head=dim_head), FeedForward(dim, mlp_dim)]
+                    [Attention(dim, heads=heads, dim_head=dim_head),
+                     FeedForward(dim, mlp_dim)]
                 )
             )
 
@@ -107,20 +109,22 @@ class Transformer(nn.Module):
 
 
 class ImageMetaModel(nn.Module):
-    def __init__(self, *, image_size, patch_size, depth, heads, mlp_dim, channels=3, dim_head=64):
+    def __init__(self, *, image_size,
+                 patch_size, depth, heads,
+                 mlp_dim, channels, dim_head):
         super().__init__()
-        image_height, image_width = pair(image_size)
-        patch_height, patch_width = pair(patch_size)
+        self.image_height, self.image_width = pair(image_size)
+        self.patch_height, self.patch_width = pair(patch_size)
 
         assert (
-            image_height % patch_height == 0 and image_width % patch_width == 0
+            self.image_height % self.patch_height == 0 and self.image_width % self.patch_width == 0
         ), "Image dimensions must be divisible by the patch size."
 
-        patch_dim = channels * patch_height * patch_width
+        patch_dim = channels * self.patch_height * self.patch_width
         dim = patch_dim
         self.to_patch_embedding = nn.Sequential(
             Rearrange(
-                "b c (h p_h) (w p_w) -> b (h w) (p_h p_w c)", p_h=patch_height, p_w=patch_width
+                "b c (h p_h) (w p_w) -> b (h w) (p_h p_w c)", p_h=self.patch_height, p_w=self.patch_width
             ),
             nn.LayerNorm(patch_dim),  # TODO Do we need this?
             nn.Linear(patch_dim, dim),  # TODO Do we need this?
@@ -128,8 +132,8 @@ class ImageMetaModel(nn.Module):
         )
 
         self.pos_embedding = posemb_sincos_2d(
-            h=image_height // patch_height,
-            w=image_width // patch_width,
+            h=self.image_height // self.patch_height,
+            w=self.image_width // self.patch_width,
             dim=dim,
         )
 
@@ -138,10 +142,10 @@ class ImageMetaModel(nn.Module):
         self.reshaper = nn.Sequential(
             Rearrange(
                 "b (h w) (p_h p_w c) -> b c (h p_h) (w p_w)",
-                h=image_height // patch_height,
-                w=image_width // patch_width,
-                p_h=patch_height,
-                p_w=patch_width,
+                h=self.image_height // self.patch_height,
+                w=self.image_width // self.patch_width,
+                p_h=self.patch_height,
+                p_w=self.patch_width,
             )
         )
 
@@ -158,33 +162,53 @@ class ImageMetaModel(nn.Module):
         return x
 
 
+class WrapperImageModel(nn.Module):
+    def __init__(self, image_meta_model: ImageMetaModel,
+                 scale_factor):
+        super().__init__()
+        s_h, s_w = pair(scale_factor)
+        self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w",
+                                 s_h=s_h, s_w=s_w)
+        self.image_meta_model = image_meta_model
+        self.debatcher = Rearrange(" (b s_h s_w) c h w -> b c (h s_h) (w s_w)",
+                                   s_h=s_h, s_w=s_w)
+
+    def forward(self, x):
+        x = self.batcher(x)
+        x = self.image_meta_model(x)
+        x = self.debatcher(x)
+        return x
+
+
 class MetaModel(nn.Module):
     def __init__(
         self,
         lat_lons: list,
         *,
+        image_size,
         patch_size,
         depth,
         heads,
         mlp_dim,
-        image_size=(721, 1440),
-        channels=3,
+        channels,
         dim_head=64
     ):
         super().__init__()
-        self.image_size = pair(image_size)
+        self.i_h, self.i_w = pair(image_size)
 
         self.pos_x = torch.tensor(lat_lons)
         self.pos_y = torch.cartesian_prod(
             (
-                torch.arange(-self.image_size[0] / 2, self.image_size[0] / 2, 1)
-                / self.image_size[0]
+                torch.arange(-self.i_h / 2,
+                             self.i_h / 2, 1)
+                / self.i_h
                 * 180
             ).to(torch.long),
-            (torch.arange(0, self.image_size[1], 1) / self.image_size[1] * 360).to(torch.long),
+            (torch.arange(0, self.i_w, 1) /
+             self.i_w * 360).to(torch.long),
         )
 
-        self.image_model = ImageMetaModel(
+        self.image_meta_model = ImageMetaModel(
             image_size=image_size,
             patch_size=patch_size,
             depth=depth,
@@ -200,11 +224,65 @@ class MetaModel(nn.Module):
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
         x = rearrange(
-            x, "(w h) (b c) -> b c w h", b=b, c=c, w=self.image_size[0], h=self.image_size[1]
+            x, "(h w) (b c) -> b c h w", b=b, c=c, 
+            h=self.i_h, w=self.i_w
         )
-        x = self.image_model(x)
+        x = self.image_meta_model(x)
 
-        x = rearrange(x, "b c w h -> (w h) (b c)")
+        x = rearrange(x, "b c h w -> (h w) (b c)")
         x = knn_interpolate(x, self.pos_y, self.pos_x)
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
+        return x
+
+
+class WrapperMetaModel(nn.Module):
+    def __init__(
+        self,
+        lat_lons: list,
+        meta_model: MetaModel,
+        scale_factor
+    ):
+        super().__init__()
+        self.image_meta_model = meta_model.image_meta_model
+
+        s_h, s_w = pair(scale_factor)
+        self.i_h, self.i_w = meta_model.i_h*s_h, meta_model.i_w*s_w
+        self.pos_x = torch.tensor(lat_lons)
+        self.pos_y = torch.cartesian_prod(
+            (
+                torch.arange(-self.i_h / 2,
+                             self.i_h / 2, 1)
+                / self.i_h
+                * 180
+            ).to(torch.long),
+            (torch.arange(0, self.i_w, 1) /
+             self.i_w * 360).to(torch.long),
+        )
+
+        
+        self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w",
+                                 s_h=s_h, s_w=s_w)
+        
+        self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)",
+                                   s_h=s_h, s_w=s_w)
+
+    def forward(self, x):
+        b, n, c = x.shape
+        
+        x = rearrange(x, "b n c -> n (b c)")
+        x = knn_interpolate(x, self.pos_x, self.pos_y)
+        x = rearrange(
+            x, "(h w) (b c) -> b c h w", b=b, c=c, 
+            h=self.i_h, w=self.i_w
+        )
+        
+        x = self.batcher(x)
+        x = self.image_meta_model(x)
+        x = self.debatcher(x)
+
+        x = rearrange(x, "b c h w -> (h w) (b c)")
+        x = knn_interpolate(x, self.pos_y, self.pos_x)
+        x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
+        
+
         return x
