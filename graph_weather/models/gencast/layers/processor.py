@@ -11,6 +11,7 @@ from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBloc
 
 try:
     from graph_weather.models.gencast.layers.experimental import SparseTransformer
+    has_dgl = True
 except ImportError:
     has_dgl = False
 
