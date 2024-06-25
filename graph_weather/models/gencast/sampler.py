@@ -123,4 +123,4 @@ class Sampler:
                 D = (1 - 1 / (2 * self.r)) * denoised + 1 / (2 * self.r) * denoised_2
                 x = sigmas[i + 1] / sigma_hat * x - (torch.exp(-h) - 1) * D
 
-            return x
+        return x
