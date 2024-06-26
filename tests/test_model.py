@@ -325,8 +325,9 @@ def test_gencast_loss():
 
     preds = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
     noise_levels = torch.rand((batch_size, 1))
-    targets = torch.rand((batch_size,  len(grid_lon), len(grid_lat), features_dim))
+    targets = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
     assert loss.forward(preds, noise_levels, targets) is not None
+
 
 def test_gencast_denoiser():
     grid_lat = np.arange(-90, 90, 1)
@@ -349,12 +350,12 @@ def test_gencast_denoiser():
     ).eval()
 
     corrupted_targets = torch.randn((batch_size, len(grid_lon), len(grid_lat), output_features_dim))
-    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2*input_features_dim))
+    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2 * input_features_dim))
     noise_levels = torch.randn((batch_size, 1))
 
     with torch.no_grad():
-        preds = denoiser(corrupted_targets=corrupted_targets, 
-                         prev_inputs=prev_inputs, 
-                         noise_levels=noise_levels)
-    
+        preds = denoiser(
+            corrupted_targets=corrupted_targets, prev_inputs=prev_inputs, noise_levels=noise_levels
+        )
+
     assert not torch.isnan(preds).any()
