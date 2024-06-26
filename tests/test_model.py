@@ -237,6 +237,7 @@ def test_normalized_loss():
     # Since feature_variance = out**2 and target = 0, we expect loss = weights
     assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
 
+
 def test_image_meta_model():
     batch = 2
     channels = 3
@@ -251,6 +252,7 @@ def test_image_meta_model():
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
     assert out.size() == (batch, channels, size, size)
+
 
 def test_meta_model():
     lat_lons = []
