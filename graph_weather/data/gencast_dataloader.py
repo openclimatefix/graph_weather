@@ -8,6 +8,8 @@ It has to:
 - corrupt the residual with noise generated at the given noise level.
 """
 
+import warnings
+
 import einops
 import numpy as np
 import xarray as xr
@@ -65,9 +67,19 @@ class GenCastDataset(Dataset):
         self.atmospheric_features = atmospheric_features
         self.single_features = single_features
         self.static_features = static_features
+        # Lat and long will be added by the model itself in the graph
 
         self.means, self.stds, self.diff_means, self.diff_stds = self._init_means_and_stds()
-        # Lat and long will be added by the model itself in the graph
+
+        # check if fast isotropic noise generation is possible
+        if (self.num_lon == 2 * self.num_lat) or (self.num_lon == 2 * (self.num_lat - 1)):
+            self.use_isotropic_noise = True
+        else:
+            self.use_isotropic_noise = False
+            warnings.warn(
+                "Isotropic noise requires grid's shape to be 2N x N or 2N x (N+1): "
+                f"got {self.num_lon} x {self.num_lat}: falling back to flat normal random noise"
+            )
 
     def _init_means_and_stds(self):
         means = []
@@ -194,7 +206,10 @@ class GenCastDataset(Dataset):
         # Corrupt targets with noise
         noise_levels = np.array([sample_noise_level()]).astype(np.float32)
         noise = generate_isotropic_noise(
-            num_lat=self.num_lat, num_samples=target_residuals.shape[-1]
+            num_lon=self.num_lon,
+            num_lat=self.num_lat,
+            num_samples=target_residuals.shape[-1],
+            isotropic=self.use_isotropic_noise,
         )
         corrupted_targets = target_residuals + noise_levels * noise
 
@@ -240,6 +255,8 @@ class BatchedGenCastDataset(Dataset):
         self.data = xr.open_zarr(obs_path, chunks={})
         self.max_year = max_year
 
+        self.grid_lon = self.data["longitude"].values
+        self.grid_lat = self.data["latitude"].values
         self.num_lon = len(self.data["longitude"].values)
         self.num_lat = len(self.data["latitude"].values)
         self.num_vars = len(self.data.keys())
@@ -253,11 +270,21 @@ class BatchedGenCastDataset(Dataset):
         self.atmospheric_features = atmospheric_features
         self.single_features = single_features
         self.static_features = static_features
+        # Lat and long will be added by the model itself in the graph
 
         self.clock_features = ["local_time_of_the_day", "elapsed_year_progress"]
 
         self.means, self.stds, self.diff_means, self.diff_stds = self._init_means_and_stds()
-        # Lat and long will be added by the model itself in the graph
+
+        # check if fast isotropic noise generation is possible
+        if (self.num_lon == 2 * self.num_lat) or (self.num_lon == 2 * (self.num_lat - 1)):
+            self.use_isotropic_noise = True
+        else:
+            self.use_isotropic_noise = False
+            warnings.warn(
+                "Isotropic noise requires grid's shape to be 2N x N or 2N x (N+1): "
+                f"got {self.num_lon} x {self.num_lat}: falling back to flat normal random noise"
+            )
 
     def _init_means_and_stds(self):
         means = []
@@ -386,7 +413,10 @@ class BatchedGenCastDataset(Dataset):
         for b in range(self.batch_size):
             noise_level = sample_noise_level()
             noise = generate_isotropic_noise(
-                num_lat=self.num_lat, num_samples=target_residuals.shape[-1]
+                num_lon=self.num_lon,
+                num_lat=self.num_lat,
+                num_samples=target_residuals.shape[-1],
+                isotropic=self.use_isotropic_noise,
             )
             corrupted_targets[b] = target_residuals[b] + noise_level * noise
             noise_levels[b] = noise_level

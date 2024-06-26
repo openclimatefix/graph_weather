@@ -78,7 +78,7 @@ class Sampler:
 
         batch_ones = torch.ones(1, 1).to(device)
 
-        # Initialize noise
+        # initialize noise
         x = sigmas[0] * torch.tensor(
             generate_isotropic_noise(
                 num_lat=denoiser.num_lat, num_samples=denoiser.output_features_dim
@@ -86,13 +86,13 @@ class Sampler:
         ).unsqueeze(0).to(device)
 
         for i in range(len(sigmas) - 1):
-            # Stochastic churn from Karras (Alg. 2)
+            # stochastic churn from Karras et al. (Alg. 2)
             gamma = (
                 min(self.S_churn / self.num_steps, math.sqrt(2) - 1)
                 if self.S_tmin <= sigmas[i] <= self.S_tmax
                 else 0.0
             )
-
+            # noise inflation from Karras et al. (Alg. 2)
             noise = self.S_noise * torch.tensor(
                 generate_isotropic_noise(
                     num_lat=denoiser.num_lat, num_samples=denoiser.output_features_dim
@@ -106,7 +106,7 @@ class Sampler:
             denoised = denoiser(x, prev_inputs, sigma_hat * batch_ones)
 
             if i == len(sigmas) - 2:
-                # Final Euler step
+                # final Euler step
                 d = (x - denoised) / sigma_hat
                 x = x + d * (sigmas[i + 1] - sigma_hat)
             else:
