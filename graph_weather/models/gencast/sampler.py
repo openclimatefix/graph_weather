@@ -81,7 +81,9 @@ class Sampler:
         # initialize noise
         x = sigmas[0] * torch.tensor(
             generate_isotropic_noise(
-                num_lat=denoiser.num_lat, num_samples=denoiser.output_features_dim
+                num_lon=denoiser.num_lon,
+                num_lat=denoiser.num_lat,
+                num_samples=denoiser.output_features_dim,
             )
         ).unsqueeze(0).to(device)
 
@@ -95,7 +97,9 @@ class Sampler:
             # noise inflation from Karras et al. (Alg. 2)
             noise = self.S_noise * torch.tensor(
                 generate_isotropic_noise(
-                    num_lat=denoiser.num_lat, num_samples=denoiser.output_features_dim
+                    num_lon=denoiser.num_lon,
+                    num_lat=denoiser.num_lat,
+                    num_samples=denoiser.output_features_dim,
                 )
             )
             noise = noise.unsqueeze(0).to(device)

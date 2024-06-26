@@ -316,11 +316,32 @@ def test_meta_model():
 
 
 def test_gencast_noise():
-    num_lat = 32
+    num_lon = 360
+    num_lat = 180
     num_samples = 5
-    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
+
+    num_lon = 360
+    num_lat = 181
+    num_samples = 5
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
+
+    num_lon = 100
+    num_lat = 100
+    num_samples = 5
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1], isotropic=False)
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
