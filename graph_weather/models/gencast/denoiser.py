@@ -1,4 +1,11 @@
-"""Denoiser."""
+"""Denoiser.
+
+The denoiser takes as inputs the previous two timesteps, the corrupted target residual, and the
+noise level, and outputs the denoised predictions. It performs the following tasks:
+1. Initializes the graph, encoder, processor, and decoder.
+2. Computes f_theta as the combination of encoder, processor, and decoder.
+3. Preconditions f_theta on the noise levels using the parametrization from Karras et al. (2022).
+"""
 
 import einops
 import numpy as np
