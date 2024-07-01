@@ -394,7 +394,7 @@ class MetaModel(nn.Module):
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
         x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c, 
+            x, "(h w) (b c) -> b c h w", b=b, c=c,
             h=self.i_h, w=self.i_w
         )
         x = self.image_meta_model(x)
@@ -413,8 +413,6 @@ class WrapperMetaModel(nn.Module):
         scale_factor
     ):
         super().__init__()
-        self.image_meta_model = meta_model.image_meta_model
-
         s_h, s_w = pair(scale_factor)
         self.i_h, self.i_w = meta_model.i_h*s_h, meta_model.i_w*s_w
         self.pos_x = torch.tensor(lat_lons)
@@ -429,23 +427,27 @@ class WrapperMetaModel(nn.Module):
              self.i_w * 360).to(torch.long),
         )
 
-        
         self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w",
                                  s_h=s_h, s_w=s_w)
+
+        imm_args = meta_model.image_meta_model.vars().update(
+            {"res": True, "scale_factor": scale_factor})
+        self.image_meta_model = ImageMetaModel(**imm_args)
+        self.image_meta_model.load(meta_model.image_meta_model, strict=False)
         
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)",
                                    s_h=s_h, s_w=s_w)
 
     def forward(self, x):
         b, n, c = x.shape
-        
+
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
         x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c, 
+            x, "(h w) (b c) -> b c h w", b=b, c=c,
             h=self.i_h, w=self.i_w
         )
-        
+
         x = self.batcher(x)
         x = self.image_meta_model(x)
         x = self.debatcher(x)
@@ -453,6 +455,5 @@ class WrapperMetaModel(nn.Module):
         x = rearrange(x, "b c h w -> (h w) (b c)")
         x = knn_interpolate(x, self.pos_y, self.pos_x)
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
-        
 
         return x
