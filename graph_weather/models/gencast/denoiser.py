@@ -56,7 +56,7 @@ class Denoiser(torch.nn.Module):
                 Defaults to torch.device("cpu").
             sparse (bool): if true the processor will apply Sparse Attention using DGL backend.
                 Defaults to False.
-            use_edges_features (bool): if true use mesh edges features inside the Processor. 
+            use_edges_features (bool): if true use mesh edges features inside the Processor.
                 Defaults to True.
         """
         super().__init__()
@@ -73,7 +73,7 @@ class Denoiser(torch.nn.Module):
             splits=splits,
             num_hops=num_hops,
             device=device,
-            add_edge_features_to_khop = use_edges_features,
+            add_edge_features_to_khop=use_edges_features,
         )
 
         # Initialize Encoder
@@ -89,7 +89,7 @@ class Denoiser(torch.nn.Module):
         # Initialize Processor
         if sparse and use_edges_features:
             raise ValueError("Sparse processor don't support edges features.")
-        
+
         self.processor = Processor(
             latent_dim=hidden_dims[-1],
             edges_dim=self.graphs.mesh_edges_dim if use_edges_features else None,
@@ -103,7 +103,6 @@ class Denoiser(torch.nn.Module):
             use_layer_norm=True,
             sparse=sparse,
         )
-       
 
         # Initialize Decoder
         self.decoder = Decoder(
@@ -207,11 +206,11 @@ class Denoiser(torch.nn.Module):
 
         # run the processor.
         latent_mesh_nodes = self.processor.forward(
-                latent_mesh_nodes=latent_mesh_nodes,
-                input_edge_attr=input_edge_attr,
-                edge_index=edge_index,
-                noise_levels=noise_levels,
-            )
+            latent_mesh_nodes=latent_mesh_nodes,
+            input_edge_attr=input_edge_attr,
+            edge_index=edge_index,
+            noise_levels=noise_levels,
+        )
 
         # restore nodes dimension: [b, n, f]
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)

@@ -287,9 +287,9 @@ class GraphBuilder:
 
     def _init_khop_mesh_graph(self):
         """Build k-hop Mesh graph.
-        
-        This implementation constructs the sparse adjacency matrix associated with the mesh graph 
-        and computes its powers in a sparse manner. It should be more memory-efficient than the 
+
+        This implementation constructs the sparse adjacency matrix associated with the mesh graph
+        and computes its powers in a sparse manner. It should be more memory-efficient than the
         original PyG implementation because it does not need to materialize all the edges.
         """
 
@@ -305,7 +305,9 @@ class GraphBuilder:
             edge_index,
             values=torch.ones_like(edge_index[0], dtype=torch.float32),
             size=(self._num_mesh_nodes, self._num_mesh_nodes),
-        ).to("cpu")  # cpu is more memory-efficient, why?
+        ).to(
+            "cpu"
+        )  # cpu is more memory-efficient, why?
 
         adj_k = adj.coalesce()
         for _ in range(self.num_hops - 1):
@@ -327,7 +329,7 @@ class GraphBuilder:
             # clean memory
             del mask, new_indices, new_values
             gc.collect()
-    
+
         # build k-hop graph
         khop_mesh_graph = Data(x=self.mesh_graph.x, edge_index=adj_k.indices().to(self.device))
         del adj_k, adj

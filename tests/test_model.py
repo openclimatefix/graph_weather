@@ -22,6 +22,7 @@ from graph_weather.models.gencast.utils.noise import (
 from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser
 from graph_weather.models.gencast.layers.modules import FourierEmbedding
 
+
 def test_encoder():
     lat_lons = []
     for lat in range(-90, 90, 5):
@@ -297,20 +298,21 @@ def test_gencast_graph():
     grid_lat = np.arange(-90, 90, 1)
     grid_lon = np.arange(0, 360, 1)
     graphs = GraphBuilder(grid_lon=grid_lon, grid_lat=grid_lat, splits=4, num_hops=8)
-    
+
     # compare khop sparse implementation with pyg.
     transform = TwoHop()
     khop_mesh_graph_pyg = graphs.mesh_graph
-    for i in range(3): #8-hop mesh
+    for i in range(3):  # 8-hop mesh
         khop_mesh_graph_pyg = transform(khop_mesh_graph_pyg)
 
     assert graphs.mesh_graph.x.shape[0] == 2562
-    assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360*180
+    assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360 * 180
     assert graphs.m2g_graph["mesh_nodes"].x.shape[0] == 2562
     assert not torch.isnan(graphs.mesh_graph.edge_attr).any()
     assert graphs.khop_mesh_graph.x.shape[0] == 2562
     assert torch.allclose(graphs.khop_mesh_graph.x, khop_mesh_graph_pyg.x)
     assert torch.allclose(graphs.khop_mesh_graph.edge_index, khop_mesh_graph_pyg.edge_index)
+
 
 def test_gencast_loss():
     grid_lat = torch.arange(-90, 90, 1)
@@ -357,7 +359,7 @@ def test_gencast_denoiser():
     ).eval()
 
     corrupted_targets = torch.randn((batch_size, len(grid_lon), len(grid_lat), output_features_dim))
-    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2*input_features_dim))
+    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2 * input_features_dim))
     noise_levels = torch.rand((batch_size, 1))
 
     with torch.no_grad():
@@ -367,9 +369,10 @@ def test_gencast_denoiser():
 
     assert not torch.isnan(preds).any()
 
+
 def test_gencast_fourier():
     batch_size = 10
     output_dim = 20
     fourier_embedder = FourierEmbedding(output_dim=output_dim, num_frequencies=32, base_period=16)
-    t = torch.rand((batch_size,1))
+    t = torch.rand((batch_size, 1))
     assert fourier_embedder(t).shape == (batch_size, output_dim)
