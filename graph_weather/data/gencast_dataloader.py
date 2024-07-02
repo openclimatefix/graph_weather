@@ -20,15 +20,6 @@ from graph_weather.models.gencast.utils.noise import generate_isotropic_noise, s
 class GenCastDataset(Dataset):
     """
     Dataset class for GenCast training data.
-
-    Args:
-        obs_path: dataset path.
-        atmospheric_features: list of features depending on pressure levels.
-        single_features: list of features not depending on pressure levels.
-        static_features: list of features not depending on time.
-        max_year: max year to include in training set. Defaults to 2018.
-        time_step: time step between predictions.
-                    E.g. 12h steps correspond to time_step = 2 in a 6h dataset. Defaults to 2.
     """
 
     def __init__(
@@ -42,17 +33,32 @@ class GenCastDataset(Dataset):
     ):
         """
         Initialize the GenCast dataset object.
+
+        Args:
+            obs_path: dataset path.
+            atmospheric_features: list of features depending on pressure levels.
+            single_features: list of features not depending on pressure levels.
+            static_features: list of features not depending on time.
+            max_year: max year to include in training set. Defaults to 2018.
+            time_step: time step between predictions.
+                        E.g. 12h steps correspond to time_step = 2 in a 6h dataset. Defaults to 2.
         """
         super().__init__()
         self.data = xr.open_zarr(obs_path, chunks={})
         self.max_year = max_year
 
-        self.num_lon = len(self.data["longitude"].values)
-        self.num_lat = len(self.data["latitude"].values)
+        self.grid_lon = self.data["longitude"].values
+        self.grid_lat = self.data["latitude"].values
+        self.num_lon = len(self.grid_lon)
+        self.num_lat = len(self.grid_lat)
         self.num_vars = len(self.data.keys())
         self.pressure_levels = np.array(self.data["level"].values).astype(
             np.float32
         )  # Need them for loss weighting
+        self.output_features_dim = len(atmospheric_features) * len(self.pressure_levels) + len(
+            single_features
+        )
+        self.input_features_dim = self.output_features_dim + len(static_features) + 4
 
         self.time_step = time_step  # e.g. 12h steps correspond to time_step = 2 in a 6h dataset
 
@@ -161,7 +167,7 @@ class GenCastDataset(Dataset):
 
         # Concatenate timesteps
         inputs = np.concatenate([inputs[0, :, :, :], inputs[1, :, :, :]], axis=-1)
-        inputs = np.nan_to_num(inputs).astype(np.float32)
+        prev_inputs = np.nan_to_num(inputs).astype(np.float32)
 
         # Load target data
         ds_target_atm = (
@@ -186,16 +192,16 @@ class GenCastDataset(Dataset):
         target_residuals = np.nan_to_num(target_residuals).astype(np.float32)
 
         # Corrupt targets with noise
-        noise_level = np.array([sample_noise_level()]).astype(np.float32)
+        noise_levels = np.array([sample_noise_level()]).astype(np.float32)
         noise = generate_isotropic_noise(
             num_lat=self.num_lat, num_samples=target_residuals.shape[-1]
         )
-        corrupted_residuals = target_residuals + noise_level * noise
+        corrupted_targets = target_residuals + noise_levels * noise
 
         return (
-            inputs,
-            noise_level,
-            corrupted_residuals,
+            corrupted_targets,
+            prev_inputs,
+            noise_levels,
             target_residuals,
         )
 
@@ -366,7 +372,7 @@ class BatchedGenCastDataset(Dataset):
         inputs = np.concatenate([batched_inputs_norm, ds_clock], axis=-1)
         # Concatenate timesteps
         inputs = np.concatenate([inputs[:, 0, :, :, :], inputs[:, 1, :, :, :]], axis=-1)
-        inputs = np.nan_to_num(inputs).astype(np.float32)
+        prev_inputs = np.nan_to_num(inputs).astype(np.float32)
 
         # Compute targets residuals
         raw_targets = np.concatenate([ds_atm, ds_single], axis=-1)
@@ -376,13 +382,13 @@ class BatchedGenCastDataset(Dataset):
 
         # Corrupt targets with noise
         noise_levels = np.zeros((self.batch_size, 1), dtype=np.float32)
-        corrupted_residuals = np.zeros_like(target_residuals, dtype=np.float32)
+        corrupted_targets = np.zeros_like(target_residuals, dtype=np.float32)
         for b in range(self.batch_size):
             noise_level = sample_noise_level()
             noise = generate_isotropic_noise(
                 num_lat=self.num_lat, num_samples=target_residuals.shape[-1]
             )
-            corrupted_residuals[b] = target_residuals[b] + noise_level * noise
+            corrupted_targets[b] = target_residuals[b] + noise_level * noise
             noise_levels[b] = noise_level
 
-        return (inputs, noise_levels, corrupted_residuals, target_residuals)
+        return (corrupted_targets, prev_inputs, noise_levels, target_residuals)
