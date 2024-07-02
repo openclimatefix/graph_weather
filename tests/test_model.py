@@ -20,7 +20,7 @@ from graph_weather.models.gencast.utils.noise import (
     generate_isotropic_noise,
     sample_noise_level,
 )
-from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss
+from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser
 
 
 def test_encoder():
@@ -313,32 +313,49 @@ def test_meta_model():
     assert out.size() == features.size()
 
 
-def test_wrapper_meta_model():
-    lat_lons = []
-    for lat in range(-90, 90, 5):
-        for lon in range(0, 360, 5):
-            lat_lons.append((lat, lon))
+def test_gencast_noise():
+    num_lat = 32
+    num_samples = 5
+    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
 
-    batch = 2
-    channels = 3
-    image_size = 20
-    patch_size = 4
-    scale_factor = 3
-    model = MetaModel(
-        lat_lons,
-        image_size=image_size,
-        patch_size=patch_size,
-        depth=1,
-        heads=1,
-        mlp_dim=7,
-        channels=channels,
-        dim_head=64,
+
+def test_gencast_graph():
+    grid_lat = np.arange(-90, 90, 1)
+    grid_lon = np.arange(0, 360, 1)
+    graphs = GraphBuilder(grid_lon=grid_lon, grid_lat=grid_lat, splits=0, num_hops=1)
+
+    assert graphs.mesh_graph.x.shape[0] == 12
+    assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360 * 180
+    assert graphs.m2g_graph["mesh_nodes"].x.shape[0] == 12
+    assert not torch.isnan(graphs.mesh_graph.edge_attr).any()
+    assert graphs.khop_mesh_graph.x.shape[0] == 12
+    assert graphs.khop_mesh_graph.edge_attr.shape[0] == 12 * 10
+
+
+def test_gencast_loss():
+    grid_lat = torch.arange(-90, 90, 1)
+    grid_lon = torch.arange(0, 360, 1)
+    pressure_levels = torch.tensor(
+        [50.0, 100.0, 150.0, 200.0, 250, 300, 400, 500, 600, 700, 850, 925, 1000.0]
+    )
+    single_features_weights = torch.tensor([1, 0.1, 0.1, 0.1, 0.1])
+    num_atmospheric_features = 6
+    batch_size = 3
+    features_dim = len(pressure_levels) * num_atmospheric_features + len(single_features_weights)
+
+    loss = WeightedMSELoss(
+        grid_lat=grid_lat,
+        pressure_levels=pressure_levels,
+        num_atmospheric_features=num_atmospheric_features,
+        single_features_weights=single_features_weights,
     )
 
-    big_features = torch.randn((batch, len(lat_lons), channels))
-    big_model = WrapperMetaModel(lat_lons, model, scale_factor)
-    out = big_model(big_features)
-
-    assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
-    assert out.size() == big_features.size()
+    preds = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
+    noise_levels = torch.rand((batch_size, 1))
+    targets = torch.rand((batch_size, len(grid_lon), len(grid_lat), features_dim))
+    assert loss.forward(preds, targets, noise_levels) is not None

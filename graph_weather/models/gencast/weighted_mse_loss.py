@@ -68,15 +68,18 @@ class WeightedMSELoss(torch.nn.Module):
         return noise_weights  # [batch, 1]
 
     def forward(
-        self, pred: torch.Tensor, target: torch.Tensor, noise_level: torch.Tensor
+        self,
+        pred: torch.Tensor,
+        noise_level: torch.Tensor,
+        target: torch.Tensor,
     ) -> torch.Tensor:
         """Compute the loss.
 
         Args:
             pred (torch.Tensor): prediction of the model [batch, lon, lat, var].
-            target (torch.Tensor): target tensor [batch, lon, lat, var].
             noise_level (torch.Tensor): noise levels fed to the model for the corresponding
                 predictions [batch, 1].
+            target (torch.Tensor): target tensor [batch, lon, lat, var].
 
         Returns:
             torch.Tensor: weighted MSE loss.
@@ -84,7 +87,7 @@ class WeightedMSELoss(torch.nn.Module):
         # check shapes
         if not (pred.shape == target.shape):
             raise ValueError(
-                "redictions and targets must have same shape. The actual shapes "
+                "Predictions and targets must have same shape. The actual shapes "
                 f"are {pred.shape} and {target.shape}."
             )
         if not (len(pred.shape) == 4):
