@@ -86,6 +86,24 @@
       "contributions": [
         "question"
       ]
+    },
+    {
+      "login": "rnwzd",
+      "name": "Lorenzo Breschi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/58804597?v=4",
+      "profile": "https://github.com/rnwzd",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "gbruno16",
+      "name": "gbruno16",
+      "avatar_url": "https://avatars.githubusercontent.com/u/72879691?v=4",
+      "profile": "https://github.com/gbruno16",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -93,5 +111,6 @@
   "projectOwner": "openclimatefix",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "skipCi": true
+  "skipCi": true,
+  "commitType": "docs"
 }
