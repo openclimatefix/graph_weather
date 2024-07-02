@@ -75,8 +75,7 @@ class Attention(nn.Module):
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(
-            t, "b n (h d) -> b h n d", h=self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -104,7 +103,9 @@ class Transformer(nn.Module):
                 )
             )
             if self.res:
-                assert image_size is not None and scale_factor is not None, "If res=True, you must provide h, w and scale_factor"
+                assert (
+                    image_size is not None and scale_factor is not None
+                ), "If res=True, you must provide h, w and scale_factor"
                 h, w = pair(image_size)
                 s_h, s_w = pair(scale_factor)
                 self.res_layers.append(
@@ -366,14 +367,8 @@ class MetaModel(nn.Module):
 
         self.pos_x = torch.tensor(lat_lons)
         self.pos_y = torch.cartesian_prod(
-            (
-                torch.arange(-self.i_h / 2,
-                             self.i_h / 2, 1)
-                / self.i_h
-                * 180
-            ).to(torch.long),
-            (torch.arange(0, self.i_w, 1) /
-             self.i_w * 360).to(torch.long),
+            (torch.arange(-self.i_h / 2, self.i_h / 2, 1) / self.i_h * 180).to(torch.long),
+            (torch.arange(0, self.i_w, 1) / self.i_w * 360).to(torch.long),
         )
 
         self.image_meta_model = ImageMetaModel(
@@ -391,10 +386,7 @@ class MetaModel(nn.Module):
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c,
-            h=self.i_h, w=self.i_w
-        )
+        x = rearrange(x, "(h w) (b c) -> b c h w", b=b, c=c, h=self.i_h, w=self.i_w)
         x = self.image_meta_model(x)
 
         x = rearrange(x, "b c h w -> (h w) (b c)")
@@ -404,48 +396,33 @@ class MetaModel(nn.Module):
 
 
 class WrapperMetaModel(nn.Module):
-    def __init__(
-        self,
-        lat_lons: list,
-        meta_model: MetaModel,
-        scale_factor
-    ):
+    def __init__(self, lat_lons: list, meta_model: MetaModel, scale_factor):
         super().__init__()
         s_h, s_w = pair(scale_factor)
-        self.i_h, self.i_w = meta_model.i_h*s_h, meta_model.i_w*s_w
+        self.i_h, self.i_w = meta_model.i_h * s_h, meta_model.i_w * s_w
         self.pos_x = torch.tensor(lat_lons)
         self.pos_y = torch.cartesian_prod(
-            (
-                torch.arange(-self.i_h / 2,
-                             self.i_h / 2, 1)
-                / self.i_h
-                * 180
-            ).to(torch.long),
-            (torch.arange(0, self.i_w, 1) /
-             self.i_w * 360).to(torch.long),
+            (torch.arange(-self.i_h / 2, self.i_h / 2, 1) / self.i_h * 180).to(torch.long),
+            (torch.arange(0, self.i_w, 1) / self.i_w * 360).to(torch.long),
         )
 
-        self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w",
-                                 s_h=s_h, s_w=s_w)
+        self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w", s_h=s_h, s_w=s_w)
 
         imm_args = vars(meta_model.image_meta_model)
-        imm_args.update(
-            {"res": True, "scale_factor": scale_factor})
+        imm_args.update({"res": True, "scale_factor": scale_factor})
         self.image_meta_model = ImageMetaModel(**imm_args)
-        self.image_meta_model.load_state_dict(meta_model.image_meta_model.state_dict(), strict=False)
+        self.image_meta_model.load_state_dict(
+            meta_model.image_meta_model.state_dict(), strict=False
+        )
 
-        self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)",
-                                   s_h=s_h, s_w=s_w)
+        self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)", s_h=s_h, s_w=s_w)
 
     def forward(self, x):
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c,
-            h=self.i_h, w=self.i_w
-        )
+        x = rearrange(x, "(h w) (b c) -> b c h w", b=b, c=c, h=self.i_h, w=self.i_w)
 
         x = self.batcher(x)
         x = self.image_meta_model(x)
