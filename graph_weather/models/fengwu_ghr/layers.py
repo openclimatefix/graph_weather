@@ -104,9 +104,7 @@ class Transformer(nn.Module):
                 )
             )
             if self.res:
-                assert (
-                    image_size is not None and scale_factor is not None
-                ), "If res=True, you must provide h, w and scale_factor"
+                assert image_size is not None and scale_factor is not None, "If res=True, you must provide h, w and scale_factor"
                 h, w = pair(image_size)
                 s_h, s_w = pair(scale_factor)
                 self.res_layers.append(
@@ -430,11 +428,12 @@ class WrapperMetaModel(nn.Module):
         self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w",
                                  s_h=s_h, s_w=s_w)
 
-        imm_args = meta_model.image_meta_model.vars().update(
+        imm_args = vars(meta_model.image_meta_model)
+        imm_args.update(
             {"res": True, "scale_factor": scale_factor})
         self.image_meta_model = ImageMetaModel(**imm_args)
-        self.image_meta_model.load(meta_model.image_meta_model, strict=False)
-        
+        self.image_meta_model.load_state_dict(meta_model.image_meta_model.state_dict(), strict=False)
+
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)",
                                    s_h=s_h, s_w=s_w)
 
