@@ -22,8 +22,8 @@ class Processor(torch.nn.Module):
 
     The Processor is a sequence of transformer blocks conditioned on noise level. If the graph has
     many edges, setting sparse=True may perform better in terms of memory and speed. Note that
-    sparse=False uses PyG as the backend, while sparse=True uses DGL. The two implementations are not
-    exactly equivalent: the former is described in the paper "Masked Label Prediction: Unified
+    sparse=False uses PyG as the backend, while sparse=True uses DGL. The two implementations are 
+    not exactly equivalent: the former is described in the paper "Masked Label Prediction: Unified
     Message Passing Model for Semi-Supervised Classification" and can also handle edge features,
     while the latter is a classical transformer that performs multi-head attention utilizing the
     mask's sparsity and does not include edge features in the computations.
