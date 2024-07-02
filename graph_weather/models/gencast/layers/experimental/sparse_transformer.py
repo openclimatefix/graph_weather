@@ -63,17 +63,9 @@ class SparseAttention(nn.Module):
 
 
 class SparseTransformer(nn.Module):
-    """
-    A single transformer block for graph neural networks.
+    """A single transformer block for graph neural networks.
 
-    This module implements a transformer block tailored for graph structures, following the
-    methodology outlined in the paper "Masked Label Prediction: Unified Message Passing Model
-    for Semi-Supervised Classification." The implementation aligns with the principles described
-    in this paper, providing an adaptation of the transformer's attention mechanism to
-    graph data.
-
-    Note: The GenCast paper does not provide specific details regarding the implementation of the
-    transformer architecture for graphs.
+    This module implements a single transformer block with a sparse attention mechanism.
     """
 
     def __init__(
@@ -84,7 +76,7 @@ class SparseTransformer(nn.Module):
         num_heads: int,
         activation_layer: torch.nn.Module = nn.ReLU,
     ):
-        """Initialize Conditional Layer Normalization module.
+        """Initialize SparseTransformer module.
 
         Args:
             conditioning_dim (int, optional): dimension of the conditioning parameter. If None the
@@ -125,7 +117,7 @@ class SparseTransformer(nn.Module):
         *args,
         **kwargs,
     ) -> torch.Tensor:
-        """Apply CondTransformerBlock to input.
+        """Apply SparseTransformer to input.
 
         Input and conditioning parameter must have same batch size.
 

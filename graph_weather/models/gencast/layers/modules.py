@@ -259,9 +259,6 @@ class CondTransformerBlock(nn.Module):
     for Semi-Supervised Classification." The implementation aligns with the principles described
     in this paper, providing an adaptation of the transformer's attention mechanism to
     graph data.
-
-    Note: The GenCast paper does not provide specific details regarding the implementation of the
-    transformer architecture for graphs.
     """
 
     def __init__(

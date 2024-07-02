@@ -59,7 +59,7 @@ class GraphBuilder:
         m2g_graph (pyg.data.HeteroData): heterogeneous directed graph connecting the mesh nodes
             to the grid nodes.
         khop_mesh_graph (pyg.data.Data): augmented version of mesh_graph in which every node is
-            connected to its 2^num_hops neighbours.
+            connected to its num_hops neighbours.
         grid_nodes_dim (int): dimension of the grid nodes features.
         mesh_nodes_dim (int): dimension of the mesh nodes features.
         mesh_edges_dim (int): dimension of the mesh edges features.
@@ -286,42 +286,54 @@ class GraphBuilder:
         return m2g_graph
 
     def _init_khop_mesh_graph(self):
-        """Build k-hop Mesh graph."""
-        # PyG:
+        """Build k-hop Mesh graph.
+        
+        This implementation constructs the sparse adjacency matrix associated with the mesh graph 
+        and computes its powers in a sparse manner. It should be more memory-efficient than the 
+        original PyG implementation because it does not need to materialize all the edges.
+        """
+
+        # PyG version:
         # transform = TwoHop()
         # khop_mesh_graph = self.mesh_graph
         # for _ in range(self.num_hops):
         #    khop_mesh_graph = transform(khop_mesh_graph)
 
+        # build the sparse adjacency matrix
         edge_index = self.mesh_graph.edge_index
         adj = torch.sparse_coo_tensor(
             edge_index,
             values=torch.ones_like(edge_index[0], dtype=torch.float32),
             size=(self._num_mesh_nodes, self._num_mesh_nodes),
-        ).to("cpu")  # for some reason cpu is more memory efficient
+        ).to("cpu")  # cpu is more memory-efficient, why?
 
         adj_k = adj.coalesce()
         for _ in range(self.num_hops - 1):
+            # add to previous edges their 1-hop neighbours
             adj_k = adj_k + torch.sparse.mm(adj_k, adj)
             adj_k = adj_k.coalesce()
+
             # remove self loops
             new_indices = adj_k.indices()
             mask = new_indices[0] != new_indices[1]
             new_indices = new_indices[:, mask]
             new_values = torch.ones_like(adj_k.values()[mask])
+
+            # build k-hop sparse matrix
             adj_k = torch.sparse_coo_tensor(
                 indices=new_indices, values=new_values, size=adj_k.shape
             ).coalesce()
-            # cleaning
+
+            # clean memory
             del mask, new_indices, new_values
             gc.collect()
     
-
+        # build k-hop graph
         khop_mesh_graph = Data(x=self.mesh_graph.x, edge_index=adj_k.indices().to(self.device))
         del adj_k, adj
         gc.collect()
 
-
+        # optionally compute edges' features: computationally expensive for a big mesh!
         if self.add_edge_features_to_khop:
             senders = khop_mesh_graph.edge_index[0].cpu()
             receivers = khop_mesh_graph.edge_index[1].cpu()

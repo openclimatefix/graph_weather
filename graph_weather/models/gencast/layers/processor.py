@@ -17,7 +17,19 @@ except ImportError:
 
 
 class Processor(torch.nn.Module):
-    """GenCast's Processor."""
+    """GenCast's Processor
+
+    The Processor is a sequence of transformer blocks conditioned on noise level. If the graph has 
+    many edges, setting sparse=True may perform better in terms of memory and speed. Note that 
+    sparse=False uses PyG as the backend, while sparse=True uses DGL. The two implementations are not 
+    exactly equivalent: the former is described in the paper "Masked Label Prediction: Unified 
+    Message Passing Model for Semi-Supervised Classification" and can also handle edge features, 
+    while the latter is a classical transformer that performs multi-head attention utilizing the 
+    mask's sparsity and does not include edge features in the computations.
+
+    Note: The GenCast paper does not provide specific details regarding the implementation of the 
+    transformer architecture for graphs.
+    """
 
     def __init__(
         self,
@@ -118,6 +130,7 @@ class Processor(torch.nn.Module):
                         activation_layer=activation_layer,
                     )
                 )
+                # do we really need averaging for last block?
 
     def _check_args(self, latent_mesh_nodes, noise_levels, input_edge_attr):
         if not latent_mesh_nodes.shape[-1] == self.latent_dim:
@@ -156,7 +169,7 @@ class Processor(torch.nn.Module):
         """
         self._check_args(latent_mesh_nodes, noise_levels, input_edge_attr)
 
-        # Embedding
+        # embedding
         noise_emb = self.fourier_embedder(noise_levels)
 
         if self.edges_dim is not None:
@@ -164,7 +177,7 @@ class Processor(torch.nn.Module):
         else:
             edges_emb = None
 
-        # Apply TransformerConv
+        # apply transformer blocks
         for cond_transformer in self.cond_transformers:
             latent_mesh_nodes = cond_transformer(
                 x=latent_mesh_nodes,
