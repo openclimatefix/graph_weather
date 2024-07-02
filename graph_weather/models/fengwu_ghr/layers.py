@@ -203,12 +203,7 @@ class ImageMetaModel(nn.Module):
     def forward(self, x):
         device = x.device
         dtype = x.dtype
-    def forward(self, x):
-        device = x.device
-        dtype = x.dtype
 
-        x = self.to_patch_embedding(x)
-        x += self.pos_embedding.to(device, dtype=dtype)
         x = self.to_patch_embedding(x)
         x += self.pos_embedding.to(device, dtype=dtype)
 
