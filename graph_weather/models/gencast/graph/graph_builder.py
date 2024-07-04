@@ -86,8 +86,8 @@ class GraphBuilder:
             num_hops (int): if num_hops=k then khop_mesh_graph will be the k-neighbours version of
                 the mesh. Defaults to 0.
             device: the device to which the final graph will be moved.
-            khop_device: the device that will compute the k-hop mesh graph. Note that while setting 
-                this to gpu may result in faster computations, it may also cause some memory leaks 
+            khop_device: the device that will compute the k-hop mesh graph. Note that while setting
+                this to gpu may result in faster computations, it may also cause some memory leaks
                 in the current implementation. Defaults to cpu.
             add_edge_features_to_khop (bool): if true compute edge features for the k-hop neighbours
                 graph. Defaults to False.
