@@ -9,8 +9,10 @@ from graph_weather.models import (
     Decoder,
     Encoder,
     Processor,
-    MetaModel,
     ImageMetaModel,
+    MetaModel,
+    WrapperImageModel,
+    WrapperMetaModel,
 )
 from graph_weather.models.losses import NormalizedMSELoss
 
@@ -245,13 +247,42 @@ def test_image_meta_model():
     patch_size = 2
     image = torch.randn((batch, channels, size, size))
     model = ImageMetaModel(
-        image_size=size, patch_size=patch_size, channels=channels, depth=1, heads=1, mlp_dim=7
+        image_size=size,
+        patch_size=patch_size,
+        channels=channels,
+        depth=1,
+        heads=1,
+        mlp_dim=7,
+        dim_head=64,
     )
 
     out = model(image)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
-    assert out.size() == (batch, channels, size, size)
+    assert out.size() == image.size()
+
+
+def test_wrapper_image_meta_model():
+    batch = 2
+    channels = 3
+    size = 4
+    patch_size = 2
+    model = ImageMetaModel(
+        image_size=size,
+        patch_size=patch_size,
+        channels=channels,
+        depth=1,
+        heads=1,
+        mlp_dim=7,
+        dim_head=64,
+    )
+    scale_factor = 3
+    big_image = torch.randn((batch, channels, size * scale_factor, size * scale_factor))
+    big_model = WrapperImageModel(model, scale_factor)
+    out = big_model(big_image)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    assert out.size() == big_image.size()
 
 
 def test_meta_model():
@@ -272,13 +303,14 @@ def test_meta_model():
         heads=1,
         mlp_dim=7,
         channels=channels,
+        dim_head=64,
     )
     features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
     assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
-    assert out.size() == (batch, len(lat_lons), channels)
+    assert out.size() == features.size()
 
 
 def test_gencast_noise():
