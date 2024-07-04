@@ -8,6 +8,7 @@ jobs:
   bump-version-python-docker-release:
     uses: openclimatefix/.github/.github/workflows/python-docker-release.yml@main
     secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
       token: ${{ secrets.PYPI_API_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
