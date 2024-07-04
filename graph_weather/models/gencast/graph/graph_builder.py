@@ -74,6 +74,7 @@ class GraphBuilder:
         splits: int = 5,
         num_hops: int = 0,
         device: torch.device = torch.device("cpu"),
+        khop_device: torch.device = torch.device("cpu"),
         add_edge_features_to_khop=True,
     ):
         """Initialize the GraphBuilder object.
@@ -84,7 +85,10 @@ class GraphBuilder:
             splits (int): number of times to split the icosphere to build the mesh. Defaults to 5.
             num_hops (int): if num_hops=k then khop_mesh_graph will be the k-neighbours version of
                 the mesh. Defaults to 0.
-            device: the device to which the graph will be moved.
+            device: the device to which the final graph will be moved.
+            khop_device: the device that will compute the k-hop mesh graph. Note that while setting 
+                this to gpu may result in faster computations, it may also cause some memory leaks 
+                in the current implementation. Defaults to cpu.
             add_edge_features_to_khop (bool): if true compute edge features for the k-hop neighbours
                 graph. Defaults to False.
         """
@@ -92,6 +96,7 @@ class GraphBuilder:
         self._spatial_features_kwargs = _spatial_features_kwargs
         self.add_edge_features_to_khop = add_edge_features_to_khop
         self.device = device
+        self.khop_device = khop_device
 
         # Specification of the mesh.
         _icosahedral_refinements = icosahedral_mesh.get_hierarchy_of_triangular_meshes_for_sphere(
@@ -289,8 +294,7 @@ class GraphBuilder:
         """Build k-hop Mesh graph.
 
         This implementation constructs the sparse adjacency matrix associated with the mesh graph
-        and computes its powers in a sparse manner. It should be more memory-efficient than the
-        original PyG implementation because it does not need to materialize all the edges.
+        and computes its powers in a sparse manner.
         """
 
         # PyG version:
@@ -306,7 +310,7 @@ class GraphBuilder:
             values=torch.ones_like(edge_index[0], dtype=torch.float32),
             size=(self._num_mesh_nodes, self._num_mesh_nodes),
         ).to(
-            "cpu"
+            self.khop_device
         )  # cpu is more memory-efficient, why?
 
         adj_k = adj.coalesce()
