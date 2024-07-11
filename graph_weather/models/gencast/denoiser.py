@@ -15,6 +15,7 @@ from torch_geometric.data import Batch
 from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
+from graph_weather.models.gencast.layers.processor import Processor
 from graph_weather.models.gencast.utils.noise import Preconditioner
 
 
@@ -33,6 +34,8 @@ class Denoiser(torch.nn.Module):
         splits: int = 6,
         num_hops: int = 6,
         device: torch.device = torch.device("cpu"),
+        sparse: bool = False,
+        use_edges_features: bool = True,
     ):
         """Initialize the Denoiser.
 
@@ -51,12 +54,17 @@ class Denoiser(torch.nn.Module):
                 of each node. Defaults to 6.
             device (torch.device, optional): device on which we want to build graph.
                 Defaults to torch.device("cpu").
+            sparse (bool): if true the processor will apply Sparse Attention using DGL backend.
+                Defaults to False.
+            use_edges_features (bool): if true use mesh edges features inside the Processor.
+                Defaults to True.
         """
         super().__init__()
         self.num_lon = len(grid_lon)
         self.num_lat = len(grid_lat)
         self.input_features_dim = input_features_dim
         self.output_features_dim = output_features_dim
+        self.use_edges_features = use_edges_features
 
         # Initialize graph
         self.graphs = GraphBuilder(
@@ -65,6 +73,7 @@ class Denoiser(torch.nn.Module):
             splits=splits,
             num_hops=num_hops,
             device=device,
+            add_edge_features_to_khop=use_edges_features,
         )
 
         # Initialize Encoder
@@ -75,6 +84,24 @@ class Denoiser(torch.nn.Module):
             hidden_dims=hidden_dims,
             activation_layer=torch.nn.SiLU,
             use_layer_norm=True,
+        )
+
+        # Initialize Processor
+        if sparse and use_edges_features:
+            raise ValueError("Sparse processor don't support edges features.")
+
+        self.processor = Processor(
+            latent_dim=hidden_dims[-1],
+            edges_dim=self.graphs.mesh_edges_dim if use_edges_features else None,
+            hidden_dims=hidden_dims,
+            num_blocks=num_blocks,
+            num_heads=num_heads,
+            num_frequencies=32,
+            base_period=16,
+            noise_emb_dim=16,
+            activation_layer=torch.nn.SiLU,
+            use_layer_norm=True,
+            sparse=sparse,
         )
 
         # Initialize Decoder
@@ -133,6 +160,9 @@ class Denoiser(torch.nn.Module):
         # restore nodes dimension: [b, n, f]
         latent_grid_nodes = einops.rearrange(latent_grid_nodes, "(b n) f -> b n f", b=batch_size)
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(latent_grid_nodes).any()
+        assert not torch.isnan(latent_mesh_nodes).any()
         return latent_grid_nodes, latent_mesh_nodes
 
     def _run_decoder(self, latent_mesh_nodes, latent_grid_nodes):
@@ -156,10 +186,36 @@ class Denoiser(torch.nn.Module):
 
         # restore nodes dimension: [b, n, f]
         output_grid_nodes = einops.rearrange(output_grid_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(output_grid_nodes).any()
         return output_grid_nodes
 
     def _run_processor(self, latent_mesh_nodes, noise_levels):
-        # TODO: add processor.
+        # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
+        batch_size = latent_mesh_nodes.shape[0]
+        num_nodes = latent_mesh_nodes.shape[1]
+        mesh_batched = Batch.from_data_list([self.graphs.khop_mesh_graph] * batch_size)
+
+        # load features.
+        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
+        input_edge_attr = mesh_batched.edge_attr if self.use_edges_features else None
+        edge_index = mesh_batched.edge_index
+
+        # repeat noise levels for each node.
+        noise_levels = einops.repeat(noise_levels, "b f -> (b n) f", n=num_nodes)
+
+        # run the processor.
+        latent_mesh_nodes = self.processor.forward(
+            latent_mesh_nodes=latent_mesh_nodes,
+            input_edge_attr=input_edge_attr,
+            edge_index=edge_index,
+            noise_levels=noise_levels,
+        )
+
+        # restore nodes dimension: [b, n, f]
+        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+
+        assert not torch.isnan(latent_mesh_nodes).any()
         return latent_mesh_nodes
 
     def _f_theta(self, grid_features, noise_levels):
@@ -188,8 +244,10 @@ class Denoiser(torch.nn.Module):
                 dimension.
             noise_levels (torch.Tensor): the noise level used for corruption.
         """
-        # check shapes.
+        # check shapes and noise.
         self._check_shapes(corrupted_targets, prev_inputs, noise_levels)
+        if not (noise_levels > 0).any():
+            raise ValueError("All the noise levels must be strictly positive.")
 
         # flatten lon/lat dimensions.
         prev_inputs = einops.rearrange(prev_inputs, "b lon lat f -> b (lon lat) f")
