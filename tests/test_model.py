@@ -321,7 +321,9 @@ def test_gencast_noise():
     num_samples = 5
     target_residuals = np.zeros((num_lon, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1]
+    )
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
@@ -331,7 +333,9 @@ def test_gencast_noise():
     num_samples = 5
     target_residuals = np.zeros((num_lon, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1]
+    )
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
@@ -341,7 +345,9 @@ def test_gencast_noise():
     num_samples = 5
     target_residuals = np.zeros((num_lon, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1], isotropic=False)
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1], isotropic=False
+    )
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
@@ -430,6 +436,7 @@ def test_gencast_fourier():
     t = torch.rand((batch_size, 1))
     assert fourier_embedder(t).shape == (batch_size, output_dim)
 
+
 def test_gencast_sampler():
     grid_lat = np.arange(-90, 90, 1)
     grid_lon = np.arange(0, 360, 1)
@@ -449,10 +456,9 @@ def test_gencast_sampler():
         device=torch.device("cpu"),
     ).eval()
 
-    
-    prev_inputs = torch.randn((1, len(grid_lon), len(grid_lat), 2*input_features_dim))
+    prev_inputs = torch.randn((1, len(grid_lon), len(grid_lat), 2 * input_features_dim))
 
     sampler = Sampler()
     preds = sampler.sample(denoiser, prev_inputs)
     assert not torch.isnan(preds).any()
-    assert preds.shape==(1,len(grid_lon), len(grid_lat), output_features_dim)
+    assert preds.shape == (1, len(grid_lon), len(grid_lat), output_features_dim)
