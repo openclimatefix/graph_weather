@@ -1,13 +1,14 @@
 """Utils for batching graphs."""
+
 import torch
 
 
 def batch(senders, edge_index, edge_attr=None, batch_size=1):
     """Build big batched graph.
-    
+
     Returns nodes and edges of a big graph with batch_size disconnected copies of the original
     graph, with features shape [(b n) f].
-        
+
     Args:
         senders (torch.Tensor): nodes' features.
         edge_index (torch.Tensor): edge index tensor.
@@ -35,10 +36,10 @@ def batch(senders, edge_index, edge_attr=None, batch_size=1):
 
 def hetero_batch(senders, receivers, edge_index, edge_attr=None, batch_size=1):
     """Build big batched heterogenous graph.
-    
+
     Returns nodes and edges of a big graph with batch_size disconnected copies of the original
     graph, with features shape [(b n) f].
-        
+
     Args:
         senders (torch.Tensor): senders' features.
         receivers (torch.Tensor): receivers' features.

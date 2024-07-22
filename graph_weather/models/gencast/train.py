@@ -73,8 +73,10 @@ OBS_PATH = "dataset.zarr"
 
 #################################################################################################
 
+
 class LitModel(L.LightningModule):
     """Lightning wrapper for Gencast"""
+
     def __init__(
         self,
         learning_rate,
@@ -239,7 +241,7 @@ if __name__ == "__main__":
 
     # denoiser.model.load_state_dict(torch.load("model.pt", map_location = denoiser.device))
     # denoiser = torch.compile(denoiser)
-    
+
     # define trainer
     wandb_logger = WandbLogger(project="gencast")
     checkpoint_callback = ModelCheckpoint(dirpath="checkpoints/")
