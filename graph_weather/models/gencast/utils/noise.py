@@ -5,28 +5,48 @@ import pyshtools as pysh
 import torch
 
 
-def generate_isotropic_noise(num_lat, num_samples=1):
-    """Generate isotropic noise on the grid.
+def generate_isotropic_noise(num_lon: int, num_lat: int, num_samples=1, isotropic=True):
+    """Generate noise on the grid.
 
-    Sample the equivalent of white noise on a sphere and project it onto a grid using
-    Driscoll and Healy, 1994 algorithm. The power spectrum is normalized to have variance 1.
-    We need to assume lons = 2* lats.
+    When isotropic is True it samples the equivalent of white noise on a sphere and project it onto
+    a grid using Driscoll and Healy, 1994, algorithm. The power spectrum is normalized to have
+    variance 1. We need to assume lons = 2 * lats or lons = 2 * (lats -1). If isotropic is false, it
+    samples flat normal random noise.
 
     Args:
-        num_lat (int): Number of latitudes in the final grid.
-        num_samples (int, optional): Number of indipendent samples. Defaults to 1.
+        num_lon (int): number of longitudes in the grid.
+        num_lat (int): number of latitudes in the grid.
+        num_samples (int): number of indipendent samples. Defaults to 1.
+        isotropic (bool): if true generates isotropic noise, else flat noise. Defaults to True.
 
     Returns:
         grid: Numpy array with shape shape(grid) x num_samples.
     """
-    power = np.ones(num_lat // 2, dtype=float) / (
-        num_lat // 2
-    )  # normalized to get each point with std 1
-    grid = np.zeros((num_lat * 2, num_lat, num_samples))
-    for i in range(num_samples):
-        clm = pysh.SHCoeffs.from_random(power)
-        grid[:, :, i] = clm.expand(grid="DH2", extend=False).to_array().transpose()
-    return grid.astype(np.float32)
+    if isotropic:
+        if 2 * num_lat == num_lon:
+            extend = False
+        elif 2 * (num_lat - 1) == num_lon:
+            extend = True
+        else:
+            raise ValueError(
+                "Isotropic noise requires grid's shape to be 2N x N or 2N x (N+1): "
+                f"got {num_lon} x {num_lat}. If the shape is correct, please specify"
+                "isotropic=False in the constructor.",
+            )
+
+    if isotropic:
+        l_max = num_lat // 2
+        power = np.ones(l_max, dtype=float) / l_max**2  # normalized to get each point with std 1
+        grid = np.zeros((num_lon, num_lat, num_samples))
+        for i in range(num_samples):
+            clm = pysh.SHCoeffs.from_random(power, power_unit="per_lm")
+            grid[:, :, i] = (
+                clm.expand(grid="DH2", extend=extend).to_array().transpose()[:num_lon, :num_lat]
+            )
+        noise = grid.astype(np.float32)
+    else:
+        noise = np.random.randn(num_lon, num_lat, num_samples)
+    return noise
 
 
 def sample_noise_level(sigma_min=0.02, sigma_max=88, rho=7):

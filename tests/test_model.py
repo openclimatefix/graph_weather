@@ -21,7 +21,7 @@ from graph_weather.models.gencast.utils.noise import (
     generate_isotropic_noise,
     sample_noise_level,
 )
-from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser
+from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser, Sampler
 from graph_weather.models.gencast.layers.modules import FourierEmbedding
 
 
@@ -316,11 +316,38 @@ def test_meta_model():
 
 
 def test_gencast_noise():
-    num_lat = 32
+    num_lon = 360
+    num_lat = 180
     num_samples = 5
-    target_residuals = np.zeros((2 * num_lat, num_lat, num_samples))
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
     noise_level = sample_noise_level()
-    noise = generate_isotropic_noise(num_lat=num_lat, num_samples=target_residuals.shape[-1])
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1]
+    )
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
+
+    num_lon = 360
+    num_lat = 181
+    num_samples = 5
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1]
+    )
+    corrupted_residuals = target_residuals + noise_level * noise
+    assert corrupted_residuals.shape == target_residuals.shape
+    assert not np.isnan(corrupted_residuals).any()
+
+    num_lon = 100
+    num_lat = 100
+    num_samples = 5
+    target_residuals = np.zeros((num_lon, num_lat, num_samples))
+    noise_level = sample_noise_level()
+    noise = generate_isotropic_noise(
+        num_lon=num_lon, num_lat=num_lat, num_samples=target_residuals.shape[-1], isotropic=False
+    )
     corrupted_residuals = target_residuals + noise_level * noise
     assert corrupted_residuals.shape == target_residuals.shape
     assert not np.isnan(corrupted_residuals).any()
@@ -408,3 +435,30 @@ def test_gencast_fourier():
     fourier_embedder = FourierEmbedding(output_dim=output_dim, num_frequencies=32, base_period=16)
     t = torch.rand((batch_size, 1))
     assert fourier_embedder(t).shape == (batch_size, output_dim)
+
+
+def test_gencast_sampler():
+    grid_lat = np.arange(-90, 90, 1)
+    grid_lon = np.arange(0, 360, 1)
+    input_features_dim = 10
+    output_features_dim = 5
+
+    denoiser = Denoiser(
+        grid_lon=grid_lon,
+        grid_lat=grid_lat,
+        input_features_dim=input_features_dim,
+        output_features_dim=output_features_dim,
+        hidden_dims=[16, 32],
+        num_blocks=3,
+        num_heads=4,
+        splits=0,
+        num_hops=1,
+        device=torch.device("cpu"),
+    ).eval()
+
+    prev_inputs = torch.randn((1, len(grid_lon), len(grid_lat), 2 * input_features_dim))
+
+    sampler = Sampler()
+    preds = sampler.sample(denoiser, prev_inputs)
+    assert not torch.isnan(preds).any()
+    assert preds.shape == (1, len(grid_lon), len(grid_lat), output_features_dim)
