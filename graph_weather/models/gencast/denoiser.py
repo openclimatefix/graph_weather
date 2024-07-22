@@ -10,12 +10,12 @@ noise level, and outputs the denoised predictions. It performs the following tas
 import einops
 import numpy as np
 import torch
-from torch_geometric.data import Batch
 
 from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
 from graph_weather.models.gencast.layers.processor import Processor
+from graph_weather.models.gencast.utils.batching import batch, hetero_batch
 from graph_weather.models.gencast.utils.noise import Preconditioner
 
 
@@ -75,6 +75,8 @@ class Denoiser(torch.nn.Module):
             device=device,
             add_edge_features_to_khop=use_edges_features,
         )
+
+        self._register_graph()
 
         # Initialize Encoder
         self.encoder = Encoder(
@@ -138,16 +140,19 @@ class Denoiser(torch.nn.Module):
     def _run_encoder(self, grid_features):
         # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
         batch_size = grid_features.shape[0]
-        g2m_batched = Batch.from_data_list([self.graphs.g2m_graph] * batch_size)
-
+        batched_senders, batched_receivers, batched_edge_index, batched_edge_attr = hetero_batch(
+            self.g2m_grid_nodes,
+            self.g2m_mesh_nodes,
+            self.g2m_edge_index,
+            self.g2m_edge_attr,
+            batch_size,
+        )
         # load features.
         grid_features = einops.rearrange(grid_features, "b n f -> (b n) f")
-        input_grid_nodes = torch.cat([grid_features, g2m_batched["grid_nodes"].x], dim=-1).type(
-            torch.float32
-        )
-        input_mesh_nodes = g2m_batched["mesh_nodes"].x
-        input_edge_attr = g2m_batched["grid_nodes", "to", "mesh_nodes"].edge_attr
-        edge_index = g2m_batched["grid_nodes", "to", "mesh_nodes"].edge_index
+        input_grid_nodes = torch.cat([grid_features, batched_senders], dim=-1).type(torch.float32)
+        input_mesh_nodes = batched_receivers
+        input_edge_attr = batched_edge_attr
+        edge_index = batched_edge_index
 
         # run the encoder.
         latent_grid_nodes, latent_mesh_nodes = self.encoder(
@@ -168,13 +173,19 @@ class Denoiser(torch.nn.Module):
     def _run_decoder(self, latent_mesh_nodes, latent_grid_nodes):
         # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
         batch_size = latent_mesh_nodes.shape[0]
-        m2g_batched = Batch.from_data_list([self.graphs.m2g_graph] * batch_size)
+        _, _, batched_edge_index, batched_edge_attr = hetero_batch(
+            self.m2g_mesh_nodes,
+            self.m2g_grid_nodes,
+            self.m2g_edge_index,
+            self.m2g_edge_attr,
+            batch_size,
+        )
 
         # load features.
         input_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
         input_grid_nodes = einops.rearrange(latent_grid_nodes, "b n f -> (b n) f")
-        input_edge_attr = m2g_batched["mesh_nodes", "to", "grid_nodes"].edge_attr
-        edge_index = m2g_batched["mesh_nodes", "to", "grid_nodes"].edge_index
+        input_edge_attr = batched_edge_attr
+        edge_index = batched_edge_index
 
         # run the decoder.
         output_grid_nodes = self.decoder(
@@ -194,12 +205,17 @@ class Denoiser(torch.nn.Module):
         # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
         batch_size = latent_mesh_nodes.shape[0]
         num_nodes = latent_mesh_nodes.shape[1]
-        mesh_batched = Batch.from_data_list([self.graphs.khop_mesh_graph] * batch_size)
+        _, batched_edge_index, batched_edge_attr = batch(
+            self.khop_mesh_nodes,
+            self.khop_mesh_edge_index,
+            self.khop_mesh_edge_attr if self.use_edges_features else None,
+            batch_size,
+        )
 
         # load features.
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
-        input_edge_attr = mesh_batched.edge_attr if self.use_edges_features else None
-        edge_index = mesh_batched.edge_index
+        input_edge_attr = batched_edge_attr
+        edge_index = batched_edge_index
 
         # repeat noise levels for each node.
         noise_levels = einops.repeat(noise_levels, "b f -> (b n) f", n=num_nodes)
@@ -272,3 +288,54 @@ class Denoiser(torch.nn.Module):
         # restore lon/lat dimensions.
         out = einops.rearrange(out, "b (lon lat) f -> b lon lat f", lon=self.num_lon)
         return out
+
+    def _register_graph(self):
+        # we need to egister all the tensors associated with the graph as buffers. In this way they
+        # will move to the same device of the model. These tensors won't be part of the state since
+        # persistent is set to False.
+
+        self.register_buffer(
+            "g2m_grid_nodes", self.graphs.g2m_graph["grid_nodes"].x, persistent=False
+        )
+        self.register_buffer(
+            "g2m_mesh_nodes", self.graphs.g2m_graph["mesh_nodes"].x, persistent=False
+        )
+        self.register_buffer(
+            "g2m_edge_attr",
+            self.graphs.g2m_graph["grid_nodes", "to", "mesh_nodes"].edge_attr,
+            persistent=False,
+        )
+        self.register_buffer(
+            "g2m_edge_index",
+            self.graphs.g2m_graph["grid_nodes", "to", "mesh_nodes"].edge_index,
+            persistent=False,
+        )
+
+        self.register_buffer("mesh_nodes", self.graphs.mesh_graph.x, persistent=False)
+        self.register_buffer("mesh_edge_attr", self.graphs.mesh_graph.edge_attr, persistent=False)
+        self.register_buffer("mesh_edge_index", self.graphs.mesh_graph.edge_index, persistent=False)
+
+        self.register_buffer("khop_mesh_nodes", self.graphs.khop_mesh_graph.x, persistent=False)
+        self.register_buffer(
+            "khop_mesh_edge_attr", self.graphs.khop_mesh_graph.edge_attr, persistent=False
+        )
+        self.register_buffer(
+            "khop_mesh_edge_index", self.graphs.khop_mesh_graph.edge_index, persistent=False
+        )
+
+        self.register_buffer(
+            "m2g_grid_nodes", self.graphs.m2g_graph["grid_nodes"].x, persistent=False
+        )
+        self.register_buffer(
+            "m2g_mesh_nodes", self.graphs.m2g_graph["mesh_nodes"].x, persistent=False
+        )
+        self.register_buffer(
+            "m2g_edge_attr",
+            self.graphs.m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_attr,
+            persistent=False,
+        )
+        self.register_buffer(
+            "m2g_edge_index",
+            self.graphs.m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_index,
+            persistent=False,
+        )
