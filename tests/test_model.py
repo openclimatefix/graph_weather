@@ -260,7 +260,6 @@ def test_image_meta_model():
 
     out = model(image)
     assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
     assert out.size() == image.size()
 
 
@@ -282,7 +281,6 @@ def test_wrapper_image_meta_model():
     big_image = torch.randn((batch, channels, size * scale_factor, size * scale_factor))
     big_model = WrapperImageModel(model, scale_factor)
     out = big_model(big_image)
-    assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
     assert out.size() == big_image.size()
 
@@ -310,7 +308,6 @@ def test_meta_model():
     features = torch.randn((batch, len(lat_lons), channels))
 
     out = model(features)
-    assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
     assert out.size() == features.size()
 
@@ -342,7 +339,7 @@ def test_wrapper_meta_model():
     out = big_model(big_features)
 
     assert not torch.isnan(out).any()
-
+    assert out.size() == big_features.size()
     
 def test_gencast_noise():
     num_lon = 360
