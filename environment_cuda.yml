@@ -26,6 +26,8 @@ dependencies:
   - h3-py
   - numpy
   - pyshtools
+  - gcsfs
+  - pytest
   - pip:
       - datasets
       - einops
