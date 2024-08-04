@@ -6,7 +6,13 @@ This repository offers an unofficial implementation of [GenCast](https://arxiv.o
 Below is an illustration of the full model architecture:
 
 <p align="center" width="100%">
-    <img width="75%" src="images/fullmodel.png">
+    <img width="50%" src="images/fullmodel.png">
+</p>
+
+After 20 epochs, the diffusion process for generating low resolution (128x64) residuals predictions, looks like this:
+
+<p align="center" width="100%">
+    <img width="75%" src="images/animated.gif">
 </p>
 
 ## The Denoiser
