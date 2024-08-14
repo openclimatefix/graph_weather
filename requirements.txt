@@ -7,3 +7,4 @@ torch_harmonics
 trimesh
 rtree
 xarray
+setuptools
