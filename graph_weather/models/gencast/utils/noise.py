@@ -88,7 +88,7 @@ class Preconditioner(torch.nn.Module):
 
     def c_skip(self, sigma):
         """Scaling factor for skip connection."""
-        return self.sigma_data / (sigma**2 + self.sigma_data**2)
+        return self.sigma_data**2 / (sigma**2 + self.sigma_data**2)
 
     def c_out(self, sigma):
         """Scaling factor for output."""

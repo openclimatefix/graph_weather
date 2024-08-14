@@ -149,7 +149,7 @@ class Denoiser(torch.nn.Module):
         )
         # load features.
         grid_features = einops.rearrange(grid_features, "b n f -> (b n) f")
-        input_grid_nodes = torch.cat([grid_features, batched_senders], dim=-1).type(torch.float32)
+        input_grid_nodes = torch.cat([grid_features, batched_senders], dim=-1)
         input_mesh_nodes = batched_receivers
         input_edge_attr = batched_edge_attr
         edge_index = batched_edge_index

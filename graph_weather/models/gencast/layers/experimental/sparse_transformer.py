@@ -75,6 +75,7 @@ class SparseTransformer(nn.Module):
         output_dim: int,
         num_heads: int,
         activation_layer: torch.nn.Module = nn.ReLU,
+        norm_first: bool = True,
     ):
         """Initialize SparseTransformer module.
 
@@ -87,6 +88,7 @@ class SparseTransformer(nn.Module):
             num_heads (int): number of heads for multi-head attention.
             activation_layer (torch.nn.Module): activation function applied before
                 returning the output.
+            norm_first (bool): if True apply layer normalization before attention. Defaults to True.
         """
         super().__init__()
 
@@ -109,6 +111,8 @@ class SparseTransformer(nn.Module):
             conditioning_dim=conditioning_dim, features_dim=output_dim
         )
 
+        self.norm_first = norm_first
+
     def forward(
         self,
         x: torch.Tensor,
@@ -129,10 +133,21 @@ class SparseTransformer(nn.Module):
             **kwargs: ignored by the module.
 
         """
-        x = x + self.sparse_attention.forward(
-            x=x, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
-        )
-        x = self.cond_norm_1(x, cond_param)
-        x = x + self.mlp(x)
-        x = self.cond_norm_2(x, cond_param)
+        if self.norm_first:
+            x1 = self.cond_norm_1(x, cond_param)
+            x = x + self.sparse_attention(
+                x=x1, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
+            )
+        else:
+            x = x + self.sparse_attention(
+                x=x, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
+            )
+            x = self.cond_norm_1(x, cond_param)
+
+        if self.norm_first:
+            x2 = self.cond_norm_2(x, cond_param)
+            x = x + self.mlp(x2)
+        else:
+            x = x + self.mlp(x)
+            x = self.cond_norm_2(x, cond_param)
         return x
