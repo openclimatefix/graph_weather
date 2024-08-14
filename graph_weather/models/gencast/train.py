@@ -9,6 +9,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"
 
 import lightning as L  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from lightning.pytorch.callbacks import Callback, LearningRateMonitor, ModelCheckpoint  # noqa: E402
 from lightning.pytorch.loggers import WandbLogger  # noqa: E402
@@ -22,8 +23,9 @@ torch.set_float32_matmul_precision("high")
 ############################################## SETTINGS ############################################
 
 # training settings
-NUM_EPOCHS = 180
+NUM_EPOCHS = 20
 NUM_DEVICES = 2
+NUM_ACC_GRAD = 1
 INITIAL_LR = 1e-3
 BATCH_SIZE = 16  # per device
 
@@ -42,6 +44,7 @@ CFG = {
     "num_hops": 8,
     "sparse": True,
     "use_edges_features": False,
+    "scale_factor": 1.0,
 }
 
 # dataset configs
@@ -74,11 +77,34 @@ OBS_PATH = "dataset.zarr"
 #################################################################################################
 
 
+class CosineWarmupScheduler(torch.optim.lr_scheduler._LRScheduler):
+    """Cosine Scheduler with Warmup"""
+
+    def __init__(self, optimizer, warmup, max_iters):
+        """Initialize the scheduler"""
+        self.warmup = warmup
+        self.max_num_iters = max_iters
+        super().__init__(optimizer)
+
+    def get_lr(self):
+        """Return the learning rates"""
+        lr_factor = self.get_lr_factor(epoch=self.last_epoch)
+        return [base_lr * lr_factor for base_lr in self.base_lrs]
+
+    def get_lr_factor(self, epoch):
+        """Return the scaling factor for the learning rate at a given iteration"""
+        lr_factor = 0.5 * (1 + np.cos(np.pi * epoch / self.max_num_iters))
+        if epoch <= self.warmup:
+            lr_factor *= epoch * 1.0 / self.warmup
+        return lr_factor
+
+
 class LitModel(L.LightningModule):
     """Lightning wrapper for Gencast"""
-
+    
     def __init__(
         self,
+        warmup,
         learning_rate,
         cosine_t_max,
         pressure_levels,
@@ -93,8 +119,9 @@ class LitModel(L.LightningModule):
         num_hops,
         sparse,
         use_edges_features,
+        scale_factor=1.0,
     ):
-        """Initialize the lightning module"""
+        """Initialize the module"""
         super().__init__()
 
         self.model = Denoiser(
@@ -110,6 +137,7 @@ class LitModel(L.LightningModule):
             device=self.device,
             sparse=sparse,
             use_edges_features=use_edges_features,
+            scale_factor=scale_factor,
         )
 
         self.criterion = WeightedMSELoss(
@@ -121,9 +149,10 @@ class LitModel(L.LightningModule):
 
         self.learning_rate = learning_rate
         self.cosine_t_max = cosine_t_max
+        self.warmup = warmup
 
     def forward(self, corrupted_targets, prev_inputs, noise_levels):
-        """Forward pass of Gencast"""
+        """Compute forward pass"""
         return self.model(corrupted_targets, prev_inputs, noise_levels)
 
     def training_step(self, batch):
@@ -140,9 +169,12 @@ class LitModel(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        """Optimizer configuration"""
-        opt = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay=0.1)
-        sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cosine_t_max)
+        """Initialize the optimizer"""
+        opt = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=0.1, betas=(0.9, 0.95)
+        )
+        # sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cosine_t_max)
+        sch = CosineWarmupScheduler(opt, warmup=self.warmup, max_iters=self.cosine_t_max)
         return {
             "optimizer": opt,
             "lr_scheduler": {
@@ -154,7 +186,7 @@ class LitModel(L.LightningModule):
         }
 
     def plot_sample(self, prev_inputs, target_residuals):
-        """Plot predicted 2m_temperature and geopotential for given samples."""
+        """Plot 2m_temperature and geopotential"""
         prev_inputs = prev_inputs[:1, :, :, :]
         target = target_residuals[:1, :, :, :]
         sampler = Sampler()
@@ -181,17 +213,21 @@ class LitModel(L.LightningModule):
         ax[1].set_xticks([])
         ax[1].set_yticks([])
         ax[1].set_title("Ground truth")
+
         return fig1, fig2
 
 
-class SamplingCallback(Callback):  # noqa: D101
-    def __init__(self, data):  # noqa: D107
+class SamplingCallback(Callback):
+    """Callback for sampling when a new epoch starts"""
+    def __init__(self, data):
+        """Initialize the callback"""
         _, prev_inputs, _, target_residuals = data
         self.prev_inputs = torch.tensor(prev_inputs).unsqueeze(0)
         self.target_residuals = torch.tensor(target_residuals).unsqueeze(0)
 
-    def on_train_epoch_start(self, trainer, pl_module):  # noqa: D102
-        print("New epoch is starting")
+    def on_train_epoch_start(self, trainer, pl_module):
+        """Sample and log predictions"""
+        print("Epoch is starting")
         fig1, fig2 = pl_module.plot_sample(
             self.prev_inputs.to(pl_module.device), self.target_residuals.to(pl_module.device)
         )
@@ -223,7 +259,6 @@ if __name__ == "__main__":
     )
 
     # define/resume model
-
     num_steps = NUM_EPOCHS * len(dataloader) // NUM_DEVICES
     initial_lr = INITIAL_LR
 
@@ -238,8 +273,6 @@ if __name__ == "__main__":
         output_features_dim=dataset.output_features_dim,
         **CFG,
     )
-
-    # denoiser.model.load_state_dict(torch.load("model.pt", map_location = denoiser.device))
     # denoiser = torch.compile(denoiser)
 
     # define trainer
@@ -248,6 +281,7 @@ if __name__ == "__main__":
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = L.Trainer(
+        accumulate_grad_batches=NUM_ACC_GRAD,
         accelerator="gpu",
         devices=NUM_DEVICES,
         strategy="DDP",

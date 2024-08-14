@@ -36,12 +36,16 @@ The code is modular, allowing for easy swapping of the graph, encoder, processor
 - `device` (torch.device, optional): device on which we want to build graph. Defaults to torch.device("cpu").
 - `sparse` (bool): if true the processor will apply Sparse Attention using DGL backend. Defaults to False.
 - `use_edges_features` (bool): if true use mesh edges features inside the Processor. Defaults to True.
+- `scale_factor` (float): the message in the Encoder is multiplied by the scale factor. Defaults to 1.0.
 
 > [!NOTE]
 > If the graph has many edges, setting `sparse = True` may perform better in terms of memory and speed. Note that `sparse = False` uses PyG as the backend, while `sparse = True` uses DGL. The two implementations are not exactly equivalent: the former is described in the paper _"Masked Label Prediction: Unified Message Passing Model for Semi-Supervised Classification"_ and can also handle edge features, while the latter is a classical transformer that performs multi-head attention utilizing the mask's sparsity and does not include edge features in the computations.
 
 > [!WARNING]
 > The sparse implementation currently does not support `Float16/BFloat16` precision.
+
+> [!NOTE]
+> To fine-tune a pretrained model with a higher resolution dataset, the `scale_factor` should be set accordingly. For example: if the starting resolution is 1 deg and the final resolution is 0.25 deg, then the scale factor is 1/16.
 
 ### Example of usage
 ```python

@@ -22,6 +22,7 @@ class Encoder(torch.nn.Module):
         hidden_dims: list[int],
         activation_layer: torch.nn.Module = torch.nn.ReLU,
         use_layer_norm: bool = True,
+        scale_factor: float = 1.0,
     ):
         """Initialize the Encoder.
 
@@ -34,6 +35,9 @@ class Encoder(torch.nn.Module):
                 Defaults to torch.nn.ReLU.
             use_layer_norm (bool, optional): if true add a LayerNorm at the end of each MLP.
                 Defaults to True.
+            scale_factor (float): the message of the interaction network between the grid and the
+                the mesh is multiplied by the scale factor. Useful when fine-tuning a pretrained
+                model to a higher resolution. Defaults to 1.
         """
         super().__init__()
 
@@ -79,6 +83,7 @@ class Encoder(torch.nn.Module):
             hidden_dims=hidden_dims,
             use_layer_norm=use_layer_norm,
             activation_layer=activation_layer,
+            scale_factor=scale_factor,
         )
 
         # Final grid nodes update

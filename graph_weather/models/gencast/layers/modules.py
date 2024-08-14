@@ -87,6 +87,7 @@ class InteractionNetwork(MessagePassing):
         hidden_dims: list[int],
         use_layer_norm: bool = False,
         activation_layer: nn.Module = nn.ReLU,
+        scale_factor: float = 1.0,
     ):
         """Initialize the Interaction Network.
 
@@ -98,6 +99,7 @@ class InteractionNetwork(MessagePassing):
             use_layer_norm (bool): if true add layer normalization to MLP's last layer.
                 Defaults to False.
             activation_layer (torch.nn.Module): activation function. Defaults to nn.ReLU.
+            scale_factor (float): the message is multiplied by this value. Defaults to 1.0.
         """
         super().__init__(aggr="add", flow="source_to_target")
         self.mlp_edges = MLP(
@@ -116,12 +118,13 @@ class InteractionNetwork(MessagePassing):
             bias=True,
             activate_final=False,
         )
+        self.scale_factor = scale_factor
 
     def message(self, x_i, x_j, edge_attr):
         """Message-passing step."""
         x = torch.cat((x_i, x_j, edge_attr), dim=-1)
         x = self.mlp_edges(x)
-        return x
+        return self.scale_factor*x
 
     def forward(
         self,

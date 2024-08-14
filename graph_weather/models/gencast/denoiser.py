@@ -36,6 +36,7 @@ class Denoiser(torch.nn.Module):
         device: torch.device = torch.device("cpu"),
         sparse: bool = False,
         use_edges_features: bool = True,
+        scale_factor: float = 1.0,
     ):
         """Initialize the Denoiser.
 
@@ -58,6 +59,9 @@ class Denoiser(torch.nn.Module):
                 Defaults to False.
             use_edges_features (bool): if true use mesh edges features inside the Processor.
                 Defaults to True.
+            scale_factor (float):  in the Encoder the message passing output is multiplied by the
+                scale factor. This is important when you want to fine-tune a pretrained model to a
+                higher resolution. Defaults to 1.
         """
         super().__init__()
         self.num_lon = len(grid_lon)
@@ -86,6 +90,7 @@ class Denoiser(torch.nn.Module):
             hidden_dims=hidden_dims,
             activation_layer=torch.nn.SiLU,
             use_layer_norm=True,
+            scale_factor=scale_factor,
         )
 
         # Initialize Processor
