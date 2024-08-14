@@ -6,3 +6,4 @@ torch-geometric-temporal
 torch_harmonics
 trimesh
 rtree
+xarray
