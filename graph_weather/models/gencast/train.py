@@ -101,7 +101,7 @@ class CosineWarmupScheduler(torch.optim.lr_scheduler._LRScheduler):
 
 class LitModel(L.LightningModule):
     """Lightning wrapper for Gencast"""
-    
+
     def __init__(
         self,
         warmup,
@@ -219,6 +219,7 @@ class LitModel(L.LightningModule):
 
 class SamplingCallback(Callback):
     """Callback for sampling when a new epoch starts"""
+
     def __init__(self, data):
         """Initialize the callback"""
         _, prev_inputs, _, target_residuals = data

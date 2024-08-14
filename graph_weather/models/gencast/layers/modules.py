@@ -124,7 +124,7 @@ class InteractionNetwork(MessagePassing):
         """Message-passing step."""
         x = torch.cat((x_i, x_j, edge_attr), dim=-1)
         x = self.mlp_edges(x)
-        return self.scale_factor*x
+        return self.scale_factor * x
 
     def forward(
         self,
