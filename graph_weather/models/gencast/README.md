@@ -9,10 +9,16 @@ Below is an illustration of the full model architecture:
     <img width="50%" src="images/fullmodel.png">
 </p>
 
-After 20 epochs, the diffusion process for generating low resolution (128x64) residuals predictions, looks like this:
+After 20 epochs, the diffusion process for generating low resolution (128x64) 12h residuals predictions, looks like this:
 
 <p align="center" width="100%">
     <img width="75%" src="images/animated.gif">
+</p>
+
+A longer time range can be achieved by using the model's own predictions as inputs in an autoregressive manner:
+
+<p align="center" width="100%">
+    <img width="75%" src="images/autoregressive.gif">
 </p>
 
 ## The Denoiser
