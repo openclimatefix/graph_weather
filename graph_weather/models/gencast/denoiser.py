@@ -295,7 +295,7 @@ class Denoiser(torch.nn.Module):
         return out
 
     def _register_graph(self):
-        # we need to egister all the tensors associated with the graph as buffers. In this way they
+        # we need to register all the tensors associated with the graph as buffers. In this way they
         # will move to the same device of the model. These tensors won't be part of the state since
         # persistent is set to False.
 
