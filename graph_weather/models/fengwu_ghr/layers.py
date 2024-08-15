@@ -227,6 +227,7 @@ class ImageMetaModel(nn.Module):
         )
 
     def forward(self, x):
+        assert x.shape[1] == self.channels, "Wrong number of channels"
         device = x.device
         dtype = x.dtype
 
@@ -274,12 +275,12 @@ class MetaModel(nn.Module):
         super().__init__()
         self.i_h, self.i_w = pair(image_size)
 
-        self.pos_x = torch.tensor(lat_lons)
+        self.pos_x = torch.tensor(lat_lons).to(torch.long)
         self.pos_y = torch.cartesian_prod(
             (torch.arange(-self.i_h / 2, self.i_h / 2, 1) / self.i_h * 180).to(torch.long),
             (torch.arange(0, self.i_w, 1) / self.i_w * 360).to(torch.long),
         )
-
+        
         self.image_meta_model = ImageMetaModel(
             image_size=image_size,
             patch_size=patch_size,
