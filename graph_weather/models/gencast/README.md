@@ -136,9 +136,9 @@ You can easily test our models using the pretrained versions available on Huggin
 > - **240x121**: `openclimatefix/gencast-240x121` (coming soon).
 
 ```python
-import matplotlib.pyplot as plt 
-import numpy as np 
-import torch 
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
 
 from graph_weather.data.gencast_dataloader import GenCastDataset
 from graph_weather.models.gencast import Denoiser, Sampler
@@ -182,7 +182,7 @@ dataset = GenCastDataset(
 
 # download weights from HF
 print("> Downloading model's weights...")
-denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64", 
+denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64",
                                   grid_lon=dataset.grid_lon,
                                   grid_lat=dataset.grid_lat).to(device)
 
