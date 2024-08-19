@@ -27,7 +27,8 @@ NUM_EPOCHS = 20
 NUM_DEVICES = 2
 NUM_ACC_GRAD = 1
 INITIAL_LR = 1e-3
-BATCH_SIZE = 16  # per device
+BATCH_SIZE = 16  # true batch size: BATCH_SIZE*NUM_DEVICES*NUM_ACC_GRAD 
+WARMUP = 1000
 
 # dataloader setting
 NUM_WORKERS = 8
@@ -260,11 +261,12 @@ if __name__ == "__main__":
     )
 
     # define/resume model
-    num_steps = NUM_EPOCHS * len(dataloader) // NUM_DEVICES
+    num_steps = NUM_EPOCHS * len(dataloader) // (NUM_DEVICES*NUM_ACC_GRAD)
     initial_lr = INITIAL_LR
 
     denoiser = LitModel.load_from_checkpoint(
         checkpoint_path=CHECKPOINT_PATH,
+        warmup=WARMUP,
         learning_rate=initial_lr,
         cosine_t_max=num_steps,
         pressure_levels=dataset.pressure_levels,

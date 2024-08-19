@@ -10,6 +10,7 @@ noise level, and outputs the denoised predictions. It performs the following tas
 import einops
 import numpy as np
 import torch
+from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
@@ -19,7 +20,7 @@ from graph_weather.models.gencast.utils.batching import batch, hetero_batch
 from graph_weather.models.gencast.utils.noise import Preconditioner
 
 
-class Denoiser(torch.nn.Module):
+class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
     """GenCast's Denoiser."""
 
     def __init__(

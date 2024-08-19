@@ -125,3 +125,92 @@ preds = sampler.sample(denoiser, prev_inputs)
 
 ## Training
 The script `train.py` provides a basic setup for training the model. It follows guidelines from GraphCast and GenCast, combining a linear warmup phase with a cosine scheduler. The script supports multi-device DDP training, gradient accumulation, and WandB logging.
+
+## 🤗 Hugging Face pretrained models
+You can easily test our models using the pretrained versions available on Hugging Face. These models have been trained on the [WeatherBench2](https://weatherbench2.readthedocs.io/en/latest/) dataset.
+
+
+> [!WARNING]
+> Currently, the following resolutions are supported:
+> - **128x64**: `openclimatefix/gencast-128x64` (early stage),
+> - **240x121**: `openclimatefix/gencast-240x121` (coming soon).
+
+```python
+import matplotlib.pyplot as plt 
+import numpy as np 
+import torch 
+
+from graph_weather.data.gencast_dataloader import GenCastDataset
+from graph_weather.models.gencast import Denoiser, Sampler
+
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+else:
+    device = torch.device('cpu')
+
+# load dataset
+OBS_PATH = "gs://weatherbench2/datasets/era5/1959-2022-6h-128x64_equiangular_conservative.zarr"
+atmospheric_features = [
+    "geopotential",
+    "specific_humidity",
+    "temperature",
+    "u_component_of_wind",
+    "v_component_of_wind",
+    "vertical_velocity",
+]
+single_features = [
+    "2m_temperature",
+    "10m_u_component_of_wind",
+    "10m_v_component_of_wind",
+    "mean_sea_level_pressure",
+    # "sea_surface_temperature",
+    "total_precipitation_12hr",
+]
+static_features = [
+    "geopotential_at_surface",
+    "land_sea_mask",
+]
+
+dataset = GenCastDataset(
+    obs_path=OBS_PATH,
+    atmospheric_features=atmospheric_features,
+    single_features=single_features,
+    static_features=static_features,
+    max_year=2018,
+    time_step=2,
+)
+
+# download weights from HF
+print("> Downloading model's weights...")
+denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64", 
+                                  grid_lon=dataset.grid_lon,
+                                  grid_lat=dataset.grid_lat).to(device)
+
+# load inputs and targets
+print("> Loading inputs and target...")
+data = dataset[0]
+_, prev_inputs, _, target_residuals = data
+prev_inputs = torch.tensor(prev_inputs).unsqueeze(0).to(device)
+target_residuals = torch.tensor(target_residuals).unsqueeze(0).to(device)
+
+# predict
+print("> Making predictions...")
+sampler = Sampler()
+preds = sampler.sample(denoiser, prev_inputs)
+
+print("Done!")
+
+# plot results
+var_id = 78 # 2m_temperature
+fig1, ax = plt.subplots(2)
+ax[0].imshow(preds[0, :, :, var_id].T.cpu(), origin="lower", cmap="RdBu", vmin=-5, vmax=5)
+ax[0].set_xticks([])
+ax[0].set_yticks([])
+ax[0].set_title("Diffusion sampling prediction")
+
+ax[1].imshow(target_residuals[0, :, :, var_id].T.cpu(), origin="lower", cmap="RdBu", vmin=-5, vmax=5)
+ax[1].set_xticks([])
+ax[1].set_yticks([])
+ax[1].set_title("Ground truth")
+plt.show()
+```
