@@ -39,6 +39,7 @@ jobs:
       - name: Install internal dependencies
         run: |
           pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-${{ matrix.torch-version}}+cpu.html
+          pip install dgl -f https://data.dgl.ai/wheels/torch-${{ matrix.torch-version}}/repo.html
       - name: Install main package
         run: |
           pip install -e .

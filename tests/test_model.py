@@ -23,7 +23,7 @@ from graph_weather.models.gencast.utils.noise import (
 )
 from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser, Sampler
 from graph_weather.models.gencast.layers.modules import FourierEmbedding
-
+from  graph_weather.data.gencast_dataloader import GenCastDataset
 
 def test_encoder():
     lat_lons = []
@@ -462,3 +462,54 @@ def test_gencast_sampler():
     preds = sampler.sample(denoiser, prev_inputs)
     assert not torch.isnan(preds).any()
     assert preds.shape == (1, len(grid_lon), len(grid_lat), output_features_dim)
+
+def test_gencast_full():
+    # load dataset
+    OBS_PATH = "gs://weatherbench2/datasets/era5/1959-2022-6h-128x64_equiangular_conservative.zarr"
+    atmospheric_features = [
+        "geopotential",
+        "specific_humidity",
+        "temperature",
+        "u_component_of_wind",
+        "v_component_of_wind",
+        "vertical_velocity",
+    ]
+    single_features = [
+        "2m_temperature",
+        "10m_u_component_of_wind",
+        "10m_v_component_of_wind",
+        "mean_sea_level_pressure",
+        # "sea_surface_temperature",
+        "total_precipitation_12hr",
+    ]
+    static_features = [
+        "geopotential_at_surface",
+        "land_sea_mask",
+    ]
+
+    dataset = GenCastDataset(
+        obs_path=OBS_PATH,
+        atmospheric_features=atmospheric_features,
+        single_features=single_features,
+        static_features=static_features,
+        max_year=2018,
+        time_step=2,
+    )
+
+    # download weights from HF
+    denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64", 
+                                    grid_lon=dataset.grid_lon,
+                                    grid_lat=dataset.grid_lat)
+
+    # load inputs and targets
+    data = dataset[0]
+    _, prev_inputs, _, target_residuals = data
+    prev_inputs = torch.tensor(prev_inputs).unsqueeze(0)
+    target_residuals = torch.tensor(target_residuals).unsqueeze(0)
+
+    # predict
+    sampler = Sampler()
+    preds = sampler.sample(denoiser, prev_inputs)
+
+    assert not torch.isnan(preds).any()
+    assert preds.shape == target_residuals.shape
