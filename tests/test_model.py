@@ -467,9 +467,11 @@ def test_gencast_sampler():
 
 def test_gencast_full():
     # download weights from HF
-    denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64", 
-                                    grid_lon=np.arange(0,360, 360/128),
-                                    grid_lat=np.arange(-90,90, 180/64)+1/2*180/64)
+    denoiser = Denoiser.from_pretrained(
+        "openclimatefix/gencast-128x64",
+        grid_lon=np.arange(0, 360, 360 / 128),
+        grid_lat=np.arange(-90, 90, 180 / 64) + 1 / 2 * 180 / 64,
+    )
 
     # load inputs and targets
     prev_inputs = torch.randn([1, 128, 64, 178])
