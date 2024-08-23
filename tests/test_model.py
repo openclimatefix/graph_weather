@@ -23,7 +23,8 @@ from graph_weather.models.gencast.utils.noise import (
 )
 from graph_weather.models.gencast import GraphBuilder, WeightedMSELoss, Denoiser, Sampler
 from graph_weather.models.gencast.layers.modules import FourierEmbedding
-from  graph_weather.data.gencast_dataloader import GenCastDataset
+from graph_weather.data.gencast_dataloader import GenCastDataset
+
 
 def test_encoder():
     lat_lons = []
@@ -463,6 +464,7 @@ def test_gencast_sampler():
     assert not torch.isnan(preds).any()
     assert preds.shape == (1, len(grid_lon), len(grid_lat), output_features_dim)
 
+
 def test_gencast_full():
     # load dataset
     OBS_PATH = "gs://weatherbench2/datasets/era5/1959-2022-6h-128x64_equiangular_conservative.zarr"
@@ -497,9 +499,9 @@ def test_gencast_full():
     )
 
     # download weights from HF
-    denoiser=Denoiser.from_pretrained("openclimatefix/gencast-128x64", 
-                                    grid_lon=dataset.grid_lon,
-                                    grid_lat=dataset.grid_lat)
+    denoiser = Denoiser.from_pretrained(
+        "openclimatefix/gencast-128x64", grid_lon=dataset.grid_lon, grid_lat=dataset.grid_lat
+    )
 
     # load inputs and targets
     data = dataset[0]
