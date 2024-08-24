@@ -8,5 +8,5 @@ trimesh
 rtree
 xarray
 setuptools
-zarr
-gcsfs
+pydantic
+safetensors

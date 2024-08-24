@@ -13,19 +13,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12"]
-        torch-version: [2.0.0, 2.1.0, 2.2.0]
+        torch-version: [2.3.0, 2.4.0]
         include:
-          - torch-version: 2.1.0
-            torchvision-version: 0.16.0
-          - torch-version: 2.0.0
-            torchvision-version: 0.15.1
-          - torch-version: 2.2.0
-            torchvision-version: 0.17.0
-        exclude:
-          - python-version: "3.12"
-            torch-version: 2.0.0
-          - python-version: "3.12"
-            torch-version: 2.1.0
+          - torch-version: 2.3.0
+            torchvision-version: 0.18.0
+          - torch-version: 2.4.0
+            torchvision-version: 0.19.0
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -39,8 +32,7 @@ jobs:
       - name: Install internal dependencies
         run: |
           pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-${{ matrix.torch-version}}+cpu.html
-          pip install dgl -f https://data.dgl.ai/wheels/torch-${{ matrix.torch-version}}/repo.html
-          export DGLBACKEND=pytorch
+          if [ ${{ matrix.torch-version}} == 2.3.0 ]; then pip install dgl -f https://data.dgl.ai/wheels/torch-2.3/repo.html; fi
       - name: Install main package
         run: |
           pip install -e .
@@ -73,6 +65,8 @@ jobs:
           echo "PYTESTCOV=$PYTESTCOV" >> $GITHUB_ENV
       - name: Run pytest
         run: |
+          # import dgl to initialize backend
+          if [ ${{ matrix.torch-version}} == 2.3.0 ]; then python3 -c "import dgl"; fi
           export PYTEST_COMMAND="pytest $PYTESTCOV $PYTESTXDIST -s"
           echo "Will be running this command: $PYTEST_COMMAND"
           eval $PYTEST_COMMAND
