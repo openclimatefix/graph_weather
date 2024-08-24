@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import pytest
+from packaging.version import Version
 
 from torch_geometric.transforms import TwoHop
 
@@ -161,10 +162,7 @@ def test_gencast_sampler():
     assert preds.shape == (1, len(grid_lon), len(grid_lat), output_features_dim)
 
 
-@pytest.mark.skipif(
-    torch.__version__ != (2, 3),
-    reason="dgl tests for experimental features only runs with torch 2.3.0",
-)
+@pytest.mark.skipif(Version(torch.__version__).release != Version("2.3.0").release, reason="dgl tests for experimental features only runs with torch 2.3.0")
 def test_gencast_full():
     # download weights from HF
     denoiser = Denoiser.from_pretrained(
