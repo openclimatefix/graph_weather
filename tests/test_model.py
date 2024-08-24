@@ -16,6 +16,7 @@ from graph_weather.models import (
 )
 from graph_weather.models.losses import NormalizedMSELoss
 
+
 def test_encoder():
     lat_lons = []
     for lat in range(-90, 90, 5):
