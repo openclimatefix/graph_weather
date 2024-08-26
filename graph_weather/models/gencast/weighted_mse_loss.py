@@ -36,19 +36,19 @@ class WeightedMSELoss(torch.nn.Module):
         """
         super().__init__()
 
-        self.area_weights = None
-        self.features_weights = None
+        area_weights = None
+        features_weights = None
 
         if grid_lat is not None:
-            self.area_weights = torch.cos(grid_lat * np.pi / 180.0)
-
+            area_weights = torch.abs(torch.cos(grid_lat * np.pi / 180.0))
+            area_weights = area_weights / torch.mean(area_weights)
         if (
             pressure_levels is not None
             and num_atmospheric_features is not None
             and single_features_weights is not None
         ):
             pressure_weights = pressure_levels / torch.sum(pressure_levels)
-            self.features_weights = torch.cat(
+            features_weights = torch.cat(
                 (pressure_weights.repeat(num_atmospheric_features), single_features_weights), dim=-1
             )
         elif (
@@ -62,6 +62,9 @@ class WeightedMSELoss(torch.nn.Module):
             )
 
         self.sigma_data = 1  # assuming normalized data!
+
+        self.register_buffer("area_weights", area_weights, persistent=False)
+        self.register_buffer("features_weights", features_weights, persistent=False)
 
     def _lambda_sigma(self, noise_level):
         noise_weights = (noise_level**2 + self.sigma_data**2) / (noise_level * self.sigma_data) ** 2
