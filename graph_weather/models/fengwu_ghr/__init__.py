@@ -1,3 +1,3 @@
 """Main import for FengWu-GHR"""
 
-from .layers import ImageMetaModel, MetaModel, WrapperImageModel, WrapperMetaModel
+from .layers import ImageMetaModel, MetaModel, WrapperImageModel, WrapperMetaModel, LoRAModule

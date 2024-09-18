@@ -357,3 +357,45 @@ class WrapperMetaModel(nn.Module):
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
 
         return x
+
+
+class LoRALayer(nn.Module):
+    def __init__(self, linear_layer: nn.Module, r: int):
+        """
+        Initialize LoRALayer.
+
+        Args:
+            linear_layer (nn.Module): Linear layer to be transformed.
+            r (int): rank of the low-rank matrix.
+        """
+        super().__init__()
+        out_features, in_features = linear_layer.weight.shape
+
+        self.A = nn.Parameter(torch.randn(r, in_features))
+        self.B = nn.Parameter(torch.zeros(out_features, r))
+        self.linear_layer = linear_layer
+
+    def forward(self, x):
+        out = self.linear_layer(x) + self.B @ self.A @ x
+        return out
+
+
+class LoRAModule(nn.Module):
+    def __init__(self, model, r=4):
+        """
+        Initialize LoRAModule.
+
+        Args:
+            model (nn.Module): Model to be modified with LoRA layers.
+            r (int, optional): Rank of LoRA layers. Defaults to 4.
+        """
+        super().__init__()
+        for name, layer in model.named_modules():
+            layer.eval()
+            if isinstance(layer, nn.Linear):
+                lora_layer = LoRALayer(layer, r)
+                setattr(model, name, lora_layer)
+        self.model = model
+
+    def forward(self, x):
+        return self.model(x)
