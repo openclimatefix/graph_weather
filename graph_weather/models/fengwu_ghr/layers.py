@@ -32,6 +32,7 @@ def knn_interpolate(
 
     return y
 
+
 def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
     y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
     assert (dim % 4) == 0, "feature dimension must be multiple of 4 for sincos emb"
@@ -262,6 +263,7 @@ class WrapperImageModel(nn.Module):
         x = self.debatcher(x)
         return x
 
+
 class MetaModel(nn.Module):
     def __init__(
         self,
@@ -283,7 +285,7 @@ class MetaModel(nn.Module):
             (torch.arange(-self.i_h / 2, self.i_h / 2, 1) / self.i_h * 180).to(torch.long),
             (torch.arange(0, self.i_w, 1) / self.i_w * 360).to(torch.long),
         )
-        
+
         self.image_meta_model = ImageMetaModel(
             image_size=image_size,
             patch_size=patch_size,
@@ -299,10 +301,7 @@ class MetaModel(nn.Module):
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c,
-            h=self.i_h, w=self.i_w
-        )
+        x = rearrange(x, "(h w) (b c) -> b c h w", b=b, c=c, h=self.i_h, w=self.i_w)
         x = self.image_meta_model(x)
 
         x = rearrange(x, "b c h w -> (h w) (b c)")
@@ -312,12 +311,7 @@ class MetaModel(nn.Module):
 
 
 class WrapperMetaModel(nn.Module):
-    def __init__(
-        self,
-        lat_lons: list,
-        meta_model: MetaModel,
-        scale_factor
-    ):
+    def __init__(self, lat_lons: list, meta_model: MetaModel, scale_factor):
         super().__init__()
         s_h, s_w = pair(scale_factor)
         self.i_h, self.i_w = meta_model.i_h * s_h, meta_model.i_w * s_w
@@ -343,10 +337,7 @@ class WrapperMetaModel(nn.Module):
 
         x = rearrange(x, "b n c -> n (b c)")
         x = knn_interpolate(x, self.pos_x, self.pos_y)
-        x = rearrange(
-            x, "(h w) (b c) -> b c h w", b=b, c=c,
-            h=self.i_h, w=self.i_w
-        )
+        x = rearrange(x, "(h w) (b c) -> b c h w", b=b, c=c, h=self.i_h, w=self.i_w)
 
         x = self.batcher(x)
         x = self.image_meta_model(x)

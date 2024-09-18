@@ -332,4 +332,3 @@ def test_wrapper_meta_model():
 
     assert not torch.isnan(out).any()
     assert out.size() == big_features.size()
-    

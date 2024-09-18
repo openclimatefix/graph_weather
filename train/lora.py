@@ -1,19 +1,16 @@
-import torch.nn as nn
-import click
-import xarray
+from pathlib import Path
+
 import numpy as np
-import pandas as pd
 import pytorch_lightning as pl
 import torch
+import torch.nn as nn
+import xarray
+from einops import rearrange
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader, Dataset
 
-from graph_weather.models import MetaModel, LoRAModule
+from graph_weather.models import LoRAModule, MetaModel
 from graph_weather.models.losses import NormalizedMSELoss
-
-from einops import rearrange
-
-from pathlib import Path
 
 
 class LitLoRAFengWuGHR(pl.LightningModule):
@@ -26,15 +23,17 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         rank: int,
         channels: int,
         image_size,
-            patch_size=4,
-            depth=5,
-            heads=4,
-            mlp_dim=5,
+        patch_size=4,
+        depth=5,
+        heads=4,
+        mlp_dim=5,
         feature_dim: int = 605,  # TODO where does this come from?
         lr: float = 3e-4,
     ):
         super().__init__()
-        assert time_step > 1, "Time step must be greater than 1. Remember that 1 is the simple model time step."
+        assert (
+            time_step > 1
+        ), "Time step must be greater than 1. Remember that 1 is the simple model time step."
         ssmodel = MetaModel(
             lat_lons,
             image_size=image_size,
@@ -42,14 +41,14 @@ class LitLoRAFengWuGHR(pl.LightningModule):
             depth=depth,
             heads=heads,
             mlp_dim=mlp_dim,
-            channels=channels
+            channels=channels,
         )
         ssmodel.load_state_dict(single_step_model_state_dict)
-        self.models = nn.ModuleList([ssmodel] +
-                                    [LoRAModule(ssmodel, r=rank) for _ in range(2, time_step+1)])
+        self.models = nn.ModuleList(
+            [ssmodel] + [LoRAModule(ssmodel, r=rank) for _ in range(2, time_step + 1)]
+        )
         self.criterion = NormalizedMSELoss(
             lat_lons=lat_lons, feature_variance=np.ones((feature_dim,))
-
         )
         self.lr = lr
         self.save_hyperparameters()
@@ -68,7 +67,7 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
         y_hat = self.forward(x)
         loss = self.criterion(y_hat, ys)
-        self.log('loss', loss, prog_bar=True)
+        self.log("loss", loss, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -91,7 +90,7 @@ class Era5Dataset(Dataset):
         return len(self.ds) - self.time_step
 
     def __getitem__(self, index):
-        return self.ds[index:index+time_step+1]
+        return self.ds[index : index + time_step + 1]
 
 
 if __name__ == "__main__":
@@ -102,10 +101,12 @@ if __name__ == "__main__":
     grid_step = 20
     time_step = 2
     rank = 4
-    variables = ["2m_temperature",
-                 "surface_pressure",
-                 "10m_u_component_of_wind",
-                 "10m_v_component_of_wind"]
+    variables = [
+        "2m_temperature",
+        "surface_pressure",
+        "10m_u_component_of_wind",
+        "10m_v_component_of_wind",
+    ]
 
     ###############################################################
 
@@ -113,16 +114,17 @@ if __name__ == "__main__":
     ckpt_path.mkdir(parents=True, exist_ok=True)
 
     reanalysis = xarray.open_zarr(
-        'gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3',
-        storage_options=dict(token='anon'),
+        "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3",
+        storage_options=dict(token="anon"),
     )
 
-    reanalysis = reanalysis.sel(time=slice('2020-01-01', '2021-01-01'))
-    reanalysis = reanalysis.isel(time=slice(100, 111), longitude=slice(
-        0, 1440, grid_step), latitude=slice(0, 721, grid_step))
+    reanalysis = reanalysis.sel(time=slice("2020-01-01", "2021-01-01"))
+    reanalysis = reanalysis.isel(
+        time=slice(100, 111), longitude=slice(0, 1440, grid_step), latitude=slice(0, 721, grid_step)
+    )
 
     reanalysis = reanalysis[variables]
-    print(f'size: {reanalysis.nbytes / (1024 ** 3)} GiB')
+    print(f"size: {reanalysis.nbytes / (1024 ** 3)} GiB")
 
     lat_lons = np.array(
         np.meshgrid(
@@ -131,25 +133,25 @@ if __name__ == "__main__":
         )
     ).T.reshape((-1, 2))
 
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=ckpt_path, save_top_k=1, monitor="loss")
+    checkpoint_callback = ModelCheckpoint(dirpath=ckpt_path, save_top_k=1, monitor="loss")
 
-    dset = DataLoader(Era5Dataset(
-        reanalysis, time_step=time_step), batch_size=10, num_workers=8)
+    dset = DataLoader(Era5Dataset(reanalysis, time_step=time_step), batch_size=10, num_workers=8)
 
     single_step_model_state_dict = torch.load(ckpt_path / ckpt_name)
 
-    model = LitLoRAFengWuGHR(lat_lons=lat_lons,
-                             single_step_model_state_dict=single_step_model_state_dict,
-                             time_step=time_step,
-                             rank=rank,
-                             ##########
-                             channels=channels,
-                             image_size=(721//grid_step, 1440//grid_step),
-                             patch_size=patch_size,
-                             depth=5,
-                             heads=4,
-                             mlp_dim=5)
+    model = LitLoRAFengWuGHR(
+        lat_lons=lat_lons,
+        single_step_model_state_dict=single_step_model_state_dict,
+        time_step=time_step,
+        rank=rank,
+        ##########
+        channels=channels,
+        image_size=(721 // grid_step, 1440 // grid_step),
+        patch_size=patch_size,
+        depth=5,
+        heads=4,
+        mlp_dim=5,
+    )
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=-1,
@@ -157,7 +159,7 @@ if __name__ == "__main__":
         precision="16-mixed",
         callbacks=[checkpoint_callback],
         log_every_n_steps=3,
-        strategy='ddp_find_unused_parameters_true'
+        strategy="ddp_find_unused_parameters_true",
     )
 
     trainer.fit(model, dset)
