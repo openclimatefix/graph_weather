@@ -25,7 +25,6 @@ dependencies:
   - h3-py
   - numpy
   - pyshtools
-  - torch_harmonics
   - gcsfs
   - pytest
   - pip:
@@ -39,3 +38,4 @@ dependencies:
       - click
       - trimesh
       - rtree
+      - torch-harmonics

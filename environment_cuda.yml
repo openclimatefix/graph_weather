@@ -12,7 +12,6 @@ dependencies:
   - pip
   - pyg
   - python
-  - pytorch
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
@@ -26,7 +25,6 @@ dependencies:
   - h3-py
   - numpy
   - pyshtools
-  - torch_harmonics
   - gcsfs
   - pytest
   - pip:
@@ -40,3 +38,4 @@ dependencies:
       - click
       - trimesh
       - rtree
+      - torch-harmonics
