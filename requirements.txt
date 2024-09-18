@@ -3,6 +3,10 @@ huggingface-hub
 datasets
 einops
 torch-geometric-temporal
-pyshtools
+torch_harmonics
 trimesh
 rtree
+xarray
+setuptools
+pydantic
+safetensors

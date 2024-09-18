@@ -120,7 +120,7 @@ class Processor(torch.nn.Module):
             if not has_dgl:
                 raise ValueError("Please install DGL to use sparsity.")
 
-            for _ in range(num_blocks - 1):
+            for _ in range(num_blocks):
                 # concatenating multi-head attention
                 self.cond_transformers.append(
                     SparseTransformer(

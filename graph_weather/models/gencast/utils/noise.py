@@ -1,8 +1,9 @@
 """Noise generation utils."""
 
+import einops
 import numpy as np
-import pyshtools as pysh
 import torch
+import torch_harmonics as th
 
 
 def generate_isotropic_noise(num_lon: int, num_lat: int, num_samples=1, isotropic=True):
@@ -35,15 +36,16 @@ def generate_isotropic_noise(num_lon: int, num_lat: int, num_samples=1, isotropi
             )
 
     if isotropic:
-        l_max = num_lat // 2
-        power = np.ones(l_max, dtype=float) / l_max**2  # normalized to get each point with std 1
-        grid = np.zeros((num_lon, num_lat, num_samples))
-        for i in range(num_samples):
-            clm = pysh.SHCoeffs.from_random(power, power_unit="per_lm")
-            grid[:, :, i] = (
-                clm.expand(grid="DH2", extend=extend).to_array().transpose()[:num_lon, :num_lat]
-            )
-        noise = grid.astype(np.float32)
+        lmax = num_lat - 1 if extend else num_lat
+        mmax = lmax + 1
+        coeffs = torch.randn(num_samples, lmax, mmax, dtype=torch.complex64) / np.sqrt(
+            (num_lat**2) // 2
+        )
+        isht = th.InverseRealSHT(
+            nlat=num_lat, nlon=num_lon, lmax=lmax, mmax=mmax, grid="equiangular"
+        )
+        noise = isht(coeffs) * np.sqrt(2 * np.pi)
+        noise = einops.rearrange(noise, "b lat lon -> lon lat b").numpy()
     else:
         noise = np.random.randn(num_lon, num_lat, num_samples)
     return noise
@@ -88,7 +90,7 @@ class Preconditioner(torch.nn.Module):
 
     def c_skip(self, sigma):
         """Scaling factor for skip connection."""
-        return self.sigma_data / (sigma**2 + self.sigma_data**2)
+        return self.sigma_data**2 / (sigma**2 + self.sigma_data**2)
 
     def c_out(self, sigma):
         """Scaling factor for output."""
