@@ -12,6 +12,7 @@ dependencies:
   - pip
   - pyg
   - python
+  - pytorch
   - pytorch-cluster
   - pytorch-scatter
   - pytorch-sparse
