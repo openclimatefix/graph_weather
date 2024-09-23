@@ -7,3 +7,5 @@
 # pixi environments
 .pixi
 .vscode/
+checkpoints/
+lightning_logs/

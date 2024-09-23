@@ -6,7 +6,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pytorch-cuda=12.1
+  - pytorch-cuda
   - numcodecs
   - pandas
   - pip
@@ -25,8 +25,11 @@ dependencies:
   - zarr
   - h3-py
   - numpy
-  - torch_harmonics
+  - pyshtools
+  - gcsfs
+  - pytest
   - pip:
+      - setuptools
       - datasets
       - einops
       - fsspec
@@ -37,3 +40,4 @@ dependencies:
       - click
       - trimesh
       - rtree
+      - torch-harmonics

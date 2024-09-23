@@ -22,6 +22,9 @@ def knn_interpolate(
         squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
         weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
+        y_idx, x_idx = y_idx.to(x.device), x_idx.to(x.device)
+        weights = weights.to(x.device)
+
     den = scatter(weights, y_idx, 0, pos_y.size(0), reduce="sum")
     y = scatter(x[x_idx] * weights, y_idx, 0, pos_y.size(0), reduce="sum")
 
@@ -228,6 +231,7 @@ class ImageMetaModel(nn.Module):
         )
 
     def forward(self, x):
+        assert x.shape[1] == self.channels, "Wrong number of channels"
         device = x.device
         dtype = x.dtype
 
@@ -276,7 +280,7 @@ class MetaModel(nn.Module):
         super().__init__()
         self.i_h, self.i_w = pair(image_size)
 
-        self.pos_x = torch.tensor(lat_lons)
+        self.pos_x = torch.tensor(lat_lons).to(torch.long)
         self.pos_y = torch.cartesian_prod(
             (torch.arange(-self.i_h / 2, self.i_h / 2, 1) / self.i_h * 180).to(torch.long),
             (torch.arange(0, self.i_w, 1) / self.i_w * 360).to(torch.long),
@@ -344,3 +348,45 @@ class WrapperMetaModel(nn.Module):
         x = rearrange(x, "n (b c) -> b n c", b=b, c=c)
 
         return x
+
+
+class LoRALayer(nn.Module):
+    def __init__(self, linear_layer: nn.Module, r: int):
+        """
+        Initialize LoRALayer.
+
+        Args:
+            linear_layer (nn.Module): Linear layer to be transformed.
+            r (int): rank of the low-rank matrix.
+        """
+        super().__init__()
+        out_features, in_features = linear_layer.weight.shape
+
+        self.A = nn.Parameter(torch.randn(r, in_features))
+        self.B = nn.Parameter(torch.zeros(out_features, r))
+        self.linear_layer = linear_layer
+
+    def forward(self, x):
+        out = self.linear_layer(x) + self.B @ self.A @ x
+        return out
+
+
+class LoRAModule(nn.Module):
+    def __init__(self, model, r=4):
+        """
+        Initialize LoRAModule.
+
+        Args:
+            model (nn.Module): Model to be modified with LoRA layers.
+            r (int, optional): Rank of LoRA layers. Defaults to 4.
+        """
+        super().__init__()
+        for name, layer in model.named_modules():
+            layer.eval()
+            if isinstance(layer, nn.Linear):
+                lora_layer = LoRALayer(layer, r)
+                setattr(model, name, lora_layer)
+        self.model = model
+
+    def forward(self, x):
+        return self.model(x)

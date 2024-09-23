@@ -24,8 +24,11 @@ dependencies:
   - zarr
   - h3-py
   - numpy
-  - torch_harmonics
+  - pyshtools
+  - gcsfs
+  - pytest
   - pip:
+      - setuptools
       - datasets
       - einops
       - fsspec
@@ -36,3 +39,4 @@ dependencies:
       - click
       - trimesh
       - rtree
+      - torch-harmonics

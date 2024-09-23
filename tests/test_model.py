@@ -252,7 +252,6 @@ def test_image_meta_model():
 
     out = model(image)
     assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
     assert out.size() == image.size()
 
 
@@ -274,7 +273,6 @@ def test_wrapper_image_meta_model():
     big_image = torch.randn((batch, channels, size * scale_factor, size * scale_factor))
     big_model = WrapperImageModel(model, scale_factor)
     out = big_model(big_image)
-    assert not torch.isnan(out).any()
     assert not torch.isnan(out).any()
     assert out.size() == big_image.size()
 
@@ -303,5 +301,34 @@ def test_meta_model():
 
     out = model(features)
     assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
     assert out.size() == features.size()
+
+
+def test_wrapper_meta_model():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+
+    batch = 2
+    channels = 3
+    image_size = 20
+    patch_size = 4
+    scale_factor = 3
+    model = MetaModel(
+        lat_lons,
+        image_size=image_size,
+        patch_size=patch_size,
+        depth=1,
+        heads=1,
+        mlp_dim=7,
+        channels=channels,
+        dim_head=64,
+    )
+
+    big_features = torch.randn((batch, len(lat_lons), channels))
+    big_model = WrapperMetaModel(lat_lons, model, scale_factor)
+    out = big_model(big_features)
+
+    assert not torch.isnan(out).any()
+    assert out.size() == big_features.size()
