@@ -29,6 +29,7 @@ dependencies:
   - gcsfs
   - pytest
   - pip:
+      - setuptools
       - datasets
       - einops
       - fsspec
