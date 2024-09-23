@@ -11,7 +11,7 @@ dependencies:
   - pandas
   - pip
   - pyg
-  - python
+  - python=3.12
   - pytorch
   - pytorch-cluster
   - pytorch-scatter
