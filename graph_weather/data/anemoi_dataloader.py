@@ -3,6 +3,7 @@ import xarray as xr
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 
+
 class AnemoiDataset(Dataset):
     """
     Dataset for Anemoi weather datasets.
@@ -30,8 +31,10 @@ class AnemoiDataset(Dataset):
         super().__init__()
 
         # Check time range validity
-        assert start_year <= end_year, f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
-        
+        assert (
+            start_year <= end_year
+        ), f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+
         # Load the main dataset
         self.data = xr.open_zarr(filepath)
         self.data = self.data.sel(time=slice(str(start_year), str(end_year)))
