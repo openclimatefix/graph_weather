@@ -1,7 +1,7 @@
 """
 This script defines a custom PyTorch Dataset (`AMSUDataset`) for working with AMSU datasets.
 
-The dataset is loaded via the nnja library's `DataCatalog` and filtered for specific times and 
+The dataset is loaded via the nnja library's `DataCatalog` and filtered for specific times and
 variables. Each data point consists of a timestamp, latitude, longitude, and associated metadata.
 """
 
@@ -16,7 +16,7 @@ if _check_authentication():
         """
         A custom PyTorch Dataset for handling AMSU data.
 
-        This dataset retrieves observations and their metadata, filtered by the provided time and 
+        This dataset retrieves observations and their metadata, filtered by the provided time and
         variable descriptors.
         """
 
@@ -26,7 +26,7 @@ if _check_authentication():
 
             :param dataset_name: Name of the dataset to load.
             :param time: Specific timestamp to filter the data.
-            :param primary_descriptors: List of primary descriptor variables to include (e.g., 
+            :param primary_descriptors: List of primary descriptor variables to include (e.g.,
                                          OBS_TIMESTAMP, LAT, LON).
             :param additional_variables: List of additional variables to include in metadata.
             """
@@ -44,9 +44,7 @@ if _check_authentication():
                 time=self.time,
                 variables=self.primary_descriptors + self.additional_variables,
             )
-            self.dataframe = self.dataset.load_dataset(
-                engine="pandas"
-            )
+            self.dataframe = self.dataset.load_dataset(engine="pandas")
 
             for col in primary_descriptors:
                 if col not in self.dataframe.columns:
