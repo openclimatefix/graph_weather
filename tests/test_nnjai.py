@@ -4,14 +4,14 @@ Tests for the nnjai_wrapp module in the graph_weather package.
 This file contains unit tests for AMSUDataset and collate_fn functions.
 """
 
-
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
 
-from graph_weather.data.nnjai_wrapp import AMSUDataset,collate_fn
+from graph_weather.data.nnjai_wrapp import AMSUDataset, collate_fn
+
 
 # Mock the DataCatalog to avoid actual data loading
 @pytest.fixture
@@ -90,9 +90,9 @@ def test_amsu_dataset(mock_datacatalog):
     assert item["longitude"].ndim == 0, "Longitude should be a scalar tensor."
 
     assert isinstance(item["metadata"], torch.Tensor), "Metadata should be a tensor."
-    assert item["metadata"].shape == (len(additional_variables),), (
-        f"Metadata shape mismatch. Expected ({len(additional_variables)},)."
-    )
+    assert item["metadata"].shape == (
+        len(additional_variables),
+    ), f"Metadata shape mismatch. Expected ({len(additional_variables)},)."
     assert item["metadata"].dtype == torch.float32, "Metadata should have dtype float32."
 
 
@@ -123,9 +123,10 @@ def test_collate_function():
     assert batched["timestamp"].shape == (batch_size,), "Timestamp batch shape mismatch."
     assert batched["latitude"].shape == (batch_size,), "Latitude batch shape mismatch."
     assert batched["longitude"].shape == (batch_size,), "Longitude batch shape mismatch."
-    assert batched["metadata"].shape == (batch_size, metadata_size), (
-        "Metadata batch shape mismatch."
-    )
+    assert batched["metadata"].shape == (
+        batch_size,
+        metadata_size,
+    ), "Metadata batch shape mismatch."
 
     assert batched["timestamp"].dtype == torch.float32, "Timestamp dtype mismatch."
     assert batched["latitude"].dtype == torch.float32, "Latitude dtype mismatch."

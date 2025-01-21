@@ -8,7 +8,7 @@ variables. Each data point consists of a timestamp, latitude, longitude, and ass
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 try:
     from nnja import DataCatalog
@@ -94,7 +94,4 @@ def collate_fn(batch):
     Returns:
         Single dictionary with batched tensors
     """
-    return {
-        key: torch.stack([item[key] for item in batch])
-        for key in batch[0].keys()
-    }
+    return {key: torch.stack([item[key] for item in batch]) for key in batch[0].keys()}
