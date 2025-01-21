@@ -93,7 +93,7 @@ class AnemoiDataset(Dataset):
 
         # Add day-of-year feature
         times = self.data["time"].values
-        days_of_year = (xr.DataArray(times).dt.dayofyear / 365.0).values
+        days_of_year = (xr.DataArray(times).dt.dayofyear / 366.0).values
 
         self.geo_features = np.stack(
             [sin_lat, cos_lat, sin_lon, cos_lon, days_of_year], axis=-1
