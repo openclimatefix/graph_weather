@@ -3,6 +3,7 @@ import xarray as xr
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 
+
 class AnemoiDataset(Dataset):
     """
     Dataset for Anemoi weather datasets.
@@ -30,8 +31,10 @@ class AnemoiDataset(Dataset):
         super().__init__()
 
         # Check time range validity
-        assert start_year <= end_year, f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
-        
+        assert (
+            start_year <= end_year
+        ), f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+
         # Load the main dataset
         self.data = xr.open_zarr(filepath)
         self.data = self.data.sel(time=slice(str(start_year), str(end_year)))
@@ -98,7 +101,7 @@ class AnemoiDataset(Dataset):
         self.geo_features = np.stack(
             [sin_lat, cos_lat, sin_lon, cos_lon, days_of_year], axis=-1
         ).astype(np.float32)
-    
+
     def _calculate_feature_stats(self):
         """
         Calculate mean and std for each feature.
@@ -110,14 +113,14 @@ class AnemoiDataset(Dataset):
             feature_data = self.data[feature].values
             self.feature_mean[feature] = np.nanmean(feature_data)
             self.feature_std[feature] = np.nanstd(feature_data)
-    
+
     def _rescale_data(self, data):
         """
         Rescale the data using the precomputed mean and std.
         """
-        for i,feature in enumerate(self.features):
+        for i, feature in enumerate(self.features):
             mean = self.feature_mean.get(feature, 0)
             std = self.feature_std.get(feature, 1)
-            data[...,i] = (data[...,i] - mean) / (std + 1e-6)
+            data[..., i] = (data[..., i] - mean) / (std + 1e-6)
 
             return data
