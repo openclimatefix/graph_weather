@@ -94,37 +94,7 @@ def collate_fn(batch):
     Returns:
         Single dictionary with batched tensors
     """
-    return {key: torch.stack([item[key] for item in batch]) for key in batch[0].keys()}
-
-
-if __name__ == "__main__":
-    # Configuration
-    dataset_name = "amsua-1bamua-NC021023"
-    time = "2021-01-01 00Z"
-    primary_descriptors = ["OBS_TIMESTAMP", "LAT", "LON"]
-    additional_variables = ["TMBR_00001"]
-
-    # Initialize dataset
-    amsu_dataset = AMSUDataset(dataset_name, time, primary_descriptors, additional_variables)
-
-    batch_size = 4
-    data_loader = DataLoader(
-        amsu_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
-    )
-
-    # Example usage with batched data
-    for batch in data_loader:
-        print(f"Batch size: {batch['timestamp'].shape[0]}")
-        print("Timestamps shape:", batch["timestamp"].shape)
-        print("Latitudes shape:", batch["latitude"].shape)
-        print("Longitudes shape:", batch["longitude"].shape)
-        print("Metadata shape:", batch["metadata"].shape)
-
-        for i in range(batch_size):
-            print(f"\nItem {i}:")
-            print("Time:", batch["timestamp"][i].item())
-            print("Latitude:", batch["latitude"][i].item())
-            print("Longitude:", batch["longitude"][i].item())
-            print("Metadata:", batch["metadata"][i])
-
-        break
+    return {
+        key: torch.stack([item[key] for item in batch])
+        for key in batch[0].keys()
+    }
