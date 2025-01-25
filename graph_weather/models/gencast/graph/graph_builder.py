@@ -14,18 +14,32 @@ import numpy as np
 import torch
 from torch_geometric.data import Data, HeteroData
 
+from dataclasses import dataclass
+from dacite import from_dict
+
+
 # from torch_geometric.transforms import TwoHop
 from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
 
-# Some configs from graphcast:
-_spatial_features_kwargs = dict(
-    add_node_positions=False,
-    add_node_latitude=True,
-    add_node_longitude=True,
-    add_relative_positions=True,
-    relative_longitude_local_coordinates=True,
-    relative_latitude_local_coordinates=True,
-)
+@dataclass
+class SpatialFeaturesConfig:
+    add_node_positions: bool = False
+    add_node_latitude: bool = True
+    add_node_longitude: bool = True
+    add_relative_positions: bool = True
+    relative_longitude_local_coordinates: bool = True
+    relative_latitude_local_coordinates: bool = True
+
+config_dict = {
+    "add_node_positions": False,
+    "add_node_latitude": True,
+    "add_node_longitude": True,
+    "add_relative_positions": True,
+    "relative_longitude_local_coordinates": True,
+    "relative_latitude_local_coordinates": True,
+}
+
+_spatial_features_kwargs = from_dict(data_class=SpatialFeaturesConfig, data=config_dict)
 
 # radius_query_fraction_edge_length: Scalar that will be multiplied by the
 #   length of the longest edge of the finest mesh to define the radius of
