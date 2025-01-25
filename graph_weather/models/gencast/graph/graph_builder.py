@@ -9,17 +9,16 @@ The following code is a port of several components from GraphCast's original gra
 """
 
 import gc
+from dataclasses import dataclass
 
 import numpy as np
 import torch
-from torch_geometric.data import Data, HeteroData
-
-from dataclasses import dataclass
 from dacite import from_dict
-
+from torch_geometric.data import Data, HeteroData
 
 # from torch_geometric.transforms import TwoHop
 from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
+
 
 @dataclass
 class SpatialFeaturesConfig:
@@ -29,6 +28,7 @@ class SpatialFeaturesConfig:
     add_relative_positions: bool = True
     relative_longitude_local_coordinates: bool = True
     relative_latitude_local_coordinates: bool = True
+
 
 config_dict = {
     "add_node_positions": False,
