@@ -7,10 +7,14 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"
 
+from dataclasses import dataclass  # noqa: E402
+from typing import List  # noqa: E402
+
 import lightning as L  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
+from dacite import from_dict  # noqa: E402
 from lightning.pytorch.callbacks import Callback, LearningRateMonitor, ModelCheckpoint  # noqa: E402
 from lightning.pytorch.loggers import WandbLogger  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
@@ -37,7 +41,21 @@ PERSISTENT_WORKERS = True
 
 # model configs
 CHECKPOINT_PATH = "checkpoints/epoch=3-step=10776.ckpt"
-CFG = {
+
+
+@dataclass
+class Config:
+    hidden_dims: List[int]
+    num_blocks: int
+    num_heads: int
+    splits: int
+    num_hops: int
+    sparse: bool
+    use_edges_features: bool
+    scale_factor: float
+
+
+config = {
     "hidden_dims": [512, 512],
     "num_blocks": 16,
     "num_heads": 4,
@@ -47,6 +65,7 @@ CFG = {
     "use_edges_features": False,
     "scale_factor": 1.0,
 }
+CFG = from_dict(data_class=Config, data=config)
 
 # dataset configs
 atmospheric_features = [

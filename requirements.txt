@@ -10,3 +10,4 @@ xarray
 setuptools
 pydantic
 safetensors
+dacite
