@@ -37,3 +37,4 @@ pip = ">=24.0,<25"
 pytest = "*"  # This means any version (this `*` is custom in pixi)
 pre-commit = "*"
 pysolar = "*"
+graph_weather = { path = ".", editable = true }
