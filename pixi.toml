@@ -1,15 +1,15 @@
 [project]
 name = "graph_weather"
-version = "1.0.88"
+version = "1.0.89"
 description = "Graph-based AI Weather models"
 authors = ["Jacob Prince-Bieker <jacob@bieker.tech>"]
 channels = ["pyg", "nvidia", "conda-forge", "pytorch"]
 platforms = ["linux-64", "osx-arm64"]
 
 [feature.gpu.system-requirements]
-cuda = "12.*"
+cuda = "12"
 
-[feature.gpu.dependencies]
+[feature.cuda.target.linux-64.dependencies]
 cuda-version = "12.*"
 pytorch-gpu = ">=2.5"
 
@@ -19,6 +19,7 @@ pytorch-cpu = ">=2.5"
 [environments]
 cpu = ["cpu"]
 default = ["gpu"]
+
 
 [tasks]
 tinstall = "python -m pip install torch-geometric-temporal"
@@ -46,8 +47,11 @@ pip = "*"
 pytest = "*"
 pre-commit = "*"
 ruff = "*"
-
+trimesh = "*"
+pysolar = "*"
+rtree = "*"
 
 [pypi-dependencies]
-pysolar = "*"
-graph_weather = { path = ".", editable = true }
+graph_weather_editable = { path = ".", editable = true }
+torch-geometric-temporal = "*"
+torch-harmonics = "*"

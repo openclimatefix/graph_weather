@@ -8,5 +8,4 @@ trimesh
 rtree
 xarray
 setuptools
-pydantic
 safetensors
