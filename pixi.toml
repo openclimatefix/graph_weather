@@ -6,39 +6,31 @@ authors = ["Jacob Prince-Bieker <jacob@bieker.tech>"]
 channels = ["pyg", "nvidia", "conda-forge", "pytorch"]
 platforms = ["linux-64", "osx-arm64"]
 
-[feature.gpu.system-requirements]
+[feature.cuda.system-requirements]
 cuda = "12"
 
 [feature.cuda.target.linux-64.dependencies]
 cuda-version = "12.*"
-pytorch-gpu = ">=2.5"
+pytorch-gpu = ">=2.4"
 
 [feature.cpu.dependencies]
-pytorch-cpu = ">=2.5"
-
-[environments]
-cpu = ["cpu"]
-default = ["gpu"]
-
-
-[tasks]
-tinstall = "python -m pip install torch-geometric-temporal"
+pytorch-cpu = ">=2.4"
 
 [dependencies]
 python = "3.12.*"
 torchvision = "*"
-pytorch-cluster = "*"
-pytorch-scatter = "*"
 xarray = "*"
-pytorch-spline-conv = "*"
 pandas = "*"
 h3-py = "*"
 numcodecs = "*"
 scipy = "*"
 zarr = ">=3.0.0"
 pyg = "*"
-tqdm = "*"
+pytorch-cluster = "*"
+pytorch-scatter = "*"
+pytorch-spline-conv = "*"
 pytorch-sparse = "*"
+tqdm = "*"
 lightning = "*"
 einops = "*"
 fsspec = "*"
@@ -55,3 +47,7 @@ rtree = "*"
 graph_weather_editable = { path = ".", editable = true }
 torch-geometric-temporal = "*"
 torch-harmonics = "*"
+
+[environments]
+cpu = ["cpu"]
+cuda = ["cuda"]
