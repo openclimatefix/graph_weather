@@ -31,10 +31,11 @@ einops = ">=0.7.0,<0.8"
 fsspec = ">=2024.2.0,<2024.3"
 datasets = ">=2.18.0,<2.19"
 pip = ">=24.0,<25"
+pytest = "*"
+pre-commit = "*"
+ruff = "*"
 
 
 [pypi-dependencies]
-pytest = "*"  # This means any version (this `*` is custom in pixi)
-pre-commit = "*"
 pysolar = "*"
 graph_weather = { path = ".", editable = true }
