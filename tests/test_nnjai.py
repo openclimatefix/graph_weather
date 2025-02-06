@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
-from graph_weather.data.nnjai_wrapp import AMSUDataset, collate_fn
+from graph_weather.data.nnja_ai import AMSUDataset, collate_fn
 
 
 # Mock the DataCatalog to avoid actual data loading
