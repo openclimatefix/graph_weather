@@ -39,9 +39,6 @@ pytorch-gpu = ">=2.4"
 [tool.pixi.feature.cpu.dependencies]
 pytorch-cpu = ">=2.4"
 
-[tool.pixi.pypi-dependencies]
-graph_weather_editable = { path = ".", editable = true }
-
 [tool.pixi.dependencies]
 python = "3.12.*"
 pip = "*"
@@ -75,6 +72,7 @@ cpu = ["cpu"]
 cuda = ["cuda"]
 
 [tool.pixi.tasks]
+install = "pip install --editable ."
 test = "pytest"
 lint = "ruff"
 format = "ruff format"
