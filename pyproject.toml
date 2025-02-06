@@ -17,7 +17,6 @@ channels = ["pyg", "conda-forge", "pytorch"]
 platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.cuda]
-# platforms = ["linux-64"]
 channels = ["nvidia", {channel = "pytorch", priority = -1}]
 
 [tool.pixi.feature.cuda.system-requirements]
@@ -28,7 +27,6 @@ cuda-version = "12.*"
 pytorch-gpu = {version = ">=2.4", channel = "conda-forge"}
 
 [tool.pixi.feature.mlx]
-# platforms = ["osx-arm64"]
 # MLX is only available on macOS >=13.5 (>14.0 is recommended)
 system-requirements = {macos = "13.5"}
 
