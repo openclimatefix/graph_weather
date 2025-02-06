@@ -14,6 +14,12 @@ This library can be installed through
 pip install graph-weather
 ```
 
+Alternatively, you can install the latest version from the repository easily with `pixi`:
+
+```bash
+pixi install # `-e cuda` for GPU support, `-e cpu` for CPU-only
+```
+
 ## Example Usage
 
 The models generate the graphs internally, so the only thing that needs to be passed to the model is the node features
