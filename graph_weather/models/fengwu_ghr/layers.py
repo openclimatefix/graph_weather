@@ -2,10 +2,8 @@ import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
 from torch import nn
-from torch_geometric.nn import knn
+from torch_geometric.nn.pool import knn
 from torch_geometric.utils import scatter
-
-# helpers
 
 
 def pair(t):
