@@ -6,7 +6,20 @@ description = "Graph-based AI Weather models"
 authors = [
     {name = "Jacob Prince-Bieker", email = "jacob@bieker.tech"},
 ]
-dependencies = ["torch-harmonics",]
+dependencies = ["torch-harmonics",
+"torch",
+"torchvision",
+"scipy",
+"h3",
+"xarray",
+"pandas",
+"numcodecs",
+"zarr",
+"datasets",
+"pysolar",
+"fsspec",
+"trimesh",
+"lightning"]
 
 [build-system]
 build-backend = "hatchling.build"
@@ -63,7 +76,7 @@ cuda = ["cuda"]
 
 [tool.pixi.tasks]
 test = "pytest"
-lint = "ruff lint --fix"
+lint = "ruff"
 format = "ruff format"
 
 [tool.ruff]

@@ -43,9 +43,9 @@ class IFSAnalisysDataset(Dataset):
         """
 
         super().__init__()
-        assert (
-            start_year <= end_year
-        ), f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+        assert start_year <= end_year, (
+            f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+        )
         assert start_year >= 2016 and start_year <= 2022, "Time data range from 2016 to 2022"
         assert end_year >= 2016 and end_year <= 2022, "Time data range from 2016 to 2022"
         self.data = xr.open_zarr(filepath)
@@ -59,7 +59,6 @@ class IFSAnalisysDataset(Dataset):
         return len(self.data["time"])
 
     def __getitem__(self, idx):
-
         start = self.data.isel(time=idx)
         end = self.data.isel(time=idx + 1)
 

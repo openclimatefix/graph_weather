@@ -105,9 +105,9 @@ class Transformer(nn.Module):
                 )
             )
             if self.res:
-                assert (
-                    image_size is not None and scale_factor is not None
-                ), "If res=True, you must provide h, w and scale_factor"
+                assert image_size is not None and scale_factor is not None, (
+                    "If res=True, you must provide h, w and scale_factor"
+                )
                 h, w = pair(image_size)
                 s_h, s_w = pair(scale_factor)
                 self.res_layers.append(
@@ -161,7 +161,7 @@ class ImageMetaModel(nn.Module):
         dim_head,
         res=False,
         scale_factor=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         # TODO this can probably be done better
@@ -273,7 +273,7 @@ class MetaModel(nn.Module):
         heads,
         mlp_dim,
         channels,
-        dim_head=64
+        dim_head=64,
     ):
         super().__init__()
         self.i_h, self.i_w = pair(image_size)
