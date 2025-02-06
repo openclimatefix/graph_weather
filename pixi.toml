@@ -16,8 +16,16 @@ pytorch-gpu = ">=2.4"
 [feature.cpu.dependencies]
 pytorch-cpu = ">=2.4"
 
+[pypi-dependencies]
+graph_weather_editable = { path = ".", editable = true }
+torch-harmonics = "*"
+
 [dependencies]
 python = "3.12.*"
+pip = "*"
+pytest = "*"
+pre-commit = "*"
+ruff = "*"
 torchvision = "*"
 xarray = "*"
 pandas = "*"
@@ -35,18 +43,10 @@ lightning = "*"
 einops = "*"
 fsspec = "*"
 datasets = "*"
-pip = "*"
-pytest = "*"
-pre-commit = "*"
-ruff = "*"
 trimesh = "*"
 pysolar = "*"
 rtree = "*"
 
-[pypi-dependencies]
-graph_weather_editable = { path = ".", editable = true }
-torch-geometric-temporal = "*"
-torch-harmonics = "*"
 
 [environments]
 cpu = ["cpu"]
