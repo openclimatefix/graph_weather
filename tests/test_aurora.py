@@ -154,6 +154,3 @@ def test_aurora_integration():
         torch.cuda.empty_cache()
 
     print("Integration test completed successfully.")
-
-if __name__ == "__main__":
-    test_aurora_integration()
