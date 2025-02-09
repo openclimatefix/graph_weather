@@ -1,3 +1,3 @@
 """Dataloaders and data processing utilities"""
 
-from .nnjai_wrapp import SensorDataset, collate_fn
+from .nnja_ai import SensorDataset, collate_fn
