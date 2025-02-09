@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
-from graph_weather.data.nnjai_wrapp import SensorDataset, collate_fn
+from graph_weather.data.nnja_ai import NNJADataset, collate_fn
 
 @pytest.fixture
 def mock_datacatalog():
