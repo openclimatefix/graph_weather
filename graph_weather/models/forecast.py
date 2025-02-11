@@ -2,12 +2,12 @@
 
 from typing import Optional
 
-import einops
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
+
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     """Main weather prediction model from the paper with physical constraints"""
@@ -68,7 +68,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         # Compute the geographical grid shape from lat_lons.
         unique_lats = sorted(set(lat for lat, _ in lat_lons))
         unique_lons = sorted(set(lon for _, lon in lat_lons))
-        self.grid_shape = (len(unique_lats), len(unique_lons))  # (H, W)    
+        self.grid_shape = (len(unique_lats), len(unique_lons))  # (H, W)
 
         self.encoder = Encoder(
             lat_lons=lat_lons,
@@ -111,8 +111,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
         # Add physical constraint layer
         self.constraint = PhysicalConstraintLayer(
-            grid_shape=self.grid_shape,
-            constraint_type=constraint_type)
+            grid_shape=self.grid_shape, constraint_type=constraint_type
+        )
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -137,12 +137,12 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         if self.apply_constraints:
             # Extract the low-res reference from the input.
             # (Original features has shape [B, num_nodes, feature_dim])
-            lr = features[..., : self.feature_dim]   # shape: [B, num_nodes, feature_dim]
+            lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
             # Convert from node format to grid format using the grid_shape computed in __init__
-            lr = lr.permute(0, 2, 1)                    # becomes [B, feature_dim, num_nodes]
+            lr = lr.permute(0, 2, 1)  # becomes [B, feature_dim, num_nodes]
 
             lr = lr.view(batch_size, self.feature_dim, self.grid_shape[0], self.grid_shape[1])
             if lr.size(1) != x.size(1):
-                lr = lr.repeat(1, x.size(1)//lr.size(1), 1, 1)
+                lr = lr.repeat(1, x.size(1) // lr.size(1), 1, 1)
             x = self.constraint(x, lr)
         return x.view(batch_size, -1, self.output_dim)
