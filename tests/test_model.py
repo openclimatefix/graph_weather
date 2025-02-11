@@ -124,14 +124,17 @@ def test_forecaster():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    model = GraphWeatherForecaster(lat_lons)
-    # Add in auxiliary features
+            
+    model = GraphWeatherForecaster(
+        lat_lons,
+        feature_dim=78,
+        output_dim=78,
+        apply_constraints=False
+    )
+    
     features = torch.randn((1, len(lat_lons), 78 + 24))
-
     out = model(features)
     assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
-
 
 def test_assimilator_model():
     obs_lat_lons = []
@@ -159,16 +162,33 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
-    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
-    model = GraphWeatherForecaster(lat_lons)
-    # Add in auxiliary features
-    features = torch.randn((2, len(lat_lons), 78 + 24))
 
+    # Initialize model with explicit parameters
+    model = GraphWeatherForecaster(
+        lat_lons,
+        feature_dim=78,
+        output_dim=78,
+        aux_dim=24,
+        constraint_type='additive',
+        apply_constraints=True,
+    )
+
+    batch_size = 2
+    features = torch.randn((batch_size, len(lat_lons), 78 + 24))
     out = model(features)
-    loss = criterion(out, torch.rand(out.shape))
-    assert not torch.isnan(loss)
+    
+    assert out.shape == (batch_size, len(lat_lons), 78)
+    
+    # Create target with same dimensions
+    target = torch.randn_like(out)
+    
+    # Initialize loss function
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    loss = criterion(out, target)
+    
+    assert not torch.isnan(loss).any()
     assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
+    
     loss.backward()
 
 
@@ -352,3 +372,29 @@ def test_wrapper_meta_model():
 
     assert not torch.isnan(out).any()
     assert out.size() == big_features.size()
+
+def test_constrained_forecast():
+    lat_lons = [(lat, lon) for lat in (-90, 90) for lon in (-90, 90)]
+    model = GraphWeatherForecaster(
+        lat_lons,
+        constraint_type='softmax',
+        apply_constraints=True,
+        feature_dim=2,
+        aux_dim=0,
+        output_dim=2
+    )
+    
+    inp = torch.randn(1, len(lat_lons), 2)
+    output = model(inp)   # output shape is [1, 4, 2]
+    
+    # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
+    lr_input = inp[..., :2]
+    lr_input_grid = lr_input.permute(0, 2, 1).view(1, 2, 2, 2)
+    lr_input_avg = lr_input_grid.mean(dim=(2, 3))
+    
+    # Convert model output from graph to grid
+    output_grid = output.permute(0, 2, 1).view(1, 2, 2, 2)
+    lr_output_avg = output_grid.mean(dim=(2, 3))
+    
+    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.3), \
+         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
