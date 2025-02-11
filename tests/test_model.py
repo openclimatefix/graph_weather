@@ -204,13 +204,33 @@ def test_forecaster_and_loss_irregular():
     # Add in auxiliary features
     features = torch.randn((2, len(lat_lons), 78 + 24))
 
-    out = model(features)
-    loss = criterion(out, torch.rand(out.shape))
-    assert not torch.isnan(loss)
-    assert not torch.isnan(out).any()
-    assert not torch.isnan(out).any()
-    loss.backward()
+    # Initialize model with explicit parameters
+    model = GraphWeatherForecaster(
+        lat_lons,
+        feature_dim=78,
+        output_dim=78,
+        aux_dim=24,
+        constraint_type='additive',
+        apply_constraints=True,
+    )
 
+    batch_size = 2
+    features = torch.randn((batch_size, len(lat_lons), 78 + 24))
+    out = model(features)
+    
+    assert out.shape == (batch_size, len(lat_lons), 78)
+    
+    # Create target with same dimensions
+    target = torch.randn_like(out)
+    
+    # Initialize loss function
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    loss = criterion(out, target)
+    
+    assert not torch.isnan(loss).any()
+    assert not torch.isnan(out).any()
+    
+    loss.backward()
 
 def test_assimilator_model_grad_checkpoint():
     obs_lat_lons = []
