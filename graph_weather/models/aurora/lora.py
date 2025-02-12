@@ -1,10 +1,14 @@
 """
-    Low-Rank Adaptation (LoRA) for Linear Layers:
-    - Adds trainable rank-constrained adaptations to frozen pre-trained models.
+Low-Rank Adaptation (LoRA) for Linear Layers:
+- Adds trainable rank-constrained adaptations to frozen pre-trained models.
 """
-import torch 
-import torch.nn as nn
+
 import math
+
+import torch
+import torch.nn as nn
+
+
 class LoraLayer(nn.Module):
     def __init__(self, in_features, out_features, r=8, alpha=16):
         """
@@ -35,8 +39,10 @@ class LoraLayer(nn.Module):
     def forward(self, x):
         """
         Forward pass with LoRA adaptation.
+
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, in_features).
+
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, out_features).
         """
