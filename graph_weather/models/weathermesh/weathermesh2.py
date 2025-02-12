@@ -1,5 +1,6 @@
-from graph_weather.models.weathermesh.encoders import Pressure3dConvNet, Surface2dConvNet
 import torch
+
+from graph_weather.models.weathermesh.encoders import Pressure3dConvNet, Surface2dConvNet
 
 """
 Notes on implementation
@@ -13,6 +14,7 @@ Training: distributed shampoo: https://github.com/facebookresearch/optimizers/bl
 Fork version of pytorch checkpoint library called matepoint to implement offloading to RAM
 
 """
+
 
 class WeatherMesh(torch.nn.Module):
     def __init__(self):
