@@ -193,6 +193,7 @@ class AuroraModel(nn.Module):
         num_layers: int = 4,
         max_points: int = 10000,
         max_seq_len: int = 1024,
+        use_checkPointing: bool = False,
     ):
         super().__init__()
 
