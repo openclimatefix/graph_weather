@@ -399,7 +399,7 @@ def test_constrained_forecast():
     model = GraphWeatherForecaster(
         lat_lons,
         # constraint_type='additive',
-        constraint_type='multiplicative',
+        constraint_type="multiplicative",
         # constraint_type='softmax',
         apply_constraints=True,
         feature_dim=2,
@@ -408,16 +408,17 @@ def test_constrained_forecast():
     )
 
     inp = torch.randn(1, len(lat_lons), 2)
-    output = model(inp)   # output shape is [1, n*n, 2]
-    
+    output = model(inp)  # output shape is [1, n*n, 2]
+
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
     lr_input_grid = model.graph_to_grid(lr_input)
     lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
-    
+
     # Convert model output from graph to grid
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
-    
-    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
-         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
