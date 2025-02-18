@@ -391,10 +391,16 @@ def test_wrapper_meta_model():
 
 
 def test_constrained_forecast():
-    lat_lons = [(lat, lon) for lat in (-90, 90) for lon in (-90, 90)]
+    grid_side = 2  # grid_size = n for n x n grid
+    lats = np.linspace(-90, 90, grid_side)
+    lons = np.linspace(-90, 90, grid_side)
+    lat_lons = [(lat, lon) for lat in lats for lon in lons]
+
     model = GraphWeatherForecaster(
         lat_lons,
-        constraint_type="softmax",
+        # constraint_type='additive',
+        constraint_type='multiplicative',
+        # constraint_type='softmax',
         apply_constraints=True,
         feature_dim=2,
         aux_dim=0,
@@ -402,17 +408,16 @@ def test_constrained_forecast():
     )
 
     inp = torch.randn(1, len(lat_lons), 2)
-    output = model(inp)  # output shape is [1, 4, 2]
-
+    output = model(inp)   # output shape is [1, n*n, 2]
+    
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
-    lr_input_grid = lr_input.permute(0, 2, 1).view(1, 2, 2, 2)
-    lr_input_avg = lr_input_grid.mean(dim=(2, 3))
-
+    lr_input_grid = model.graph_to_grid(lr_input)
+    lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
+    
     # Convert model output from graph to grid
-    output_grid = output.permute(0, 2, 1).view(1, 2, 2, 2)
-    lr_output_avg = output_grid.mean(dim=(2, 3))
-
-    assert torch.allclose(
-        lr_input_avg, lr_output_avg, atol=0.3
-    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+    output_grid = model.graph_to_grid(output)
+    lr_output_avg = output_grid.mean(dim=(-2, -1))
+    
+    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
+         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
