@@ -382,7 +382,7 @@ def test_additive_constrained_forecast():
 
     model = GraphWeatherForecaster(
         lat_lons,
-        constraint_type='additive',
+        constraint_type="additive",
         feature_dim=2,
         aux_dim=0,
         output_dim=2,
@@ -400,8 +400,9 @@ def test_additive_constrained_forecast():
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
 
-    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
-         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
 
 
 def test_multiplicative_constrained_forecast():
@@ -412,14 +413,14 @@ def test_multiplicative_constrained_forecast():
 
     model = GraphWeatherForecaster(
         lat_lons,
-        constraint_type='multiplicative',
+        constraint_type="multiplicative",
         feature_dim=2,
         aux_dim=0,
         output_dim=2,
     )
 
     inp = torch.randn(1, len(lat_lons), 2)
-    output = model(inp)   # output shape is [1, n*n, 2]
+    output = model(inp)  # output shape is [1, n*n, 2]
 
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
@@ -430,8 +431,9 @@ def test_multiplicative_constrained_forecast():
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
 
-    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
-         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
 
 
 def test_softmax_constrained_forecast():
@@ -442,14 +444,14 @@ def test_softmax_constrained_forecast():
 
     model = GraphWeatherForecaster(
         lat_lons,
-        constraint_type='softmax',
+        constraint_type="softmax",
         feature_dim=2,
         aux_dim=0,
         output_dim=2,
     )
 
     inp = torch.randn(1, len(lat_lons), 2)
-    output = model(inp)   # output shape is [1, n*n, 2]
+    output = model(inp)  # output shape is [1, n*n, 2]
 
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
@@ -460,5 +462,6 @@ def test_softmax_constrained_forecast():
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
 
-    assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
-         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
