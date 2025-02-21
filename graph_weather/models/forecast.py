@@ -5,9 +5,9 @@ from typing import Optional
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
+from einops import rearrange, repeat
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
-
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     """Main weather prediction model from the paper with physical constraints"""
@@ -30,9 +30,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_layers_decoder: int = 2,
         norm_type: str = "LayerNorm",
         use_checkpointing: bool = False,
-        # New constraint parameters
-        constraint_type: str = "additive",  # "additive", "multiplicative", or "softmax"
-        apply_constraints: bool = True,
+        constraint_type: str = "additive",  # "additive", "multiplicative", "softmax" or "none"
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -58,12 +56,11 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Use gradient checkpointing to reduce model memory
             constraint_type: Type of constraint to apply for physical constraints
-                one of 'additive', 'multiplicative', or 'softmax'
-            apply_constraints: Apply constraints to the model output
+                one of 'additive', 'multiplicative', 'softmax', or 'none'
         """
         super().__init__()
         self.feature_dim = feature_dim
-        self.apply_constraints = apply_constraints
+        self.constraint_type = constraint_type
         if output_dim is None:
             output_dim = self.feature_dim
         self.output_dim = output_dim
@@ -176,18 +173,19 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
         # Convert graph output to grid format
         batch_size = x.shape[0]
-        x = x.view(batch_size, self.output_dim, self.grid_shape[0], self.grid_shape[1])
+        
+        x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
 
         # Apply physical constraints to decoder output
-        if self.apply_constraints:
+        if self.constraint_type != "none":
             # Extract the low-res reference from the input.
             # (Original features has shape [B, num_nodes, feature_dim])
             lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
             # Convert from node format to grid format using the grid_shape computed in __init__
-            lr = lr.permute(0, 2, 1)  # becomes [B, feature_dim, num_nodes]
-
-            lr = lr.view(batch_size, self.feature_dim, self.grid_shape[0], self.grid_shape[1])
+            # From [B, num_nodes, feature_dim] to [B, feature_dim, H, W]
+            lr = rearrange(lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             if lr.size(1) != x.size(1):
-                lr = lr.repeat(1, x.size(1) // lr.size(1), 1, 1)
+                repeat_factor = x.size(1) // lr.size(1)
+                lr = repeat(lr, "b c h w -> b (r c) h w", r=repeat_factor)
             x = self.constraint(x, lr)
         return x

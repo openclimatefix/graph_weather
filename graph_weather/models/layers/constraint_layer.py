@@ -21,10 +21,7 @@ class PhysicalConstraintLayer(nn.Module):
     tensors in grid format, with shape [B, C, H, W], where n = H*W is the number of pixels
     (or nodes) in a patch.
     """
-
-    def __init__(
-        self, model, grid_shape, upsampling_factor, constraint_type="additive", exp_factor=1.0
-    ):
+    def __init__(self, model, grid_shape, upsampling_factor, constraint_type='none', exp_factor=1.0):
         super().__init__()
         self.model = model
         self.constraint_type = constraint_type
