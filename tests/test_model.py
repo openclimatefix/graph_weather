@@ -278,10 +278,11 @@ def test_normalized_loss():
     num_lon = num_nodes // num_unique  # expect 72
 
     # Build a weight vector from the cosine of each unique latitude.
-    weight_vector = torch.tensor([np.cos(lat * np.pi / 180.0) for lat in unique_lats],
-                                dtype=torch.float)
+    weight_vector = torch.tensor(
+        [np.cos(lat * np.pi / 180.0) for lat in unique_lats], dtype=torch.float
+    )
 
-    # Tile (repeat) the weight vector for each longitude (column) to form a full weight grid for all nodes.                                
+    # Tile (repeat) the weight vector for each longitude (column) to form a full weight grid for all nodes.
     weight_grid = weight_vector.unsqueeze(1).expand(num_unique, num_lon).reshape(-1)
     expected_loss = weight_grid.mean()  # since every error term becomes 1, loss = mean(weight_grid)
 
