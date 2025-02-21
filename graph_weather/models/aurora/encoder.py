@@ -7,6 +7,7 @@ Swin 3D Transformer Encoder:
 
 import torch.nn as nn
 from einops import rearrange
+from einops.layers.torch import Rearrange
 
 
 class Swin3DEncoder(nn.Module):
@@ -16,76 +17,56 @@ class Swin3DEncoder(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
         self.swin_transformer = nn.Transformer(
             d_model=embed_dim,
-            nhead=8,  # Standard number of heads
+            nhead=8,
             num_encoder_layers=4,
             num_decoder_layers=4,
-            dim_feedforward=embed_dim * 4,
+            dim_feedforward=embed_dim * 4
         )
         self.embed_dim = embed_dim
+        
+        # Define rearrangement patterns using einops
+        self.to_transformer_format = Rearrange('b d h w c -> (d h w) b c')
+        self.from_transformer_format = Rearrange('(d h w) b c -> b d h w c', d=None, h=None, w=None)
 
     def forward(self, x):
-        # Apply 3D convolution: (batch, channels, depth, height, width) -> (batch, embed_dim, depth, height, width)
+        # 3D convolution with einops rearrangement
         x = self.conv1(x)
-
-        # Reshape for layer norm: (batch, embed_dim, depth, height, width) -> (batch, depth*height*width, embed_dim)
-        batch_size = x.shape[0]
-        x = x.permute(0, 2, 3, 4, 1).contiguous()  # -> (batch, depth, height, width, embed_dim)
-        x = x.view(batch_size, -1, self.embed_dim)  # -> (batch, depth*height*width, embed_dim)
-
-        # Apply layer normalization
+        
+        # Rearrange for normalization using einops
+        x = rearrange(x, 'b c d h w -> b d h w c')
         x = self.norm(x)
-
-        # Apply transformer
-        # For transformer, input shape should be (seq_len, batch, embed_dim)
-        x = x.transpose(0, 1)
+        
+        # Store spatial dimensions for later reconstruction
+        d, h, w = x.shape[1:4]
+        
+        # Transform to sequence format for transformer
+        x = self.to_transformer_format(x)
         x = self.swin_transformer.encoder(x)
-        x = x.transpose(0, 1)  # Back to (batch, seq_len, embed_dim)
-
+        
+        # Restore original spatial structure
+        x = self.from_transformer_format(x, d=d, h=h, w=w)
+        
         return x
 
     def convolution(self, x):
-        """
-        Applies 3D convolution to the input.
-
-        Args:
-            x (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Convolved tensor.
-        """
-        # b c d h w -> b embed_dim d h w
-        return self.conv1(x)
+        """Apply 3D convolution with clear shape transformation."""
+        return self.conv1(x)  # b c d h w -> b embed_dim d h w
 
     def normalization_layer(self, x):
-        """
-        Applies layer normalization after reshaping the data for transformer input.
+        """Apply layer normalization with einops rearrangement."""
+        x = rearrange(x, 'b c d h w -> b d h w c')
+        return self.norm(x)
 
+    def transformer_encoder(self, x, spatial_dims):
+        """
+        Apply transformer encoding with proper shape handling.
+        
         Args:
-            x (torch.Tensor): Tensor after convolution.
-
-        Returns:
-            torch.Tensor: Normalized tensor.
+            x (torch.Tensor): Input tensor
+            spatial_dims (tuple): Original (depth, height, width) dimensions
         """
-        # Rearrange for normalization: b c d h w -> b d h w c
-        x = rearrange(x, "b c d h w -> b d h w c")
-        # Apply layer normalization on the last dimension (embed_dim)
-        x = self.norm(x)
-        return x
-
-    def transformer_encoder(self, x):
-        """
-        Applies the Swin Transformer encoder to the normalized data.
-
-        Args:
-            x (torch.Tensor): Normalized tensor.
-
-        Returns:
-            torch.Tensor: Transformed tensor with learned spatial-temporal features.
-        """
-        # Flatten spatial dimensions: b d h w c -> b (d h w) c
+        d, h, w = spatial_dims
         x = self.to_transformer_format(x)
-
-        # Apply transformer
-        x = self.swin_transformer(x, x)
-
+        x = self.swin_transformer.encoder(x)
+        x = self.from_transformer_format(x, d=d, h=h, w=w)
         return x
