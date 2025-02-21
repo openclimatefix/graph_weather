@@ -31,7 +31,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_layers_decoder: int = 2,
         norm_type: str = "LayerNorm",
         use_checkpointing: bool = False,
-        constraint_type: str = "additive",  # "additive", "multiplicative", "softmax" or "none"
+        constraint_type: str = "none",
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -114,13 +114,14 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             use_checkpointing=use_checkpointing,
         )
 
-        # Add physical constraint layer
-        self.constraint = PhysicalConstraintLayer(
-            model=self,
-            grid_shape=self.grid_shape,
-            constraint_type=constraint_type,
-            upsampling_factor=1,
-        )
+        # Add physical constraint layer if constraint_type is not "none"
+        if self.constraint_type != "none":
+            self.constraint = PhysicalConstraintLayer(
+                model=self,
+                grid_shape=self.grid_shape,
+                constraint_type=constraint_type,
+                upsampling_factor=1,
+            )
 
     def _create_grid_mapping(self, unique_lats, unique_lons):
         """Create (row,col) mapping for original node order"""
