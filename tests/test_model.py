@@ -382,14 +382,7 @@ def test_additive_constrained_forecast():
 
     model = GraphWeatherForecaster(
         lat_lons,
-<<<<<<< HEAD
-        # constraint_type='additive',
-        constraint_type="multiplicative",
-        # constraint_type='softmax',
-        apply_constraints=True,
-=======
         constraint_type='additive',
->>>>>>> eb8829f (Use einops for tensor manipulation, update constraint set-up configuration and add UTs for each constraint type)
         feature_dim=2,
         aux_dim=0,
         output_dim=2,
