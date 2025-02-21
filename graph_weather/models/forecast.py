@@ -3,11 +3,12 @@
 from typing import Optional
 
 import torch
+from einops import rearrange, repeat
 from huggingface_hub import PyTorchModelHubMixin
 
-from einops import rearrange, repeat
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
+
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     """Main weather prediction model from the paper with physical constraints"""
@@ -173,7 +174,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
         # Convert graph output to grid format
         batch_size = x.shape[0]
-        
+
         x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
 
         # Apply physical constraints to decoder output

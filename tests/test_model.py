@@ -126,7 +126,7 @@ def test_forecaster():
             lat_lons.append((lat, lon))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
-    features = torch.randn((1, len(lat_lons), 78 + 24))            
+    features = torch.randn((1, len(lat_lons), 78 + 24))
 
     out = model(features)
     assert not torch.isnan(out).any()
@@ -406,7 +406,7 @@ def test_additive_constrained_forecast():
     # Convert model output from graph to grid
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
-    
+
     assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
          f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
 
@@ -427,16 +427,16 @@ def test_multiplicative_constrained_forecast():
 
     inp = torch.randn(1, len(lat_lons), 2)
     output = model(inp)   # output shape is [1, n*n, 2]
-    
+
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
     lr_input_grid = model.graph_to_grid(lr_input)
     lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
-    
+
     # Convert model output from graph to grid
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
-    
+
     assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
          f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
 
@@ -457,15 +457,15 @@ def test_softmax_constrained_forecast():
 
     inp = torch.randn(1, len(lat_lons), 2)
     output = model(inp)   # output shape is [1, n*n, 2]
-    
+
     # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
     lr_input = inp[..., :2]
     lr_input_grid = model.graph_to_grid(lr_input)
     lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
-    
+
     # Convert model output from graph to grid
     output_grid = model.graph_to_grid(output)
     lr_output_avg = output_grid.mean(dim=(-2, -1))
-    
+
     assert torch.allclose(lr_input_avg, lr_output_avg, atol=0.0001), \
-         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"                  
+         f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
