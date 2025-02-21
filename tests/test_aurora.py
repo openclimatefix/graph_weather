@@ -5,6 +5,7 @@ from graph_weather.models.aurora.encoder import Swin3DEncoder
 from graph_weather.models.aurora.decoder import Decoder3D
 from graph_weather.models.aurora.processor import PerceiverProcessor, ProcessorConfig
 
+
 # Fixtures
 @pytest.fixture
 def sample_3d_data():
@@ -14,13 +15,12 @@ def sample_3d_data():
     depth = height = width = 8
     return torch.randn(batch_size, in_channels, depth, height, width)
 
+
 @pytest.fixture
 def swin3d_config():
     """Minimal configuration for Swin3D encoder"""
-    return {
-        "in_channels": 2,
-        "embed_dim": 256  # Match processor's input_dim
-    }
+    return {"in_channels": 2, "embed_dim": 256}  # Match processor's input_dim
+
 
 @pytest.fixture
 def sample_unstructured_data():
@@ -37,32 +37,35 @@ def sample_unstructured_data():
 
     return points, features
 
+
 @pytest.fixture
 def model_config():
     """Basic model configuration for unstructured point data"""
     return {
         "input_features": 2,
         "output_features": 2,
-        "embed_dim": 8,          # Adjusted to avoid overfitting
-        "latent_dim": 16,        # Adjusted
-        "max_points": 50,        # Adjusted
-        "max_seq_len": 128,      # Adjusted
+        "embed_dim": 8,  # Adjusted to avoid overfitting
+        "latent_dim": 16,  # Adjusted
+        "max_points": 50,  # Adjusted
+        "max_seq_len": 128,  # Adjusted
     }
+
 
 @pytest.fixture
 def processor_config():
     """Basic configuration for PerceiverProcessor"""
     return ProcessorConfig(
-        input_dim=256,        # Adjusted as per test needs
-        latent_dim=64,        # Reduced from 512
-        d_model=32,           # Adjusted
-        max_seq_len=256,      # Adjusted
+        input_dim=256,  # Adjusted as per test needs
+        latent_dim=64,  # Reduced from 512
+        d_model=32,  # Adjusted
+        max_seq_len=256,  # Adjusted
         num_self_attention_layers=2,  # Reduced
-        num_cross_attention_layers=1, # Reduced
-        num_attention_heads=4,        # Reduced
+        num_cross_attention_layers=1,  # Reduced
+        num_attention_heads=4,  # Reduced
         hidden_dropout=0.1,
-        attention_dropout=0.1
+        attention_dropout=0.1,
     )
+
 
 @pytest.mark.skip(reason="Waiting for AuroraModel to support use_checkpointing parameter")
 def test_gradient_checkpointing_config():
@@ -85,53 +88,59 @@ def test_gradient_checkpointing_config():
     model_with_checkpoint = AuroraModel(**config_with_checkpoint)
     assert model_with_checkpoint.use_checkpointing
 
+
 def get_test_configs():
     return {
         "swin3d_config": {
             "in_channels": 1,
-            "embed_dim": 256  # Consistent with processor input_dim
+            "embed_dim": 256,  # Consistent with processor input_dim
         },
         "processor_config": ProcessorConfig(
-            input_dim=256,    # Match Swin3D output
-            latent_dim=64,    # Reduced for testing
-            d_model=256,      # Match input_dim
+            input_dim=256,  # Match Swin3D output
+            latent_dim=64,  # Reduced for testing
+            d_model=256,  # Match input_dim
             max_seq_len=256,  # Reduced for testing
             num_self_attention_layers=2,
-            num_attention_heads=8
-        )
+            num_attention_heads=8,
+        ),
     }
+
 
 def test_swin3d_encoder(sample_3d_data, swin3d_config):
     """Test Swin3D encoder with minimal 3D data"""
     encoder = Swin3DEncoder(**swin3d_config)
-    
+
     # Check the input data size
     batch_size = 2
     depth = height = width = 8  # These should match sample_3d_data fixture
-    
+
     # Create input with correct size
     input_data = torch.randn(
-        batch_size, 
+        batch_size,
         swin3d_config["in_channels"],  # This should be 2 based on config
-        depth, 
-        height, 
-        width
+        depth,
+        height,
+        width,
     )
-    
+
     # Process through encoder
     output = encoder(input_data)
-    
+
     # Expected sequence length after flattening spatial dimensions
     expected_seq_len = depth * height * width
-    
+
     # Verify output shape
-    assert output.shape == (batch_size, expected_seq_len, swin3d_config["embed_dim"]), \
-        f"Expected shape {(batch_size, expected_seq_len, swin3d_config['embed_dim'])}, got {output.shape}"
+    assert output.shape == (
+        batch_size,
+        expected_seq_len,
+        swin3d_config["embed_dim"],
+    ), f"Expected shape {(batch_size, expected_seq_len, swin3d_config['embed_dim'])}, got {output.shape}"
     assert not torch.isnan(output).any()
+
 
 def test_decoder3d():
     """Test 3D decoder with minimal dimensions"""
-    batch_size = 2  
+    batch_size = 2
     embed_dim = 32  # Reduced from 96 to 32
     target_shape = (8, 8, 8)  # Reduced from 32 to 8
 
@@ -150,102 +159,99 @@ def test_perceiver_processor_with_config(processor_config):
     """Test Perceiver processor with configuration"""
     batch_size = 2
     seq_len = 16
-    
+
     # Match input dimension with processor's expected input_dim
     input_dim = processor_config.input_dim  # This should be 256 as per ProcessorConfig
-    
+
     processor = PerceiverProcessor(processor_config)
     input_tensor = torch.randn(batch_size, seq_len, input_dim)
-    
+
     output = processor(input_tensor)
-    
+
     # Check output shape
     # Output should be (batch_size, latent_dim) after global average pooling
-    assert output.shape == (batch_size, processor_config.latent_dim), \
-        f"Expected shape {(batch_size, processor_config.latent_dim)}, got {output.shape}"
+    assert output.shape == (
+        batch_size,
+        processor_config.latent_dim,
+    ), f"Expected shape {(batch_size, processor_config.latent_dim)}, got {output.shape}"
     assert not torch.isnan(output).any()
+
 
 def test_perceiver_processor_default_config():
     """Test Perceiver processor with default configuration"""
     batch_size = 2
     seq_len = 16
-    
+
     processor = PerceiverProcessor()  # Uses default config
     input_dim = processor.config.input_dim  # Should be 256 from default config
-    
+
     input_tensor = torch.randn(batch_size, seq_len, input_dim)
     output = processor(input_tensor)
-    
+
     # Check output shape against default config
     assert output.shape == (batch_size, processor.config.latent_dim)
     assert not torch.isnan(output).any()
+
 
 def test_perceiver_processor_4d_input(processor_config):
     """Test Perceiver processor with 4D input"""
     batch_size = 2
     seq_len = 8
     height = width = 4
-    
+
     processor = PerceiverProcessor(processor_config)
-    
+
     # Calculate input features to match processor's input_dim
     # Each position (h,w) needs to have features that sum to input_dim
     features_per_position = processor_config.input_dim // (height * width)
-    
+
     # Create 4D input with correct dimensions for flattening
-    input_tensor = torch.randn(
-        batch_size,
-        seq_len,
-        features_per_position,
-        height * width
-    )
-    
+    input_tensor = torch.randn(batch_size, seq_len, features_per_position, height * width)
+
     # Reshape to (batch, seq, H*W*features)
     input_tensor = input_tensor.reshape(batch_size, seq_len, -1)
-    
+
     output = processor(input_tensor)
-    
+
     # Check output shape
     assert output.shape == (batch_size, processor_config.latent_dim)
     assert not torch.isnan(output).any()
+
 
 def test_processor_config_validation():
     """Test validation of processor configuration parameters"""
     with pytest.raises(ValueError):
         # Test invalid input_dim
         ProcessorConfig(input_dim=-1)
-    
+
     with pytest.raises(ValueError):
         # Test invalid max_seq_len
         ProcessorConfig(max_seq_len=0)
-    
+
     with pytest.raises(ValueError):
         # Test invalid number of attention heads
         ProcessorConfig(num_attention_heads=0)
-    
+
     with pytest.raises(ValueError):
         # Test invalid hidden_dropout
         ProcessorConfig(hidden_dropout=1.5)
 
+
 def test_processor_attention_mask():
     """Test processor with attention mask"""
-    config = ProcessorConfig(
-        input_dim=32,
-        latent_dim=64,
-        max_seq_len=128
-    )
-    
+    config = ProcessorConfig(input_dim=32, latent_dim=64, max_seq_len=128)
+
     processor = PerceiverProcessor(config)
     batch_size = 2
     seq_len = 16
-    
+
     input_tensor = torch.randn(batch_size, seq_len, config.input_dim)
     attention_mask = torch.ones(batch_size, seq_len, dtype=torch.bool)
-    attention_mask[:, seq_len//2:] = False  # Mask out second half of sequence
-    
+    attention_mask[:, seq_len // 2 :] = False  # Mask out second half of sequence
+
     output_masked = processor(input_tensor, attention_mask=attention_mask)
     output_unmasked = processor(input_tensor)
-    
+
     # Outputs should be different when mask is applied
     assert not torch.allclose(output_masked, output_unmasked)
     assert not torch.isnan(output_masked).any()
@@ -253,30 +259,25 @@ def test_processor_attention_mask():
 
 def test_processor_dropout():
     """Test processor dropout behavior"""
-    config = ProcessorConfig(
-        input_dim=32,
-        latent_dim=64,
-        hidden_dropout=0.5,
-        attention_dropout=0.5
-    )
-    
+    config = ProcessorConfig(input_dim=32, latent_dim=64, hidden_dropout=0.5, attention_dropout=0.5)
+
     processor = PerceiverProcessor(config)
     batch_size = 2
     seq_len = 16
-    
+
     input_tensor = torch.randn(batch_size, seq_len, config.input_dim)
-    
+
     processor.train()
     output1 = processor(input_tensor)
     output2 = processor(input_tensor)
-    
+
     # Outputs should be different in training mode due to dropout
     assert not torch.allclose(output1, output2)
-    
+
     processor.eval()
     output1 = processor(input_tensor)
     output2 = processor(input_tensor)
-    
+
     # Outputs should be identical in eval mode
     assert torch.allclose(output1, output2)
 
@@ -286,30 +287,35 @@ def test_full_pipeline_integration(processor_config):
     batch_size = 2
     channels = 1
     size = 8
-    
+
     # Create input data
     input_3d_data = torch.randn(batch_size, channels, size, size, size)
-    
+
     # Initialize components with matching dimensions
     encoder = Swin3DEncoder(
-        in_channels=channels,
-        embed_dim=processor_config.input_dim  # Match processor's input_dim
+        in_channels=channels, embed_dim=processor_config.input_dim  # Match processor's input_dim
     )
-    
+
     processor = PerceiverProcessor(processor_config)
-    
+
     # Process through encoder
     encoded = encoder(input_3d_data)  # Shape: (batch, seq, embed_dim)
-    
+
     # Process through processor
     processed = processor(encoded)  # Shape: (batch, latent_dim)
-    
+
     # Check shapes at each step
-    assert encoded.shape == (batch_size, size * size * size, processor_config.input_dim), \
-        f"Encoder output shape mismatch: {encoded.shape}"
-    assert processed.shape == (batch_size, processor_config.latent_dim), \
-        f"Processor output shape mismatch: {processed.shape}"
+    assert encoded.shape == (
+        batch_size,
+        size * size * size,
+        processor_config.input_dim,
+    ), f"Encoder output shape mismatch: {encoded.shape}"
+    assert processed.shape == (
+        batch_size,
+        processor_config.latent_dim,
+    ), f"Processor output shape mismatch: {processed.shape}"
     assert not torch.isnan(processed).any()
+
 
 def test_aurora_model_with_3d(sample_3d_data, model_config):
     """Test AuroraModel with minimal 3D data"""

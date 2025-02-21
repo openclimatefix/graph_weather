@@ -6,8 +6,7 @@ Swin 3D Transformer Encoder:
 """
 
 import torch.nn as nn
-from einops import rearrange, reduce, repeat
-from einops.layers.torch import Rearrange
+from einops import rearrange
 
 
 class Swin3DEncoder(nn.Module):
@@ -20,27 +19,28 @@ class Swin3DEncoder(nn.Module):
             nhead=8,  # Standard number of heads
             num_encoder_layers=4,
             num_decoder_layers=4,
-            dim_feedforward=embed_dim * 4
+            dim_feedforward=embed_dim * 4,
         )
         self.embed_dim = embed_dim
+
     def forward(self, x):
         # Apply 3D convolution: (batch, channels, depth, height, width) -> (batch, embed_dim, depth, height, width)
         x = self.conv1(x)
-        
+
         # Reshape for layer norm: (batch, embed_dim, depth, height, width) -> (batch, depth*height*width, embed_dim)
         batch_size = x.shape[0]
         x = x.permute(0, 2, 3, 4, 1).contiguous()  # -> (batch, depth, height, width, embed_dim)
         x = x.view(batch_size, -1, self.embed_dim)  # -> (batch, depth*height*width, embed_dim)
-        
+
         # Apply layer normalization
         x = self.norm(x)
-        
+
         # Apply transformer
         # For transformer, input shape should be (seq_len, batch, embed_dim)
         x = x.transpose(0, 1)
         x = self.swin_transformer.encoder(x)
         x = x.transpose(0, 1)  # Back to (batch, seq_len, embed_dim)
-        
+
         return x
 
     def convolution(self, x):
@@ -67,7 +67,7 @@ class Swin3DEncoder(nn.Module):
             torch.Tensor: Normalized tensor.
         """
         # Rearrange for normalization: b c d h w -> b d h w c
-        x = rearrange(x, 'b c d h w -> b d h w c')
+        x = rearrange(x, "b c d h w -> b d h w c")
         # Apply layer normalization on the last dimension (embed_dim)
         x = self.norm(x)
         return x
@@ -84,8 +84,8 @@ class Swin3DEncoder(nn.Module):
         """
         # Flatten spatial dimensions: b d h w c -> b (d h w) c
         x = self.to_transformer_format(x)
-        
+
         # Apply transformer
         x = self.swin_transformer(x, x)
-        
+
         return x
