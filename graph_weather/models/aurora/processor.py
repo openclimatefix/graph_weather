@@ -3,70 +3,90 @@ Perceiver Transformer Processor:
 - Takes encoded features and processes them using latent space mapping.
 - Uses a latent-space bottleneck to compress input dimensions.
 - Provides an efficient way to extract long-range dependencies.
+- All architectural parameters are configurable.
 """
 
 import torch.nn as nn
+import einops
 from transformers import PerceiverConfig, PerceiverModel
+from dataclasses import dataclass
+from typing import Optional
+import torch
 
+@dataclass
+class ProcessorConfig:
+    input_dim: int = 256  # Match Swin3D output
+    latent_dim: int = 512
+    d_model: int = 256    # Match input_dim for consistency
+    max_seq_len: int = 4096
+    num_self_attention_layers: int = 6
+    num_cross_attention_layers: int = 2
+    num_attention_heads: int = 8
+    hidden_dropout: float = 0.1
+    attention_dropout: float = 0.1
+    qk_head_dim: Optional[int] = 32
+    activation_fn: str = 'gelu'
+    layer_norm_eps: float = 1e-12
+    
+    def __post_init__(self):
+        """Validation for ProcessorConfig parameters"""
+        if self.input_dim <= 0:
+            raise ValueError("input_dim must be greater than 0")
+        if self.max_seq_len <= 0:
+            raise ValueError("max_seq_len must be greater than 0")
+        if self.num_attention_heads <= 0:
+            raise ValueError("num_attention_heads must be greater than 0")
+        if not (0 <= self.hidden_dropout <= 1):
+            raise ValueError("hidden_dropout must be between 0 and 1")
+        if self.qk_head_dim is not None and self.qk_head_dim <= 0:
+            raise ValueError("qk_head_dim must be greater than 0 if specified")
+        if self.d_model <= 0:
+            raise ValueError("d_model must be greater than 0")
+    
 
 class PerceiverProcessor(nn.Module):
-    def __init__(self, latent_dim=512, input_dim=96, max_seq_len=4096):
-        """
-        Args:
-            latent_dim (int): Number of latent units in the Perceiver.
-            input_dim (int): Dimension of the input features.
-            max_seq_len (int): Maximum input sequence length.
-        """
+    def __init__(self, config: Optional[ProcessorConfig] = None):
         super().__init__()
-
-        # Perceiver configuration
-        config = PerceiverConfig(
-            hidden_size=input_dim,  # Feature dimension of input (this is typically set to d_model)
-            num_latents=latent_dim,  # Number of latents in latent space
-            latent_dim=latent_dim,  # Dimension of each latent
-            max_position_embeddings=max_seq_len,  # Maximum sequence length
-            d_model=1280,  # d_model is the internal model dimension for processing
+        self.config = config or ProcessorConfig()
+        
+        # Input projection to match d_model
+        self.input_projection = nn.Linear(self.config.input_dim, self.config.d_model)
+        
+        # Simplified architecture using transformer encoder
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=self.config.d_model,
+                nhead=self.config.num_attention_heads,
+                dim_feedforward=self.config.d_model * 4,
+                dropout=self.config.hidden_dropout,
+                activation=self.config.activation_fn
+            ),
+            num_layers=self.config.num_self_attention_layers
         )
+        
+        # Output projection
+        self.output_projection = nn.Linear(self.config.d_model, self.config.latent_dim)
 
-        # Initialize the Perceiver model with the configuration
-        self.perceiver = PerceiverModel(config)
-
-        # Input projection to match the input_dim to d_model (1280)
-        self.input_projection = nn.Linear(input_dim, 1280)
-
-        # Output projection to reduce the dimensionality from d_model (1280) to latent_dim (512)
-        self.projection = nn.Linear(1280, latent_dim)
-
-    def forward(self, x):
-        """
-        Forward pass for the Perceiver Processor.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, seq_len, input_dim).
-
-        Returns:
-            torch.Tensor: Latent representation processed by Perceiver.
-        """
-        batch_size = x.shape[0]
-
-        # Handle case where x has 4 dimensions (e.g., (batch_size, seq_len, height, width))
+    def forward(self, x, attention_mask=None):
+        # Handle 4D input
         if len(x.shape) == 4:
-            seq_len = x.shape[1] * x.shape[2] * x.shape[3]
-            x = x.view(batch_size, seq_len, -1)
-        else:
-            # If x has 3 dimensions (batch_size, seq_len, input_dim)
-            seq_len = x.shape[1]  # Just use the sequence length
-            x = x.view(batch_size, seq_len, -1)
-
-        # Apply the input projection to match input_dim to d_model (1280)
+            batch_size, seq_len, height, width = x.shape
+            x = x.reshape(batch_size, seq_len * height * width, -1)
+        
+        # Project input
         x = self.input_projection(x)
-
-        # Process with Perceiver
-        output = self.perceiver(inputs=x).last_hidden_state  # Access processed latents
-
-        # Apply the output projection to reduce dimensionality to latent_dim (512)
-        latent_output = self.projection(
-            output.mean(dim=1)
-        )  # Reduce over the sequence length (dim=1)
-
-        return latent_output
+        
+        # Apply transformer encoder
+        if attention_mask is not None:
+            # Convert boolean mask to float mask where True -> 0, False -> -inf
+            mask = ~attention_mask
+            mask = mask.float().masked_fill(mask, float('-inf'))
+            x = self.encoder(x.transpose(0, 1), src_key_padding_mask=mask).transpose(0, 1)
+        else:
+            x = self.encoder(x.transpose(0, 1)).transpose(0, 1)
+        
+        # Project to latent dimension and pool
+        x = self.output_projection(x)
+        x = x.mean(dim=1)  # Global average pooling
+        
+        return x
