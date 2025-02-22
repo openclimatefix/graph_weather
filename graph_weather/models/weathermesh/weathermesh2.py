@@ -1,9 +1,11 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
+
+from typing import List, Tuple
+
 import torch
 import torch.nn as nn
-from typing import List, Tuple
 
 from graph_weather.models.weathermesh.decoder import WeatherMeshDecoder
 from graph_weather.models.weathermesh.encoder import WeatherMeshEncoder

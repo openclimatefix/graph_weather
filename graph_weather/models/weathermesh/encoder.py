@@ -1,10 +1,11 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
+
+import einops
 import torch
 import torch.nn as nn
 from natten import NeighborhoodAttention3D
-import einops
 
 from graph_weather.models.weathermesh.layers import ConvDownBlock
 
@@ -58,7 +59,7 @@ class WeatherMeshEncoder(nn.Module):
         )
 
         # Final projection to latent space
-        self.to_latent = nn.Conv3d(hidden_dim * (2 ** num_conv_blocks), latent_dim, kernel_size=1)
+        self.to_latent = nn.Conv3d(hidden_dim * (2**num_conv_blocks), latent_dim, kernel_size=1)
 
     def forward(self, surface: torch.Tensor, pressure: torch.Tensor) -> torch.Tensor:
         # Process surface data
@@ -70,13 +71,15 @@ class WeatherMeshEncoder(nn.Module):
             pressure = block(pressure)
 
         # Combine features
-        features = torch.cat([pressure, surface.unsqueeze(2)], dim=2) # B C D H W currently, want it to be B D H W C
+        features = torch.cat(
+            [pressure, surface.unsqueeze(2)], dim=2
+        )  # B C D H W currently, want it to be B D H W C
 
         # Transform to latent space
         latent = self.to_latent(features)
 
         # Reshape to get the shapes
-        latent = einops.rearrange(latent, 'B C D H W -> B D H W C')
+        latent = einops.rearrange(latent, "B C D H W -> B D H W C")
         # Apply transformer layers
         for transformer in self.transformer_layers:
             latent = transformer(latent)

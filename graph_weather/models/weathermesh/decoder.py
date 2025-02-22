@@ -1,9 +1,11 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
+
 import torch.nn as nn
-from graph_weather.models.weathermesh.layers import ConvUpBlock
 from natten import NeighborhoodAttention3D
+
+from graph_weather.models.weathermesh.layers import ConvUpBlock
 
 
 class WeatherMeshDecoder(nn.Module):
@@ -20,9 +22,7 @@ class WeatherMeshDecoder(nn.Module):
         # Transformer layers for initial decoding
         self.transformer_layers = nn.ModuleList(
             [
-                NeighborhoodAttention3D(
-                    dim=latent_dim, num_heads=8, kernel_size=(5, 7, 7)
-                )
+                NeighborhoodAttention3D(dim=latent_dim, num_heads=8, kernel_size=(5, 7, 7))
                 for _ in range(3)
             ]
         )

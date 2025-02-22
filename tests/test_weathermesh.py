@@ -12,7 +12,7 @@ def test_weathermesh_encoder():
         input_channels_3d=1,
         latent_dim=8,
         n_pressure_levels=25,
-        kernel_size=(3,3,3),
+        kernel_size=(3, 3, 3),
         num_heads=2,
         hidden_dim=16,
         num_conv_blocks=3,
@@ -55,4 +55,3 @@ def test_weathermesh():
     out = model(x_2d, x_3d, forecast_steps=1)
     assert out[0].shape == (1, 8, 32, 64)
     assert out[1].shape == (1, 4, 25, 32, 64)
-
