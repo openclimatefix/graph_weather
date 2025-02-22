@@ -15,8 +15,7 @@ import torch
 from torch_geometric.data import Data, HeteroData
 
 # from torch_geometric.transforms import TwoHop
-from graph_weather.models.gencast.graph import (grid_mesh_connectivity,
-                                                icosahedral_mesh, model_utils)
+from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
 
 # Some configs from graphcast:
 _spatial_features_kwargs = dict(

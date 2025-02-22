@@ -1,7 +1,12 @@
 """Models"""
 
-from .fengwu_ghr.layers import (ImageMetaModel, LoRAModule, MetaModel,
-                                WrapperImageModel, WrapperMetaModel)
+from .fengwu_ghr.layers import (
+    ImageMetaModel,
+    LoRAModule,
+    MetaModel,
+    WrapperImageModel,
+    WrapperMetaModel,
+)
 from .layers.assimilator_decoder import AssimilatorDecoder
 from .layers.assimilator_encoder import AssimilatorEncoder
 from .layers.decoder import Decoder

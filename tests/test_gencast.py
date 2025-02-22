@@ -4,11 +4,9 @@ import torch
 from packaging.version import Version
 from torch_geometric.transforms import TwoHop
 
-from graph_weather.models.gencast import (Denoiser, GraphBuilder, Sampler,
-                                          WeightedMSELoss)
+from graph_weather.models.gencast import Denoiser, GraphBuilder, Sampler, WeightedMSELoss
 from graph_weather.models.gencast.layers.modules import FourierEmbedding
-from graph_weather.models.gencast.utils.noise import (generate_isotropic_noise,
-                                                      sample_noise_level)
+from graph_weather.models.gencast.utils.noise import generate_isotropic_noise, sample_noise_level
 
 
 def test_gencast_noise():

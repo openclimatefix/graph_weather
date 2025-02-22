@@ -16,8 +16,7 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 from graph_weather.data import const
-from graph_weather.models.gencast.utils.noise import (generate_isotropic_noise,
-                                                      sample_noise_level)
+from graph_weather.models.gencast.utils.noise import generate_isotropic_noise, sample_noise_level
 
 
 class GenCastDataset(Dataset):
