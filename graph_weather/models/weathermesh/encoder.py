@@ -1,33 +1,83 @@
+"""
+Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
+"""
 import torch
+import torch.nn as nn
+from natten import NeighborhoodAttention3D
+import einops
+
+from graph_weather.models.weathermesh.layers import ConvDownBlock
 
 
-class Pressure3dConvNet(torch.nn.Module):
+class WeatherMeshEncoder(nn.Module):
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: tuple[int, int],
-        stride: int,
-        padding: int,
+        input_channels_2d: int,
+        input_channels_3d: int,
+        latent_dim: int,
+        n_pressure_levels: int,
+        num_conv_blocks: int = 3,
+        hidden_dim: int = 256,
+        kernel_size: tuple = (5, 7, 7),
+        num_heads: int = 8,
+        num_transformer_layers: int = 3,
     ):
-        super(Pressure3dConvNet, self).__init__()
-        self.conv = torch.nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+        super().__init__()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.conv(x)
+        # Surface (2D) path
+        self.surface_path = nn.ModuleList(
+            [
+                ConvDownBlock(
+                    input_channels_2d if i == 0 else hidden_dim * (2**i),
+                    hidden_dim * (2 ** (i + 1)),
+                )
+                for i in range(num_conv_blocks)
+            ]
+        )
 
+        # Pressure levels (3D) path
+        self.pressure_path = nn.ModuleList(
+            [
+                ConvDownBlock(
+                    input_channels_3d if i == 0 else hidden_dim * (2**i),
+                    hidden_dim * (2 ** (i + 1)),
+                    is_3d=True,
+                )
+                for i in range(num_conv_blocks)
+            ]
+        )
 
-class Surface2dConvNet(torch.nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: tuple[int, int],
-        stride: int,
-        padding: int,
-    ):
-        super(Surface2dConvNet, self).__init__()
-        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
+        # Transformer layers for final encoding
+        self.transformer_layers = nn.ModuleList(
+            [
+                NeighborhoodAttention3D(
+                    dim=latent_dim, kernel_size=kernel_size, num_heads=num_heads
+                )
+                for _ in range(num_transformer_layers)
+            ]
+        )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.conv(x)
+        # Final projection to latent space
+        self.to_latent = nn.Conv3d(hidden_dim * (2 ** num_conv_blocks), latent_dim, kernel_size=1)
+
+    def forward(self, surface: torch.Tensor, pressure: torch.Tensor) -> torch.Tensor:
+        # Process surface data
+        for block in self.surface_path:
+            surface = block(surface)
+
+        # Process pressure level data
+        for block in self.pressure_path:
+            pressure = block(pressure)
+
+        # Combine features
+        features = torch.cat([pressure, surface.unsqueeze(2)], dim=2) # B C D H W currently, want it to be B D H W C
+
+        # Transform to latent space
+        latent = self.to_latent(features)
+
+        # Reshape to get the shapes
+        latent = einops.rearrange(latent, 'B C D H W -> B D H W C')
+        # Apply transformer layers
+        for transformer in self.transformer_layers:
+            latent = transformer(latent)
+        return latent

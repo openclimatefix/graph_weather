@@ -1,6 +1,13 @@
+"""
+Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
+"""
 import torch
+import torch.nn as nn
+from typing import List, Tuple
 
-from graph_weather.models.weathermesh.encoders import Pressure3dConvNet, Surface2dConvNet
+from graph_weather.models.weathermesh.decoder import WeatherMeshDecoder
+from graph_weather.models.weathermesh.encoder import WeatherMeshEncoder
+from graph_weather.models.weathermesh.processor import WeatherMeshProcessor
 
 """
 Notes on implementation
@@ -16,15 +23,36 @@ Fork version of pytorch checkpoint library called matepoint to implement offload
 """
 
 
-class WeatherMesh(torch.nn.Module):
-    def __init__(self):
-        super(WeatherMesh, self).__init__()
-        self.pressure_encoder = Pressure3dConvNet(1, 64, (3, 3, 3), 1, 1)
-        self.surface_encoder = Surface2dConvNet(1, 64, (3, 3), 1, 1)
+class WeatherMesh(nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        processors: List[nn.Module],
+        decoder: nn.Module,
+        timesteps: List[int],
+    ):
+        super().__init__()
+        self.encoder = WeatherMeshEncoder(
+            input_channels_2d=8, input_channels_3d=4, latent_dim=256, n_pressure_levels=25
+        )
+        self.processors = nn.ModuleList(WeatherMeshProcessor(latent_dim=256) for _ in timesteps)
+        self.decoder = WeatherMeshDecoder(
+            latent_dim=256, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
+        )
+        self.timesteps = timesteps
 
-    def forward(self, pressure: torch.Tensor, surface: torch.Tensor) -> torch.Tensor:
-        pressure = self.pressure_encoder(pressure)
-        surface = self.surface_encoder(surface)
-        # TODO Add the transformers layers here as the processor
-        # TODO Add the decoders here as the output, which are inverse of the encoders
-        return pressure, surface
+    def forward(
+        self, x_2d: torch.Tensor, x_3d: torch.Tensor, forecast_steps: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # Encode input
+        latent = self.encoder(x_2d, x_3d)
+
+        # Apply processors for each forecast step
+        for _ in range(forecast_steps):
+            for processor in self.processors:
+                latent = processor(latent)
+
+        # Decode output
+        surface_out, pressure_out = self.decoder(latent)
+
+        return surface_out, pressure_out
