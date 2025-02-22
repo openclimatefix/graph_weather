@@ -28,7 +28,7 @@ class NormalizedMSELoss(torch.nn.Module):
             device: checks for device whether it supports gpu or not
             normalize: option for normalize
         """
-        # TODO Rescale by nominal static air density at each pressure level
+        # TODO Rescale by nominal static air density at each pressure level, could be 1/pressure level or something similar
         super().__init__()
         self.feature_variance = torch.tensor(feature_variance)
         assert not torch.isnan(self.feature_variance).any()
@@ -55,15 +55,19 @@ class NormalizedMSELoss(torch.nn.Module):
         """
         self.feature_variance = self.feature_variance.to(pred.device)
         self.weights = self.weights.to(pred.device)
+        print(pred.shape)
+        print(target.shape)
+        print(self.weights.shape)
 
         out = (pred - target) ** 2
-
+        print(out.shape)
         if self.normalize:
             out = out / self.feature_variance
 
         assert not torch.isnan(out).any()
         # Mean of the physical variables
         out = out.mean(-1)
+        print(out.shape)
         # Weight by the latitude, as that changes, so does the size of the pixel
         out = out * self.weights.expand_as(out)
         assert not torch.isnan(out).any()
