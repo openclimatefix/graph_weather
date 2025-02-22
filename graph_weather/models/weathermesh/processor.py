@@ -2,8 +2,26 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
+from dataclasses import dataclass
+
+import dacite
 import torch.nn as nn
 from natten import NeighborhoodAttention3D
+
+
+@dataclass
+class WeatherMeshProcessorConfig:
+    latent_dim: int
+    n_layers: int
+    kernel: tuple
+    num_heads: int
+
+    @staticmethod
+    def from_json(json: dict) -> "WeatherMeshProcessor":
+        return dacite.from_dict(data_class=WeatherMeshProcessorConfig, data=json)
+
+    def to_json(self) -> dict:
+        return dacite.asdict(self)
 
 
 class WeatherMeshProcessor(nn.Module):

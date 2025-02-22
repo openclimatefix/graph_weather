@@ -3,7 +3,8 @@
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
-from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
+from graph_weather.models import (AssimilatorDecoder, AssimilatorEncoder,
+                                  Processor)
 
 
 class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):

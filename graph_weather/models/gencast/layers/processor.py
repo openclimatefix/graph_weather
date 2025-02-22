@@ -7,10 +7,13 @@ The processor:
 
 import torch
 
-from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBlock, FourierEmbedding
+from graph_weather.models.gencast.layers.modules import (MLP,
+                                                         CondTransformerBlock,
+                                                         FourierEmbedding)
 
 try:
-    from graph_weather.models.gencast.layers.experimental import SparseTransformer
+    from graph_weather.models.gencast.layers.experimental import \
+        SparseTransformer
 
     has_dgl = True
 except ImportError:

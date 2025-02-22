@@ -2,12 +2,35 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
+from dataclasses import dataclass
+
+import dacite
 import einops
 import torch
 import torch.nn as nn
 from natten import NeighborhoodAttention3D
 
 from graph_weather.models.weathermesh.layers import ConvDownBlock
+
+
+@dataclass
+class WeatherMeshEncoderConfig:
+    input_channels_2d: int
+    input_channels_3d: int
+    latent_dim: int
+    n_pressure_levels: int
+    num_conv_blocks: int
+    hidden_dim: int
+    kernel_size: tuple
+    num_heads: int
+    num_transformer_layers: int
+
+    @staticmethod
+    def from_json(json: dict) -> "WeatherMeshEncoder":
+        return dacite.from_dict(data_class=WeatherMeshEncoderConfig, data=json)
+
+    def to_json(self) -> dict:
+        return dacite.asdict(self)
 
 
 class WeatherMeshEncoder(nn.Module):

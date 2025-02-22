@@ -2,11 +2,34 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
+from dataclasses import dataclass
+
+import dacite
+import einops
 import torch
 import torch.nn as nn
 from natten import NeighborhoodAttention3D
 
 from graph_weather.models.weathermesh.layers import ConvUpBlock
+
+
+@dataclass
+class WeatherMeshDecoderConfig:
+    latent_dim: int
+    output_channels_2d: int
+    output_channels_3d: int
+    n_conv_blocks: int
+    hidden_dim: int
+    kernel_size: tuple
+    num_heads: int
+    num_transformer_layers: int
+
+    @staticmethod
+    def from_json(json: dict) -> "WeatherMeshDecoder":
+        return dacite.from_dict(data_class=WeatherMeshDecoderConfig, data=json)
+
+    def to_json(self) -> dict:
+        return dacite.asdict(self)
 
 
 class WeatherMeshDecoder(nn.Module):
@@ -66,6 +89,7 @@ class WeatherMeshDecoder(nn.Module):
         for transformer in self.transformer_layers:
             latent = transformer(latent)
 
+        latent = einops.rearrange(latent, "B D H W C -> B C D H W")
         # Split features
         features = self.split(latent)
         pressure_features = features[:, :, :-1]

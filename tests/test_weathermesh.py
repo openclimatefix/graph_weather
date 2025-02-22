@@ -1,9 +1,10 @@
+import numpy as np
+import torch
+
 from graph_weather.models.weathermesh.decoder import WeatherMeshDecoder
 from graph_weather.models.weathermesh.encoder import WeatherMeshEncoder
 from graph_weather.models.weathermesh.processor import WeatherMeshProcessor
 from graph_weather.models.weathermesh.weathermesh2 import WeatherMesh
-import torch
-import numpy as np
 
 
 def test_weathermesh_encoder():

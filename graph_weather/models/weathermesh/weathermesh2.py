@@ -2,14 +2,19 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
+from dataclasses import dataclass
 from typing import List, Tuple
 
+import dacite
 import torch
 import torch.nn as nn
 
-from graph_weather.models.weathermesh.decoder import WeatherMeshDecoder
-from graph_weather.models.weathermesh.encoder import WeatherMeshEncoder
-from graph_weather.models.weathermesh.processor import WeatherMeshProcessor
+from graph_weather.models.weathermesh.decoder import (WeatherMeshDecoder,
+                                                      WeatherMeshDecoderConfig)
+from graph_weather.models.weathermesh.encoder import (WeatherMeshEncoder,
+                                                      WeatherMeshEncoderConfig)
+from graph_weather.models.weathermesh.processor import (
+    WeatherMeshProcessor, WeatherMeshProcessorConfig)
 
 """
 Notes on implementation
@@ -23,6 +28,34 @@ Training: distributed shampoo: https://github.com/facebookresearch/optimizers/bl
 Fork version of pytorch checkpoint library called matepoint to implement offloading to RAM
 
 """
+
+
+@dataclass
+class WeatherMeshConfig:
+    encoder: WeatherMeshEncoderConfig
+    processors: List[WeatherMeshProcessorConfig]
+    decoder: WeatherMeshDecoderConfig
+    timesteps: List[int]
+    surface_channels: int
+    pressure_channels: int
+    pressure_levels: int
+    latent_dim: int
+    encoder_num_conv_blocks: int
+    encoder_num_transformer_layers: int
+    encoder_hidden_dim: int
+    decoder_num_conv_blocks: int
+    decoder_num_transformer_layers: int
+    decoder_hidden_dim: int
+    processor_num_layers: int
+    kernel: tuple
+    num_heads: int
+
+    @staticmethod
+    def from_json(json: dict) -> "WeatherMesh":
+        return dacite.from_dict(data_class=WeatherMeshConfig, data=json)
+
+    def to_json(self) -> dict:
+        return dacite.asdict(self)
 
 
 class WeatherMesh(nn.Module):

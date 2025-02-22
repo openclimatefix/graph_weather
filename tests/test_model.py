@@ -3,17 +3,10 @@ import numpy as np
 import torch
 
 from graph_weather import GraphWeatherAssimilator, GraphWeatherForecaster
-from graph_weather.models import (
-    AssimilatorDecoder,
-    AssimilatorEncoder,
-    Decoder,
-    Encoder,
-    Processor,
-    ImageMetaModel,
-    MetaModel,
-    WrapperImageModel,
-    WrapperMetaModel,
-)
+from graph_weather.models import (AssimilatorDecoder, AssimilatorEncoder,
+                                  Decoder, Encoder, ImageMetaModel, MetaModel,
+                                  Processor, WrapperImageModel,
+                                  WrapperMetaModel)
 from graph_weather.models.losses import NormalizedMSELoss
 
 
