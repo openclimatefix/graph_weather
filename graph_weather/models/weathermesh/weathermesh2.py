@@ -1,7 +1,6 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
-
 from typing import List, Tuple
 
 import torch
@@ -28,19 +27,60 @@ Fork version of pytorch checkpoint library called matepoint to implement offload
 class WeatherMesh(nn.Module):
     def __init__(
         self,
-        encoder: nn.Module,
-        processors: List[nn.Module],
-        decoder: nn.Module,
+        encoder: nn.Module | None,
+        processors: List[nn.Module] | None,
+        decoder: nn.Module | None,
         timesteps: List[int],
+        surface_channels: int | None,
+        pressure_channels: int | None,
+        pressure_levels: int | None,
+        latent_dim: int | None,
+        encoder_num_conv_blocks: int | None,
+        encoder_num_transformer_layers: int | None,
+        encoder_hidden_dim: int | None,
+        decoder_num_conv_blocks: int | None,
+        decoder_num_transformer_layers: int | None,
+        decoder_hidden_dim: int | None,
+        processor_num_layers: int | None,
+        kernel: tuple | None,
+        num_heads: int | None,
     ):
         super().__init__()
-        self.encoder = WeatherMeshEncoder(
-            input_channels_2d=8, input_channels_3d=4, latent_dim=256, n_pressure_levels=25
-        )
-        self.processors = nn.ModuleList(WeatherMeshProcessor(latent_dim=256) for _ in timesteps)
-        self.decoder = WeatherMeshDecoder(
-            latent_dim=256, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
-        )
+        assert len(processors) == len(timesteps)
+        if encoder is not None:
+            self.encoder = encoder
+        else:
+            self.encoder = WeatherMeshEncoder(
+                input_channels_2d=surface_channels,
+                input_channels_3d=pressure_channels,
+                latent_dim=latent_dim,
+                n_pressure_levels=pressure_levels,
+                num_conv_blocks=encoder_num_conv_blocks,
+                hidden_dim=encoder_hidden_dim,
+                kernel_size=kernel,
+                num_heads=num_heads,
+                num_transformer_layers=encoder_num_transformer_layers,
+            )
+        if processors is not None:
+            self.processors = processors
+        else:
+            self.processors = [
+                WeatherMeshProcessor(latent_dim=latent_dim, n_layers=processor_num_layers, kernel=kernel, num_heads=num_heads)
+                for _ in range(len(timesteps))
+            ]
+        if decoder is not None:
+            self.decoder = decoder
+        else:
+            self.decoder = WeatherMeshDecoder(
+                latent_dim=latent_dim,
+                output_channels_2d=surface_channels,
+                output_channels_3d=pressure_channels,
+                n_conv_blocks=decoder_num_conv_blocks,
+                hidden_dim=decoder_hidden_dim,
+                kernel_size=kernel,
+                num_heads=num_heads,
+                num_transformer_layers=decoder_num_transformer_layers,
+            )
         self.timesteps = timesteps
 
     def forward(

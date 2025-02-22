@@ -25,17 +25,17 @@ def test_weathermesh_encoder():
 
 
 def test_weathermesh_processor():
-    processor = WeatherMeshProcessor(latent_dim=256)
-    x = torch.randn(1, 256, 25, 32, 64)
+    processor = WeatherMeshProcessor(latent_dim=16)
+    x = torch.randn(1, 26, 32, 64, 16)
     out = processor(x)
-    assert out.shape == (1, 256, 25, 32, 64)
+    assert out.shape == (1, 26, 32, 64, 16)
 
 
 def test_weathermesh_decoder():
     decoder = WeatherMeshDecoder(
-        latent_dim=256, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
+        latent_dim=16, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
     )
-    x = torch.randn(1, 256, 25, 32, 64)
+    x = torch.randn(1, 26, 32, 64, 16)
     out = decoder(x)
     assert out[0].shape == (1, 8, 32, 64)
     assert out[1].shape == (1, 4, 25, 32, 64)
@@ -43,11 +43,11 @@ def test_weathermesh_decoder():
 
 def test_weathermesh():
     encoder = WeatherMeshEncoder(
-        input_channels_2d=8, input_channels_3d=4, latent_dim=256, n_pressure_levels=25
+        input_channels_2d=8, input_channels_3d=4, latent_dim=16, n_pressure_levels=25
     )
-    processors = [WeatherMeshProcessor(latent_dim=256) for _ in range(10)]
+    processors = [WeatherMeshProcessor(latent_dim=16) for _ in range(10)]
     decoder = WeatherMeshDecoder(
-        latent_dim=256, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
+        latent_dim=16, output_channels_2d=8, output_channels_3d=4, n_pressure_levels=25
     )
     model = WeatherMesh(encoder, processors, decoder, timesteps=[1, 6])
     x_2d = torch.randn(1, 8, 32, 64)

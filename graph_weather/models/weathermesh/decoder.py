@@ -1,7 +1,7 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
-
+import torch
 import torch.nn as nn
 from natten import NeighborhoodAttention3D
 
@@ -16,14 +16,19 @@ class WeatherMeshDecoder(nn.Module):
         output_channels_3d,
         n_conv_blocks=3,
         hidden_dim=256,
+        kernel_size: tuple = (5, 7, 7),
+        num_heads: int = 8,
+        num_transformer_layers: int = 3,
     ):
         super().__init__()
 
         # Transformer layers for initial decoding
         self.transformer_layers = nn.ModuleList(
             [
-                NeighborhoodAttention3D(dim=latent_dim, num_heads=8, kernel_size=(5, 7, 7))
-                for _ in range(3)
+                NeighborhoodAttention3D(
+                    dim=latent_dim, num_heads=num_heads, kernel_size=kernel_size
+                )
+                for _ in range(num_transformer_layers)
             ]
         )
 
@@ -53,7 +58,7 @@ class WeatherMeshDecoder(nn.Module):
             ]
         )
 
-    def forward(self, latent):
+    def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # Needs to be (B,D,H,W,C) with Batch, Depth (vertical levels), Height, Width, Channels
 
         # Apply transformer layers
