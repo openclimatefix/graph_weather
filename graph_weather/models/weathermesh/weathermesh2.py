@@ -1,6 +1,7 @@
 """
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
+
 from typing import List, Tuple
 
 import torch
@@ -65,7 +66,12 @@ class WeatherMesh(nn.Module):
             self.processors = processors
         else:
             self.processors = [
-                WeatherMeshProcessor(latent_dim=latent_dim, n_layers=processor_num_layers, kernel=kernel, num_heads=num_heads)
+                WeatherMeshProcessor(
+                    latent_dim=latent_dim,
+                    n_layers=processor_num_layers,
+                    kernel=kernel,
+                    num_heads=num_heads,
+                )
                 for _ in range(len(timesteps))
             ]
         if decoder is not None:
