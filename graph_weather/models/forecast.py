@@ -141,6 +141,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
     def graph_to_grid(self, graph_tensor):
         """
+
         Convert graph tensor to grid using spatial mapping:
         [B, N, C] -> [B, C, H, W]
         """
@@ -172,9 +173,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features[..., : self.feature_dim])
         
-        # Here, assume decoder output x is a 4D tensor, e.g. [B, output_dim, H, W] where H and W are grid dimensions.
+        # Here, assume decoder output x is a 4D tensor, 
+        # e.g. [B, output_dim, H, W] where H and W are grid dimensions.
         # Convert graph output to grid format
-        batch_size = x.shape[0]
 
         # Apply physical constraints to decoder output
         if self.constraint_type != "none":

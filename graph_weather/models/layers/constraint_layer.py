@@ -1,9 +1,17 @@
+"""Module for physical constraint layers used in graph weather models.
+
+This module implements several constraints on a network’s intermediate outputs,
+ensuring physical consistency with an input at a lower resolution.
+
+"""
+
 import torch
 import torch.nn as nn
 
 
 class PhysicalConstraintLayer(nn.Module):
     """
+
     This module implements several constraint types on the network’s intermediate outputs ỹ,
     given the corresponding low-resolution input x. The following equations are implemented
     (with all operations acting per patch – here, a patch is the full grid of H×W pixels):
@@ -25,6 +33,19 @@ class PhysicalConstraintLayer(nn.Module):
     def __init__(
         self, model, grid_shape, upsampling_factor, constraint_type="none", exp_factor=1.0
     ):
+        """Initialize the PhysicalConstraintLayer.
+
+        Args:
+            model (nn.Module): The model containing the helper methods
+                'graph_to_grid' and 'grid_to_graph'.
+            grid_shape (tuple): Expected spatial dimensions (H, W) of the
+                high-resolution grid.
+            upsampling_factor (int): Factor by which the low-resolution grid is upsampled.
+            constraint_type (str, optional): The constraint to apply. Options are
+                'additive', 'multiplicative', or 'softmax'. Defaults to "none".
+            exp_factor (float, optional): Exponent factor for the softmax constraint.
+                Defaults to 1.0.
+        """
         super().__init__()
         self.model = model
         self.constraint_type = constraint_type
@@ -34,10 +55,19 @@ class PhysicalConstraintLayer(nn.Module):
         self.pool = nn.AvgPool2d(kernel_size=upsampling_factor)
 
     def forward(self, hr_graph, lr_graph):
-        """
+        """Apply the selected physical constraint.
+
+        Processes the high-resolution output and low-resolution input by converting
+        between graph and grid formats as needed, and then applying the specified constraint.
+
         Args:
-            hr_output: High-resolution model output [B, C, H, W]
-            lr_input: Low-resolution input [B, C, h, w]
+            hr_graph (torch.Tensor): High-resolution model output in either graph (3D)
+                or grid (4D) format.
+            lr_graph (torch.Tensor): Low-resolution input in the corresponding 
+                graph or grid format.
+
+        Returns:
+            torch.Tensor: The adjusted output in graph format.
         """
         # Check if inputs are in graph (3D) or grid (4D) formats.
         if hr_graph.dim() == 3:
@@ -68,13 +98,13 @@ class PhysicalConstraintLayer(nn.Module):
         return self.model.grid_to_graph(result)
 
     def additive_constraint(self, hr, lr):
-        """
-        Enforces local conservation using an additive correction:
+        """Enforces local conservation using an additive correction:
         y = ỹ + ( x - avg(ỹ) )
         where avg(ỹ) is computed per patch (via an average-pooling layer).
 
-        For the additive constraint we follow the paper’s formulation using a Kronecker product to expand
-        the discrepancy between the low-resolution field and the average of the high-resolution output.
+        For the additive constraint we follow the paper’s formulation using a Kronecker
+        product to expand the discrepancy between the low-resolution field and the
+        average of the high-resolution output.
 
         hr: high-resolution tensor [B, C, H_hr, W_hr]
         lr: low-resolution tensor [B, C, h_lr, w_lr]
@@ -97,7 +127,18 @@ class PhysicalConstraintLayer(nn.Module):
         return self.model.graph_to_grid(adjusted_graph)
 
     def multiplicative_constraint(self, hr, lr):
-        """Enforces conservation using multiplicative correction in graph space"""
+        """Enforce conservation using a multiplicative correction in graph space.
+
+        The correction is applied by scaling the high-resolution output by a ratio computed
+        from the low-resolution input and the average of the high-resolution output.
+
+        Args:
+            hr (torch.Tensor): High-resolution tensor in grid format [B, C, H_hr, W_hr].
+            lr (torch.Tensor): Low-resolution tensor in grid format [B, C, h_lr, w_lr].
+
+        Returns:
+            torch.Tensor: Adjusted high-resolution tensor in grid format.
+        """
         # Convert grids to graph format using model's mapping
         hr_graph = self.model.grid_to_graph(hr)
         lr_graph = self.model.grid_to_graph(lr)
@@ -115,6 +156,19 @@ class PhysicalConstraintLayer(nn.Module):
         return self.model.graph_to_grid(adjusted_graph)
 
     def softmax_constraint(self, y, lr):
+        """Apply a softmax-based constraint correction.
+
+        The softmax correction scales the exponentiated high-resolution output so that the
+        sum over spatial blocks matches the low-resolution reference.
+
+        Args:
+            y (torch.Tensor): High-resolution tensor in grid format [B, C, H, W].
+            lr (torch.Tensor): Low-resolution tensor in grid format [B, C, h, w].
+
+        Returns:
+            torch.Tensor: Adjusted high-resolution tensor in grid format after applying
+            the softmax constraint.
+        """
         # Apply the exponential function
         y = torch.exp(self.exp_factor * y)
 
@@ -127,7 +181,8 @@ class PhysicalConstraintLayer(nn.Module):
 
         # Use device of lr for kron expansion:
         device = lr.device
-        expansion = torch.ones((self.upsampling_factor, self.upsampling_factor), device=device)
+        expansion = torch.ones((self.upsampling_factor, self.upsampling_factor),
+            device=device)
 
         # Expand the low-resolution ratio and correct the y values so that the block sum matches lr.
         out = y * torch.kron(ratio, expansion)
