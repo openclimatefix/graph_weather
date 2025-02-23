@@ -23,8 +23,11 @@ channels = ["nvidia", {channel = "pytorch", priority = -1}]
 cuda = "12"
 
 [tool.pixi.feature.cuda.target.linux-64.dependencies]
-cuda-version = "12.*"
-pytorch-gpu = {version = ">=2.4", channel = "conda-forge"}
+cuda-version = "12.4"
+pytorch-gpu = {version = "2.4.1", channel = "conda-forge"}
+
+#[tool.pixi.feature.cuda.target.linux-64.pypi-dependencies]
+#natten = {url = "https://shi-labs.com/natten/wheels/cu124/torch2.4.0/natten-0.17.4%2Btorch240cu124-cp312-cp312-linux_x86_64.whl"}
 
 [tool.pixi.feature.mlx]
 # MLX is only available on macOS >=13.5 (>14.0 is recommended)
@@ -32,13 +35,19 @@ system-requirements = {macos = "13.5"}
 
 [tool.pixi.feature.mlx.target.osx-arm64.dependencies]
 mlx = {version = "*", channel = "conda-forge"}
-pytorch-cpu = {version = ">=2.4.0", channel = "conda-forge"}
+pytorch-cpu = {version = "2.4.1", channel = "conda-forge"}
+
+#[tool.pixi.feature.mlx.target.osx-arm64.pypi-dependencies]
+#natten = "*"
 
 [tool.pixi.feature.cpu]
 platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.cpu.dependencies]
-pytorch-cpu = {version = ">=2.4.0", channel = "conda-forge"}
+pytorch-cpu = {version = "2.4.1", channel = "conda-forge"}
+
+#[tool.pixi.feature.cpu.pypi-dependencies]
+#natten = "*"
 
 [tool.pixi.dependencies]
 python = "3.12.*"
@@ -67,6 +76,7 @@ trimesh = "*"
 pysolar = "*"
 rtree = "*"
 pixi-pycharm = ">=0.0.8,<0.0.9"
+uv = ">=0.6.2,<0.7"
 
 
 [tool.pixi.environments]
@@ -76,6 +86,8 @@ mlx = ["mlx"]
 
 [tool.pixi.tasks]
 install = "pip install --editable ."
+installnat = "pip install natten"
+installnatcuda = "pip install natten==0.17.4+torch240cu124 -f https://shi-labs.com/natten/wheels/"
 test = "pytest"
 format = "ruff format"
 

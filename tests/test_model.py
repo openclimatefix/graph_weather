@@ -8,9 +8,9 @@ from graph_weather.models import (
     AssimilatorEncoder,
     Decoder,
     Encoder,
-    Processor,
     ImageMetaModel,
     MetaModel,
+    Processor,
     WrapperImageModel,
     WrapperMetaModel,
 )
@@ -159,6 +159,26 @@ def test_forecaster_and_loss():
     for lat in range(-90, 90, 5):
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    model = GraphWeatherForecaster(lat_lons)
+    # Add in auxiliary features
+    features = torch.randn((2, len(lat_lons), 78 + 24))
+
+    out = model(features)
+    loss = criterion(out, torch.rand(out.shape))
+    assert not torch.isnan(loss)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    loss.backward()
+
+
+def test_forecaster_and_loss_irregular():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    # Jitter the lat and lons
+    lat_lons = [(lat + np.random.random(), lon + np.random.random()) for lat, lon in lat_lons]
     criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
     model = GraphWeatherForecaster(lat_lons)
     # Add in auxiliary features
