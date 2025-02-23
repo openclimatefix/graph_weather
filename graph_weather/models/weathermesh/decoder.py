@@ -84,7 +84,6 @@ class WeatherMeshDecoder(nn.Module):
 
     def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # Needs to be (B,D,H,W,C) with Batch, Depth (vertical levels), Height, Width, Channels
-
         # Apply transformer layers
         for transformer in self.transformer_layers:
             latent = transformer(latent)
@@ -94,11 +93,9 @@ class WeatherMeshDecoder(nn.Module):
         features = self.split(latent)
         pressure_features = features[:, :, :-1]
         surface_features = features[:, :, -1:]
-
         # Decode pressure levels
         for block in self.pressure_path:
             pressure_features = block(pressure_features)
-
         # Decode surface features
         surface_features = surface_features.squeeze(2)
         for block in self.surface_path:

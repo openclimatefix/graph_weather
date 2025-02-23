@@ -65,6 +65,7 @@ class WeatherMeshEncoder(nn.Module):
                 ConvDownBlock(
                     input_channels_3d if i == 0 else hidden_dim * (2**i),
                     hidden_dim * (2 ** (i + 1)),
+                    stride=(1,2,2), # Want to keep depth the same size
                     is_3d=True,
                 )
                 for i in range(num_conv_blocks)
@@ -92,7 +93,6 @@ class WeatherMeshEncoder(nn.Module):
         # Process pressure level data
         for block in self.pressure_path:
             pressure = block(pressure)
-
         # Combine features
         features = torch.cat(
             [pressure, surface.unsqueeze(2)], dim=2

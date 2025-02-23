@@ -27,6 +27,8 @@ Training: distributed shampoo: https://github.com/facebookresearch/optimizers/bl
 
 Fork version of pytorch checkpoint library called matepoint to implement offloading to RAM
 
+TODO: Add bump attention and rotary embeddings for the circular padding and position encoding
+
 """
 
 
@@ -58,6 +60,11 @@ class WeatherMeshConfig:
         return dacite.asdict(self)
 
 
+@dataclass
+class WeatherMeshOutput:
+    surface: torch.Tensor
+    pressure: torch.Tensor
+
 class WeatherMesh(nn.Module):
     def __init__(
         self,
@@ -80,7 +87,6 @@ class WeatherMesh(nn.Module):
         num_heads: int | None,
     ):
         super().__init__()
-        assert len(processors) == len(timesteps)
         if encoder is not None:
             self.encoder = encoder
         else:
@@ -96,6 +102,7 @@ class WeatherMesh(nn.Module):
                 num_transformer_layers=encoder_num_transformer_layers,
             )
         if processors is not None:
+            assert len(processors) == len(timesteps), "Number of processors must match number of timesteps"
             self.processors = processors
         else:
             self.processors = [
@@ -124,7 +131,7 @@ class WeatherMesh(nn.Module):
 
     def forward(
         self, x_2d: torch.Tensor, x_3d: torch.Tensor, forecast_steps: int
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> WeatherMeshOutput:
         # Encode input
         latent = self.encoder(x_2d, x_3d)
 
@@ -136,4 +143,4 @@ class WeatherMesh(nn.Module):
         # Decode output
         surface_out, pressure_out = self.decoder(latent)
 
-        return surface_out, pressure_out
+        return WeatherMeshOutput(surface=surface_out, pressure=pressure_out)
