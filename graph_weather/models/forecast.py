@@ -171,15 +171,14 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features[..., : self.feature_dim])
+        
         # Here, assume decoder output x is a 4D tensor, e.g. [B, output_dim, H, W] where H and W are grid dimensions.
-
         # Convert graph output to grid format
         batch_size = x.shape[0]
 
-        x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
-
         # Apply physical constraints to decoder output
         if self.constraint_type != "none":
+            x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             # Extract the low-res reference from the input.
             # (Original features has shape [B, num_nodes, feature_dim])
             lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
