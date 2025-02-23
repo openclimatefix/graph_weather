@@ -172,8 +172,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features[..., : self.feature_dim])
-        
-        # Here, assume decoder output x is a 4D tensor, 
+
+        # Here, assume decoder output x is a 4D tensor,
         # e.g. [B, output_dim, H, W] where H and W are grid dimensions.
         # Convert graph output to grid format
 

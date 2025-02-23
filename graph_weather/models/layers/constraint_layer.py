@@ -63,7 +63,7 @@ class PhysicalConstraintLayer(nn.Module):
         Args:
             hr_graph (torch.Tensor): High-resolution model output in either graph (3D)
                 or grid (4D) format.
-            lr_graph (torch.Tensor): Low-resolution input in the corresponding 
+            lr_graph (torch.Tensor): Low-resolution input in the corresponding
                 graph or grid format.
 
         Returns:
@@ -181,8 +181,7 @@ class PhysicalConstraintLayer(nn.Module):
 
         # Use device of lr for kron expansion:
         device = lr.device
-        expansion = torch.ones((self.upsampling_factor, self.upsampling_factor),
-            device=device)
+        expansion = torch.ones((self.upsampling_factor, self.upsampling_factor), device=device)
 
         # Expand the low-resolution ratio and correct the y values so that the block sum matches lr.
         out = y * torch.kron(ratio, expansion)

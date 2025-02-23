@@ -191,6 +191,7 @@ def test_forecaster_and_loss_irregular():
     assert not torch.isnan(out).any()
     loss.backward()
 
+
 def test_assimilator_model_grad_checkpoint():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
