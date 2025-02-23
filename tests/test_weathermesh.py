@@ -42,7 +42,7 @@ def test_weathermesh_decoder():
         kernel_size=(3, 3, 3),
         num_heads=2,
         hidden_dim=8,
-        num_transformer_layers=1
+        num_transformer_layers=1,
     )
     x = torch.randn(1, 6, 32, 64, 8)
     out = decoder(x)
