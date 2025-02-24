@@ -1,3 +1,3 @@
 """Dataloaders and data processing utilities"""
 
-from .nnja_ai import AMSUDataset, collate_fn
+from .nnja_ai import SensorDataset, collate_fn
