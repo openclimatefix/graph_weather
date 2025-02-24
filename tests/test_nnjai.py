@@ -1,6 +1,5 @@
 """
 Unit tests for the `SensorDataset` class, mocking the `DataCatalog` to simulate sensor data loading and validate dataset behavior. 
-
 The tests ensure correct handling of data types, shapes, and batch processing for various sensor types.
 """
 
@@ -35,32 +34,32 @@ def mock_datacatalog():
     with patch("graph_weather.data.nnja_ai.DataCatalog") as mock:
         # Create a mock catalog
         mock_catalog = MagicMock()
-        
+
         # Create a mock dataset with direct DataFrame return
         mock_dataset = MagicMock()
         mock_dataset.load_manifest = MagicMock()
         mock_dataset.sel = MagicMock(return_value=mock_dataset)  # Return self to chain calls
-        
+
         def create_mock_df(engine="pandas"):
             # Get the sensor type from the mock dataset
             sensor_vars = get_sensor_variables(mock_dataset.sensor_type)
-            
+
             # Create DataFrame with required columns
             df = pd.DataFrame({
                 "OBS_TIMESTAMP": pd.date_range(start=datetime(2021, 1, 1), periods=100, freq='H'),
                 "LAT": np.full(100, 45.0),
                 "LON": np.full(100, -120.0)
             })
-            
+
             # Add sensor-specific variables
             for var in sensor_vars:
                 df[var] = np.full(100, 250.0)
-            
+
             return df
-        
+
         # Set up the mock to return our DataFrame
         mock_dataset.load_dataset = create_mock_df
-        
+
         # Configure the catalog to return our mock dataset
         def get_mock_dataset(self, name):
             # Set the sensor type based on the requested dataset name
@@ -69,10 +68,10 @@ def mock_datacatalog():
                 if config["name"] == name
             )
             return mock_dataset
-        
+
         mock_catalog.__getitem__ = get_mock_dataset  # Fix: Explicitly define the method with `self`
         mock.return_value = mock_catalog
-        
+
         yield mock
 
 # Test configurations
@@ -109,7 +108,7 @@ def test_sensor_dataset(mock_datacatalog, sensor_config):
     """Test the SensorDataset class for different sensor types."""
     time = datetime(2021, 1, 1, 0, 0)
     primary_descriptors = ["OBS_TIMESTAMP", "LAT", "LON"]
-    
+
     dataset = SensorDataset(
         dataset_name=sensor_config["name"],
         time=time,
