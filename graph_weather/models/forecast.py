@@ -3,13 +3,15 @@
 from typing import Optional
 
 import torch
+from einops import rearrange, repeat
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
+from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
-    """Main weather prediction model from the paper"""
+    """Main weather prediction model from the paper with physical constraints"""
 
     def __init__(
         self,
@@ -29,6 +31,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         hidden_layers_decoder: int = 2,
         norm_type: str = "LayerNorm",
         use_checkpointing: bool = False,
+        constraint_type: str = "none",
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -53,11 +56,24 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Use gradient checkpointing to reduce model memory
+            constraint_type: Type of constraint to apply for physical constraints
+                one of 'additive', 'multiplicative', 'softmax', or 'none'
         """
         super().__init__()
         self.feature_dim = feature_dim
+        self.constraint_type = constraint_type
         if output_dim is None:
             output_dim = self.feature_dim
+        self.output_dim = output_dim
+
+        # Compute the geographical grid shape from lat_lons.
+        unique_lats = sorted(set(lat for lat, _ in lat_lons))
+        unique_lons = sorted(set(lon for _, lon in lat_lons))
+        self.grid_shape = (len(unique_lats), len(unique_lons))  # (H, W)
+
+        # Store original node order and create grid mapping
+        self.original_lat_lons = lat_lons.copy()
+        self._create_grid_mapping(unique_lats, unique_lons)
 
         self.encoder = Encoder(
             lat_lons=lat_lons,
@@ -98,6 +114,51 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             use_checkpointing=use_checkpointing,
         )
 
+        # Add physical constraint layer if constraint_type is not "none"
+        if self.constraint_type != "none":
+            self.constraint = PhysicalConstraintLayer(
+                model=self,
+                grid_shape=self.grid_shape,
+                constraint_type=constraint_type,
+                upsampling_factor=1,
+            )
+
+    def _create_grid_mapping(self, unique_lats, unique_lons):
+        """Create (row,col) mapping for original node order"""
+        self.node_to_grid = []
+        for lat, lon in self.original_lat_lons:
+            row = int(
+                (lat - min(unique_lats))
+                / (max(unique_lats) - min(unique_lats))
+                * (len(unique_lats) - 1)
+            )
+            col = int(
+                (lon - min(unique_lons))
+                / (max(unique_lons) - min(unique_lons))
+                * (len(unique_lons) - 1)
+            )
+            self.node_to_grid.append((row, col))
+
+    def graph_to_grid(self, graph_tensor):
+        """
+
+        Convert graph tensor to grid using spatial mapping:
+        [B, N, C] -> [B, C, H, W]
+        """
+        batch_size, num_nodes, features = graph_tensor.shape
+        grid = torch.zeros(batch_size, features, *self.grid_shape)
+        for node_idx, (row, col) in enumerate(self.node_to_grid):
+            grid[..., row, col] = graph_tensor[..., node_idx, :]
+        return grid
+
+    def grid_to_graph(self, grid_tensor):
+        """Convert grid to graph tensor: [B, C, H, W] -> [B, N, C]"""
+        batch_size, features, H, W = grid_tensor.shape
+        graph = torch.zeros(batch_size, H * W, features)
+        for node_idx, (row, col) in enumerate(self.node_to_grid):
+            graph[..., node_idx, :] = grid_tensor[..., row, col]
+        return graph
+
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Compute the new state of the forecast
@@ -111,4 +172,22 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features[..., : self.feature_dim])
+
+        # Here, assume decoder output x is a 4D tensor,
+        # e.g. [B, output_dim, H, W] where H and W are grid dimensions.
+        # Convert graph output to grid format
+
+        # Apply physical constraints to decoder output
+        if self.constraint_type != "none":
+            x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
+            # Extract the low-res reference from the input.
+            # (Original features has shape [B, num_nodes, feature_dim])
+            lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
+            # Convert from node format to grid format using the grid_shape computed in __init__
+            # From [B, num_nodes, feature_dim] to [B, feature_dim, H, W]
+            lr = rearrange(lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
+            if lr.size(1) != x.size(1):
+                repeat_factor = x.size(1) // lr.size(1)
+                lr = repeat(lr, "b c h w -> b (r c) h w", r=repeat_factor)
+            x = self.constraint(x, lr)
         return x
