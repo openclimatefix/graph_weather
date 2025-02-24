@@ -1,5 +1,5 @@
 """
-A custom PyTorch Dataset implementation for various sensors like AMSU, ATMS, MHS, IASI, CrIS 
+A custom PyTorch Dataset implementation for various sensors like AMSU, ATMS, MHS, IASI, CrIS
 
 The dataset is loaded via the nnja library's `DataCatalog` and filtered for specific times and
 variables. Each data point consists of a timestamp, latitude, longitude, and associated metadata.
@@ -20,7 +20,9 @@ except ImportError:
 class SensorDataset(Dataset):
     """A custom PyTorch Dataset for handling various sensor data."""
 
-    def __init__(self, dataset_name, time, primary_descriptors, additional_variables, sensor_type="AMSU"):
+    def __init__(
+        self, dataset_name, time, primary_descriptors, additional_variables, sensor_type="AMSU"
+    ):
         """Initialize the dataset loader for various sensors.
 
         Args:
@@ -43,23 +45,30 @@ class SensorDataset(Dataset):
 
         if self.sensor_type == "AMSU":
             self.dataset = self.dataset.sel(
-                time=self.time, variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 16)]
+                time=self.time,
+                variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 16)],
             )
         elif self.sensor_type == "ATMS":
             self.dataset = self.dataset.sel(
-                time=self.time, variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 23)]
+                time=self.time,
+                variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 23)],
             )
         elif self.sensor_type == "MHS":
             self.dataset = self.dataset.sel(
-                time=self.time, variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 6)]
+                time=self.time,
+                variables=self.primary_descriptors + [f"TMBR_000{i:02d}" for i in range(1, 6)],
             )
         elif self.sensor_type == "IASI":
             self.dataset = self.dataset.sel(
-                time=self.time, variables=self.primary_descriptors + ["SCRA_" + str(i).zfill(5) for i in range(1, 617)]
+                time=self.time,
+                variables=self.primary_descriptors
+                + ["SCRA_" + str(i).zfill(5) for i in range(1, 617)],
             )
         elif self.sensor_type == "CrIS":
             self.dataset = self.dataset.sel(
-                time=self.time, variables=self.primary_descriptors + [f"SRAD01_{str(i).zfill(5)}" for i in range(1, 432)]
+                time=self.time,
+                variables=self.primary_descriptors
+                + [f"SRAD01_{str(i).zfill(5)}" for i in range(1, 432)],
             )
         else:
             raise ValueError(f"Unsupported sensor type: {self.sensor_type}")
