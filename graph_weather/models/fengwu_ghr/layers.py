@@ -2,10 +2,8 @@ import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
 from torch import nn
-from torch_geometric.nn import knn
+from torch_geometric.nn.pool import knn
 from torch_geometric.utils import scatter
-
-# helpers
 
 
 def pair(t):
@@ -163,7 +161,7 @@ class ImageMetaModel(nn.Module):
         dim_head,
         res=False,
         scale_factor=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         # TODO this can probably be done better
@@ -275,7 +273,7 @@ class MetaModel(nn.Module):
         heads,
         mlp_dim,
         channels,
-        dim_head=64
+        dim_head=64,
     ):
         super().__init__()
         self.i_h, self.i_w = pair(image_size)

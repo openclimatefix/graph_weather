@@ -75,7 +75,6 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
 
 class Era5Dataset(Dataset):
-
     def __init__(self, xarr, time_step=1, transform=None):
         assert time_step > 0, "Time step must be greater than 0."
         ds = np.asarray(xarr.to_array())
@@ -94,7 +93,6 @@ class Era5Dataset(Dataset):
 
 
 if __name__ == "__main__":
-
     ckpt_path = Path("./checkpoints")
     ckpt_name = "best.pt"
     patch_size = 4
@@ -124,7 +122,7 @@ if __name__ == "__main__":
     )
 
     reanalysis = reanalysis[variables]
-    print(f"size: {reanalysis.nbytes / (1024 ** 3)} GiB")
+    print(f"size: {reanalysis.nbytes / (1024**3)} GiB")
 
     lat_lons = np.array(
         np.meshgrid(

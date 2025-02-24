@@ -132,7 +132,6 @@ class Era5Dataset(Dataset):
 
 
 if __name__ == "__main__":
-
     ckpt_path = Path("./checkpoints")
     patch_size = 4
     grid_step = 20
@@ -157,7 +156,7 @@ if __name__ == "__main__":
     )
 
     reanalysis = reanalysis[variables]
-    print(f"size: {reanalysis.nbytes / (1024 ** 3)} GiB")
+    print(f"size: {reanalysis.nbytes / (1024**3)} GiB")
 
     lat_lons = np.array(
         np.meshgrid(

@@ -8,9 +8,9 @@ from graph_weather.models import (
     AssimilatorEncoder,
     Decoder,
     Encoder,
-    Processor,
     ImageMetaModel,
     MetaModel,
+    Processor,
     WrapperImageModel,
     WrapperMetaModel,
 )
@@ -172,6 +172,26 @@ def test_forecaster_and_loss():
     loss.backward()
 
 
+def test_forecaster_and_loss_irregular():
+    lat_lons = []
+    for lat in range(-90, 90, 5):
+        for lon in range(0, 360, 5):
+            lat_lons.append((lat, lon))
+    # Jitter the lat and lons
+    lat_lons = [(lat + np.random.random(), lon + np.random.random()) for lat, lon in lat_lons]
+    criterion = NormalizedMSELoss(lat_lons=lat_lons, feature_variance=torch.randn((78,)))
+    model = GraphWeatherForecaster(lat_lons)
+    # Add in auxiliary features
+    features = torch.randn((2, len(lat_lons), 78 + 24))
+
+    out = model(features)
+    loss = criterion(out, torch.rand(out.shape))
+    assert not torch.isnan(loss)
+    assert not torch.isnan(out).any()
+    assert not torch.isnan(out).any()
+    loss.backward()
+
+
 def test_assimilator_model_grad_checkpoint():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
@@ -229,9 +249,26 @@ def test_normalized_loss():
     )
     loss = criterion(out, target)
 
+    # Compute the set of unique latitudes from lat_lons.
+    unique_lats = sorted(set(lat for lat, _ in lat_lons))
+    num_nodes = len(lat_lons)
+    num_unique = len(unique_lats)  # expect 36
+
+    # Determine how many nodes (grid cells) correspond to each unique latitude.
+    num_lon = num_nodes // num_unique  # expect 72
+
+    # Build a weight vector from the cosine of each unique latitude.
+    weight_vector = torch.tensor(
+        [np.cos(lat * np.pi / 180.0) for lat in unique_lats], dtype=torch.float
+    )
+
+    # Tile (repeat) the weight vector for each longitude (column) to form a full weight grid for all nodes.
+    weight_grid = weight_vector.unsqueeze(1).expand(num_unique, num_lon).reshape(-1)
+    expected_loss = weight_grid.mean()  # since every error term becomes 1, loss = mean(weight_grid)
+
+    # Compare the loss from the criterion with the expected_loss.
     assert not torch.isnan(loss)
-    # Since feature_variance = out**2 and target = 0, we expect loss = weights
-    assert torch.isclose(loss, criterion.weights.expand_as(out.mean(-1)).mean())
+    assert torch.isclose(loss, expected_loss, atol=1e-4)
 
 
 def test_image_meta_model():
@@ -332,3 +369,96 @@ def test_wrapper_meta_model():
 
     assert not torch.isnan(out).any()
     assert out.size() == big_features.size()
+
+
+def test_additive_constrained_forecast():
+    grid_side = 2  # grid_size = n for n x n grid
+    lats = np.linspace(-90, 90, grid_side)
+    lons = np.linspace(-90, 90, grid_side)
+    lat_lons = [(lat, lon) for lat in lats for lon in lons]
+
+    model = GraphWeatherForecaster(
+        lat_lons,
+        constraint_type="additive",
+        feature_dim=2,
+        aux_dim=0,
+        output_dim=2,
+    )
+
+    inp = torch.randn(1, len(lat_lons), 2)
+    output = model(inp)  # output shape is [1, n*n, 2]
+
+    # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
+    lr_input = inp[..., :2]
+    lr_input_grid = model.graph_to_grid(lr_input)
+    lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
+
+    # Convert model output from graph to grid
+    output_grid = model.graph_to_grid(output)
+    lr_output_avg = output_grid.mean(dim=(-2, -1))
+
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+
+
+def test_multiplicative_constrained_forecast():
+    grid_side = 2  # grid_size = n for n x n grid
+    lats = np.linspace(-90, 90, grid_side)
+    lons = np.linspace(-90, 90, grid_side)
+    lat_lons = [(lat, lon) for lat in lats for lon in lons]
+
+    model = GraphWeatherForecaster(
+        lat_lons,
+        constraint_type="multiplicative",
+        feature_dim=2,
+        aux_dim=0,
+        output_dim=2,
+    )
+
+    inp = torch.randn(1, len(lat_lons), 2)
+    output = model(inp)  # output shape is [1, n*n, 2]
+
+    # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
+    lr_input = inp[..., :2]
+    lr_input_grid = model.graph_to_grid(lr_input)
+    lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
+
+    # Convert model output from graph to grid
+    output_grid = model.graph_to_grid(output)
+    lr_output_avg = output_grid.mean(dim=(-2, -1))
+
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"
+
+
+def test_softmax_constrained_forecast():
+    grid_side = 2  # grid_size = n for n x n grid
+    lats = np.linspace(-90, 90, grid_side)
+    lons = np.linspace(-90, 90, grid_side)
+    lat_lons = [(lat, lon) for lat in lats for lon in lons]
+
+    model = GraphWeatherForecaster(
+        lat_lons,
+        constraint_type="softmax",
+        feature_dim=2,
+        aux_dim=0,
+        output_dim=2,
+    )
+
+    inp = torch.randn(1, len(lat_lons), 2)
+    output = model(inp)  # output shape is [1, n*n, 2]
+
+    # Convert low-res input graph to grid format: we expect a grid of shape (2,2)
+    lr_input = inp[..., :2]
+    lr_input_grid = model.graph_to_grid(lr_input)
+    lr_input_avg = lr_input_grid.mean(dim=(-2, -1))
+
+    # Convert model output from graph to grid
+    output_grid = model.graph_to_grid(output)
+    lr_output_avg = output_grid.mean(dim=(-2, -1))
+
+    assert torch.allclose(
+        lr_input_avg, lr_output_avg, atol=0.0001
+    ), f"Conservation failed: {lr_input_avg} vs {lr_output_avg}"

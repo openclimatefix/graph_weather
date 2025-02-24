@@ -59,7 +59,6 @@ class IFSAnalisysDataset(Dataset):
         return len(self.data["time"])
 
     def __getitem__(self, idx):
-
         start = self.data.isel(time=idx)
         end = self.data.isel(time=idx + 1)
 

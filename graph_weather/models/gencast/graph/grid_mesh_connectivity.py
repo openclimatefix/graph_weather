@@ -47,7 +47,7 @@ def radius_query_indices(
     grid_latitude: np.ndarray,
     grid_longitude: np.ndarray,
     mesh: icosahedral_mesh.TriangularMesh,
-    radius: float
+    radius: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Returns mesh-grid edge indices for radius query.
 
