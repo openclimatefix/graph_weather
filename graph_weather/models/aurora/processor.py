@@ -27,8 +27,19 @@ class ProcessorConfig:
     qk_head_dim: Optional[int] = 32
     activation_fn: str = "gelu"
     layer_norm_eps: float = 1e-12
-
-
+    
+    def __post_init__(self):
+        # Validate parameters
+        if self.input_dim <= 0:
+            raise ValueError("input_dim must be positive")
+        if self.max_seq_len <= 0:
+            raise ValueError("max_seq_len must be positive")
+        if self.num_attention_heads <= 0:
+            raise ValueError("num_attention_heads must be positive")
+        if not 0 <= self.hidden_dropout <= 1:
+            raise ValueError("hidden_dropout must be between 0 and 1")
+        if not 0 <= self.attention_dropout <= 1:
+            raise ValueError("attention_dropout must be between 0 and 1")
 class PerceiverProcessor(nn.Module):
     def __init__(self, config: Optional[ProcessorConfig] = None):
         super().__init__()

@@ -208,7 +208,7 @@ class AuroraModel(nn.Module):
         self.decoder = PointDecoder(embed_dim, output_features)
 
         # Add gradient checkpointing
-        self.use_checkpointing = True
+        self.use_checkpointing = use_checkPointing
 
         # Initialize weights properly
         self._init_weights()

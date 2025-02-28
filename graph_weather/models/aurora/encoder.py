@@ -25,11 +25,13 @@ class Swin3DEncoder(nn.Module):
         self.embed_dim = embed_dim
 
         # Define rearrangement patterns using einops
-        self.to_transformer_format = Rearrange("b d h w c -> (d h w) b c")
-        self.from_transformer_format = Rearrange("(d h w) b c -> b d h w c", d=None, h=None, w=None)
+        self.to_transformer_format = Rearrange('b d h w c -> (d h w) b c')
+        self.from_transformer_format = Rearrange('(d h w) b c -> b d h w c', d=None, h=None, w=None)
 
+
+    # To use rearrange function directly instead of the Rearrange layer
     def forward(self, x):
-        # 3D convolution with einops rearrangement
+    # 3D convolution with einops rearrangement
         x = self.conv1(x)
 
         # Rearrange for normalization using einops
@@ -40,12 +42,15 @@ class Swin3DEncoder(nn.Module):
         d, h, w = x.shape[1:4]
 
         # Transform to sequence format for transformer
-        x = self.to_transformer_format(x)
+        x = rearrange(x, 'b d h w c -> (d h w) b c')
         x = self.swin_transformer.encoder(x)
 
         # Restore original spatial structure
-        x = self.from_transformer_format(x, d=d, h=h, w=w)
-
+        x = rearrange(x, '(d h w) b c -> b (d h w) c', d=d, h=h, w=w)
+        
+        # Reshape to the expected output format (batch, seq_len, embed_dim)
+        x = rearrange(x, 'b (d h w) c -> b (d h w) c', d=d, h=h, w=w)
+        
         return x
 
     def convolution(self, x):
