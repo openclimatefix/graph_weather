@@ -526,14 +526,14 @@ def test_temporal_sequence(model_config):
     """Test processing of temporal sequences"""
     model = AuroraModel(**model_config)
     model.eval()  # Ensure model is in evaluation mode
-    
+
     num_points = 45
     num_timesteps = 3
 
     # Generate consistent points across timesteps
     points = torch.rand(1, num_points, 2)
     points[..., 0] = points[..., 0] * 360 - 180  # longitude
-    points[..., 1] = points[..., 1] * 180 - 90   # latitude
+    points[..., 1] = points[..., 1] * 180 - 90  # latitude
 
     # Generate temporally coherent features with even smaller variations
     base_features = torch.randn(1, num_points, model_config["input_features"])
@@ -559,11 +559,12 @@ def test_temporal_sequence(model_config):
     # Check if the maximum difference exceeds the threshold
     max_diff = torch.abs(temporal_diff).max().item()
     max_allowed_diff = 2.0
-    
+
     assert max_diff < max_allowed_diff, (
         f"Temporal differences exceed {max_allowed_diff}, got {max_diff}. "
         f"This suggests the model is too sensitive to small input changes."
     )
+
 
 def test_missing_data(model_config):
     """Test handling of missing data points"""
