@@ -44,8 +44,7 @@ def model_config():
     return {
         "input_features": 2,
         "output_features": 2,
-        "embed_dim": 8,  # Adjusted to avoid overfitting
-        "latent_dim": 16,  # Adjusted
+        "latent_dim": 8,  # Adjusted
         "max_points": 50,  # Adjusted
         "max_seq_len": 128,  # Adjusted
     }
@@ -74,8 +73,7 @@ def test_gradient_checkpointing_config():
     config_no_checkpoint = {
         "input_features": 2,
         "output_features": 2,
-        "embed_dim": 8,
-        "latent_dim": 16,
+        "latent_dim": 8,
         "max_points": 50,
         "max_seq_len": 128,
         "use_checkpointing": False,

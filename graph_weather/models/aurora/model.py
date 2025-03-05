@@ -188,12 +188,11 @@ class AuroraModel(nn.Module):
         self,
         input_features: int,
         output_features: int,
-        embed_dim: int = 256,
         latent_dim: int = 256,
         num_layers: int = 4,
         max_points: int = 10000,
         max_seq_len: int = 1024,
-        use_checkPointing: bool = False,
+        use_checkpointing: bool = False,
     ):
         super().__init__()
 
@@ -203,12 +202,12 @@ class AuroraModel(nn.Module):
         self.output_features = output_features
 
         # Model components
-        self.encoder = PointEncoder(input_features, embed_dim, max_seq_len)
-        self.processor = PointCloudProcessor(embed_dim, num_layers)
-        self.decoder = PointDecoder(embed_dim, output_features)
+        self.encoder = PointEncoder(input_features, latent_dim, max_seq_len)
+        self.processor = PointCloudProcessor(latent_dim, num_layers)
+        self.decoder = PointDecoder(latent_dim, output_features)
 
         # Add gradient checkpointing
-        self.use_checkpointing = use_checkPointing
+        self.use_checkpointing = use_checkpointing
 
         # Initialize weights properly
         self._init_weights()
