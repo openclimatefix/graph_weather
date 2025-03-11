@@ -1,11 +1,5 @@
-import os
-import random
-import logging
-import torch
-import xarray as xr
-from pathlib import Path
 import numpy as np
-from ..config import AtmoRepConfig
+
 
 class FieldNormalizer:
     def __init__(self, config, stats_dir, create_stats=False):
@@ -28,29 +22,29 @@ class FieldNormalizer:
                     self.stats[field] = loaded
                 else:
                     raise Exception(f"Stats file for {field} not found")
-                    
+
     def calculate_stats(self):
         """
         Placeholder implementation to calculate statistics.
         In practice, you would compute the mean and std from your dataset.
-        
+
         Returns:
             dict: A dictionary of statistics for each field.
         """
-        self.stats = {field: {'mean': 0.0, 'std': 1.0} for field in self.config.input_fields}
+        self.stats = {field: {"mean": 0.0, "std": 1.0} for field in self.config.input_fields}
         # Optionally, save the computed stats to disk:
         for field, stat in self.stats.items():
             np.save(self.stats_dir / f"{field}_stats.npy", stat)
         return self.stats
-    
+
     def normalize(self, data, field):
         """
         Normalize the data for a given field.
-        
+
         Args:
             data (torch.Tensor or np.array): Data to be normalized.
             field (str): Field name.
-            
+
         Returns:
             Normalized data.
         """
@@ -59,18 +53,18 @@ class FieldNormalizer:
         stats = self.stats.get(field, None)
         if stats is None:
             raise Exception(f"Stats for field {field} not available")
-        mean = stats['mean']
-        std = stats['std']
+        mean = stats["mean"]
+        std = stats["std"]
         return (data - mean) / std
-    
+
     def denormalize(self, data, field):
         """
         Denormalize the data for a given field.
-        
+
         Args:
             data (torch.Tensor or np.array): Data to be denormalized.
             field (str): Field name.
-            
+
         Returns:
             Denormalized data.
         """
@@ -79,6 +73,6 @@ class FieldNormalizer:
         stats = self.stats.get(field, None)
         if stats is None:
             raise Exception(f"Stats for field {field} not available")
-        mean = stats['mean']
-        std = stats['std']
+        mean = stats["mean"]
+        std = stats["std"]
         return data * std + mean

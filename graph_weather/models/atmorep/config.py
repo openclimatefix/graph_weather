@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Optional, Union
+from typing import Dict, List, Tuple
 
-@dataclass(frozen=True)  
+
+@dataclass(frozen=True)
 class AtmoRepConfig:
     """
-    Configuration class for the Atmospheric Representation Model (AtmoRep). 
-    This class holds the various configurations related to data, model dimensions, 
+    Configuration class for the Atmospheric Representation Model (AtmoRep).
+    This class holds the various configurations related to data, model dimensions,
     training, and hierarchical sampling.
 
     Attributes:
@@ -34,20 +35,22 @@ class AtmoRepConfig:
     """
 
     # Data config
-    input_fields: List[str] = field(default_factory=lambda: ['t2m', 'u10', 'v10', 'z500', 'msl'])
+    input_fields: List[str] = field(default_factory=lambda: ["t2m", "u10", "v10", "z500", "msl"])
     spatial_dims: Tuple[int, int] = (128, 256)  # latitude, longitude grid size
     patch_size: int = 16  # spatial patch size for vision transformer
     time_steps: int = 24  # number of time steps to consider
     mask_ratio: float = 0.75  # ratio of tokens to mask during training
-    
+
     # Model dimensions config
-    model_dims: Dict[str, int] = field(default_factory=lambda: {
-        'encoder': 768,
-        'decoder': 768,
-        'projection': 256,
-        'embedding': 512
-    })
-    
+    model_dims: Dict[str, int] = field(
+        default_factory=lambda: {
+            "encoder": 768,
+            "decoder": 768,
+            "projection": 256,
+            "embedding": 512,
+        }
+    )
+
     # MultiFormer config
     hidden_dim: int = 768
     num_heads: int = 12
@@ -55,41 +58,44 @@ class AtmoRepConfig:
     mlp_ratio: int = 4
     dropout: float = 0.1
     attention_dropout: float = 0.1
-    
+
     # Training config
     batch_size: int = 16
     learning_rate: float = 1e-4
     weight_decay: float = 0.05
     epochs: int = 100
     warmup_epochs: int = 10
-    
+
     # Hierarchical sampling config
     year_month_samples: int = 4  # number of year-month pairs to sample per batch
     time_slices_per_ym: int = 6  # number of time slices per year-month pair
     neighborhoods_per_slice: Tuple[int, int] = (2, 8)  # min and max neighborhoods per time slice
     neighborhood_size: Tuple[int, int] = (32, 32)  # spatial size of a neighborhood
-    
+
     # Ensemble prediction config
     num_ensemble_members: int = 5
-    
+
     def __post_init__(self):
         """
-            Post-initialization method to validate configuration parameters after object creation.
-            Ensures that fields like `spatial_dims`, `batch_size`, `learning_rate`, and `input_fields` are valid.
-        """      
+        Post-initialization method to validate configuration parameters after object creation.
+        Ensures that fields like `spatial_dims`, `batch_size`, `learning_rate`, and `input_fields` are valid.
+        """
         # Validate spatial_dims: must be a tuple of two positive integers
-        if not (isinstance(self.spatial_dims, tuple) and len(self.spatial_dims) == 2 and 
-                all(isinstance(dim, int) and dim > 0 for dim in self.spatial_dims)):
+        if not (
+            isinstance(self.spatial_dims, tuple)
+            and len(self.spatial_dims) == 2
+            and all(isinstance(dim, int) and dim > 0 for dim in self.spatial_dims)
+        ):
             raise ValueError("spatial_dims must be a tuple of two positive integers")
-        
+
         # Validate batch_size: must be a positive integer
         if not (isinstance(self.batch_size, int) and self.batch_size > 0):
             raise ValueError("batch_size must be a positive integer")
-        
+
         # Validate learning_rate: must be a positive number
         if not (isinstance(self.learning_rate, (int, float)) and self.learning_rate > 0):
             raise ValueError("learning_rate must be a positive number")
-        
+
         # Validate input_fields: must be a non-empty list
         if not (isinstance(self.input_fields, list) and len(self.input_fields) > 0):
             raise ValueError("input_fields must be a non-empty list")
@@ -99,29 +105,31 @@ class AtmoRepConfig:
         # Convert mutable attributes to immutable types for hashing
         input_fields_tuple = tuple(self.input_fields)
         model_dims_tuple = tuple((k, v) for k, v in sorted(self.model_dims.items()))
-        
+
         # Create a tuple of all attributes and hash it
-        return hash((
-            input_fields_tuple,
-            self.spatial_dims,
-            self.patch_size,
-            self.time_steps,
-            self.mask_ratio,
-            model_dims_tuple,
-            self.hidden_dim,
-            self.num_heads,
-            self.num_layers,
-            self.mlp_ratio,
-            self.dropout,
-            self.attention_dropout,
-            self.batch_size,
-            self.learning_rate,
-            self.weight_decay,
-            self.epochs,
-            self.warmup_epochs,
-            self.year_month_samples,
-            self.time_slices_per_ym,
-            self.neighborhoods_per_slice,
-            self.neighborhood_size,
-            self.num_ensemble_members
-        ))
+        return hash(
+            (
+                input_fields_tuple,
+                self.spatial_dims,
+                self.patch_size,
+                self.time_steps,
+                self.mask_ratio,
+                model_dims_tuple,
+                self.hidden_dim,
+                self.num_heads,
+                self.num_layers,
+                self.mlp_ratio,
+                self.dropout,
+                self.attention_dropout,
+                self.batch_size,
+                self.learning_rate,
+                self.weight_decay,
+                self.epochs,
+                self.warmup_epochs,
+                self.year_month_samples,
+                self.time_slices_per_ym,
+                self.neighborhoods_per_slice,
+                self.neighborhood_size,
+                self.num_ensemble_members,
+            )
+        )
