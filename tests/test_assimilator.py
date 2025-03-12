@@ -158,7 +158,7 @@ class TestWeatherStationReader:
             reader.convert_to_model_format(observations, model_format="invalid_format")
 
     @patch.object(WeatherStationReader, "initialize_synopticpy")
-    def test_synopticpy_integration(self, reader):
+    def test_synopticpy_integration(self, mock_init_synopticpy, reader):
         """Test integration with SynopticPy."""
         # Create a mock client
         mock_client = MagicMock()
@@ -228,30 +228,27 @@ class TestWeatherStationReader:
 
             return ds
 
-        try:
-            # Replace the method with our custom implementation
-            import types
+        # Replace the method with our custom implementation
+        import types
+        reader.fetch_from_synopticpy = types.MethodType(custom_fetch_from_synopticpy, reader)
 
-            reader.fetch_from_synopticpy = types.MethodType(custom_fetch_from_synopticpy, reader)
+        # Now call the method
+        observations = reader.fetch_from_synopticpy(
+            start_date="2023-01-01 00:00",
+            end_date="2023-01-01 01:00",
+            stids=["ST001"],
+            vars=["temperature", "pressure"],
+        )
 
-            # Now call the method
-            observations = reader.fetch_from_synopticpy(
-                start_date="2023-01-01 00:00",
-                end_date="2023-01-01 01:00",
-                stids=["ST001"],
-                vars=["temperature", "pressure"],
-            )
+        # Verify the get_observations method was called on our mock
+        mock_client.get_observations.assert_called_once()
 
-            # Verify the get_observations method was called on our mock
-            mock_client.get_observations.assert_called_once()
+        # Verify the dataset
+        assert observations is not None
 
-            # Verify the dataset
-            assert observations is not None
-
-        finally:
-            # Restore original method and client
-            reader.fetch_from_synopticpy = original_method
-            reader._synopticpy_client = original_client
+        # Restore original method and client
+        reader.fetch_from_synopticpy = original_method
+        reader._synopticpy_client = original_client
 
     def test_validate_observations(self, reader, sample_csv_file):
         """Test quality control validation of observations."""
@@ -333,6 +330,7 @@ class TestWeatherStationReader:
         # Verify the file contents
         ds = xr.open_dataset(output_path)
         assert "temperature" in ds.data_vars
+        ds.close()
 
     def test_read_weatherreal_file(self, reader, temp_data_dir):
         """Test reading a WeatherReal-formatted file."""
@@ -403,32 +401,3 @@ class TestWeatherStationReader:
             assert "station" in ds.dims
             assert "source" in ds.attrs
             ds.close()
-
-    def test_create_empty_weatherreal_dataset(self, reader):
-        """Test creation of an empty WeatherReal-compatible dataset."""
-        # Define test parameters
-        stations = ["ST001", "ST002", "ST003"]
-        times = pd.date_range(start="2023-01-01", periods=24, freq="H")
-        variables = ["temperature", "pressure", "humidity", "wind_speed"]
-
-        # Create empty dataset
-        empty_ds = reader.create_empty_weatherreal_dataset(stations, times, variables)
-
-        # Verify structure
-        assert empty_ds is not None
-        assert list(empty_ds.dims.keys()) == ["time", "station"]
-        assert empty_ds.dims["time"] == len(times)
-        assert empty_ds.dims["station"] == len(stations)
-
-        # Check variables
-        for var in variables:
-            assert var in empty_ds.data_vars
-            assert empty_ds[var].dims == ("time", "station")
-            # All values should be NaN initially
-            assert np.isnan(empty_ds[var].values).all()
-
-        # Check attributes
-        assert "source" in empty_ds.attrs
-        assert "creation_date" in empty_ds.attrs
-        assert "format" in empty_ds.attrs
-        assert empty_ds.attrs["format"] == "weatherreal"

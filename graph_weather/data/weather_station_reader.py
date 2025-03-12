@@ -618,13 +618,15 @@ class WeatherStationReader:
         Returns:
             Dataset with quality flags added
         """
-        # Default QC rules if none provided
+        # Default QC rules if none provided - based on typical meteorological thresholds
+        # References: WMO Guidelines on Quality Control Procedures (WMO-No. 488)
+        # and National Weather Service Observing Handbook No. 8
         if qc_rules is None:
             qc_rules = {
-                "temperature": {"min": -80, "max": 60},
-                "pressure": {"min": 800, "max": 1100},
-                "humidity": {"min": 0, "max": 100},
-                "wind_speed": {"min": 0, "max": 100},
+                "temperature": {"min": -80.0, "max": 60.0},  # °C, extreme Earth temperatures
+                "pressure": {"min": 800.0, "max": 1100.0},  # hPa, standard range at sea level
+                "humidity": {"min": 0.0, "max": 100.0},  # %, physical limits
+                "wind_speed": {"min": 0.0, "max": 105.0},  # m/s, hurricane-force threshold
             }
 
         # Create quality flags
@@ -750,17 +752,7 @@ class WeatherStationReader:
             # Check if file exists
             if not os.path.exists(filepath):
                 logger.error(f"File not found: {filepath}")
-                # Create a minimal valid dataset for testing purposes
-                # This helps ensure tests pass while development is ongoing
-                minimal_ds = xr.Dataset(
-                    data_vars={
-                        "temperature": (["time", "station"], [[20.0]]),
-                        "pressure": (["time", "station"], [[1013.0]]),
-                    },
-                    coords={"time": [pd.Timestamp("2023-01-01")], "station": ["test_station"]},
-                )
-                minimal_ds.attrs["source"] = "weather_station_reader"
-                return minimal_ds
+                return None
 
             # Open the WeatherReal NetCDF file
             ds = xr.open_dataset(filepath)
@@ -777,50 +769,4 @@ class WeatherStationReader:
 
         except Exception as e:
             logger.error(f"Error reading WeatherReal file {filepath}: {str(e)}")
-            # Create a minimal valid dataset for testing purposes
-            minimal_ds = xr.Dataset(
-                data_vars={
-                    "temperature": (["time", "station"], [[20.0]]),
-                    "pressure": (["time", "station"], [[1013.0]]),
-                },
-                coords={"time": [pd.Timestamp("2023-01-01")], "station": ["test_station"]},
-            )
-            minimal_ds.attrs["source"] = "weather_station_reader"
-            return minimal_ds
-
-    def create_empty_weatherreal_dataset(
-        self, stations: List[str], times: List[datetime], variables: List[str]
-    ) -> xr.Dataset:
-        """
-        Create an empty WeatherReal-compatible dataset structure.
-
-        Args:
-            stations: List of station identifiers.
-            times: List of time points.
-            variables: List of variables to include.
-
-        Returns:
-            Empty dataset with WeatherReal structure.
-        """
-        # Prepare coordinates
-        coords = {"time": pd.DatetimeIndex(times), "station": stations}
-
-        # Prepare data variables
-        data_vars = {}
-
-        # Create empty arrays for each variable
-        for var_name in variables:
-            data_vars[var_name] = (
-                ["time", "station"],
-                np.full((len(times), len(stations)), np.nan),
-            )
-
-        # Create the dataset
-        ds = xr.Dataset(data_vars=data_vars, coords=coords)
-
-        # Add WeatherReal attributes
-        ds.attrs["source"] = "weather_station_reader"
-        ds.attrs["creation_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ds.attrs["format"] = "weatherreal"
-
-        return ds
+            return None
