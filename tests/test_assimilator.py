@@ -230,6 +230,7 @@ class TestWeatherStationReader:
 
         # Replace the method with our custom implementation
         import types
+
         reader.fetch_from_synopticpy = types.MethodType(custom_fetch_from_synopticpy, reader)
 
         # Now call the method
