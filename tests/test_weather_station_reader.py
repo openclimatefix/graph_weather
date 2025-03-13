@@ -390,3 +390,5 @@ class TestWeatherStationReader:
             assert "station" in ds.dims
             assert "source" in ds.attrs
             ds.close()
+
+

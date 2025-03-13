@@ -37,8 +37,15 @@ except ImportError:
 
 
 class WeatherStationReader:
-    """A reader for local weather station observations that supports dynamic loading and format conversion for weather model input."""
+    """
+    The reader for local weather station observations.
 
+    It has to:
+    - dynamically load new observation files from designated directories.
+    - convert raw CSV files into standardized formats for weather model ingestion.
+    - efficiently manage and retrieve processed observation data.
+    - integrate seamlessly with meteorological model input requirements.
+    """
     def __init__(
         self,
         data_dir: str,
