@@ -450,9 +450,7 @@ class WeatherStationReader:
                 weatherreal_data.close()
 
                 converted_files.append(output_path)
-                logger.info(
-                    f"Converted {input_file} to WeatherReal format at {output_path}"
-                )
+                logger.info(f"Converted {input_file} to WeatherReal format at {output_path}")
 
             except Exception as e:
                 logger.error(f"Error converting {input_file}: {str(e)}")
