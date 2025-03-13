@@ -24,12 +24,11 @@ logger = logging.getLogger("WeatherStationReader")
 # Try importing synopticpy, but don't require it
 try:
     from synopticpy import Synoptic
+
     SYNOPTIC_AVAILABLE = True
 except ImportError:
     SYNOPTIC_AVAILABLE = False
-    logger.warning(
-        "SynopticPy package not installed, synoptic functionality won't be available"
-    )
+    logger.warning("SynopticPy package not installed, synoptic functionality won't be available")
 
 
 class WeatherStationReader:
@@ -297,9 +296,7 @@ class WeatherStationReader:
             lat = float(station_data.lat.values) if "lat" in station_data else None
             lon = float(station_data.lon.values) if "lon" in station_data else None
             elevation = (
-                float(station_data.elevation.values)
-                if "elevation" in station_data
-                else None
+                float(station_data.elevation.values) if "elevation" in station_data else None
             )
 
             # Initialize station entry
@@ -309,8 +306,7 @@ class WeatherStationReader:
                 "LONGITUDE": lon,
                 "ELEVATION": elevation,
                 "OBSERVATIONS": {
-                    "date_time": station_data.time.dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    .values.tolist()
+                    "date_time": station_data.time.dt.strftime("%Y-%m-%dT%H:%M:%SZ").values.tolist()
                 },
             }
 
@@ -377,9 +373,7 @@ class WeatherStationReader:
         required_dims = ["time", "station"]
         for dim in required_dims:
             if dim not in weatherreal_data.dims:
-                raise ValueError(
-                    f"Required dimension '{dim}' not found in observations"
-                )
+                raise ValueError(f"Required dimension '{dim}' not found in observations")
 
         # Rename variables to match WeatherReal conventions if needed
         var_mapping = {
@@ -396,9 +390,7 @@ class WeatherStationReader:
 
         # Add required attributes for WeatherReal compatibility
         weatherreal_data.attrs["source"] = "weather_station_reader"
-        weatherreal_data.attrs[
-            "creation_date"
-        ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        weatherreal_data.attrs["creation_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Add units if they don't exist
         default_units = {
@@ -417,9 +409,7 @@ class WeatherStationReader:
 
         return weatherreal_data
 
-    def convert_files_to_weatherreal(
-        self, input_files: List[str], output_dir: str
-    ) -> List[str]:
+    def convert_files_to_weatherreal(self, input_files: List[str], output_dir: str) -> List[str]:
         """
         Convert multiple observation files to WeatherReal format.
 
@@ -466,9 +456,7 @@ class WeatherStationReader:
                 weatherreal_data.close()
 
                 converted_files.append(output_path)
-                logger.info(
-                    f"Converted {input_file} to WeatherReal format at {output_path}"
-                )
+                logger.info(f"Converted {input_file} to WeatherReal format at {output_path}")
 
             except Exception as e:
                 logger.error(f"Error converting {input_file}: {str(e)}")
@@ -770,9 +758,7 @@ class WeatherStationReader:
             required_dims = ["time", "station"]
             missing_dims = [dim for dim in required_dims if dim not in ds.dims]
             if missing_dims:
-                logger.warning(
-                    f"Missing required dimensions {missing_dims} in WeatherReal file"
-                )
+                logger.warning(f"Missing required dimensions {missing_dims} in WeatherReal file")
                 # Still return the dataset even if dimensions are missing
 
             logger.info(f"Successfully loaded WeatherReal file: {filepath}")
