@@ -21,6 +21,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("WeatherStationReader")
 
+# Try importing synopticpy, but don't require it
+try:
+    from synopticpy import Synoptic
+    SYNOPTIC_AVAILABLE = True
+except ImportError:
+    SYNOPTIC_AVAILABLE = False
+    logger.warning(
+        "SynopticPy package not installed, synoptic functionality won't be available"
+    )
+
 
 class WeatherStationReader:
     """
@@ -261,7 +271,7 @@ class WeatherStationReader:
                 ds.close()
             return None
 
-    def _convert_to_synopticpy(self, observations: xr.Dataset) -> Dict:
+    def _convert_to_synopticpy(self, observations: xr.Dataset) -> Optional[Dict]:
         """
         Convert observations to SynopticPy-compatible format.
 
@@ -269,7 +279,7 @@ class WeatherStationReader:
             observations: Dataset with observation data.
 
         Returns:
-            Dictionary formatted according to SynopticPy specifications.
+            Dictionary formatted according to SynopticPy specifications or None if observations is empty.
         """
         if observations is None:
             logger.warning("No observations to convert")
@@ -287,7 +297,9 @@ class WeatherStationReader:
             lat = float(station_data.lat.values) if "lat" in station_data else None
             lon = float(station_data.lon.values) if "lon" in station_data else None
             elevation = (
-                float(station_data.elevation.values) if "elevation" in station_data else None
+                float(station_data.elevation.values)
+                if "elevation" in station_data
+                else None
             )
 
             # Initialize station entry
@@ -297,7 +309,8 @@ class WeatherStationReader:
                 "LONGITUDE": lon,
                 "ELEVATION": elevation,
                 "OBSERVATIONS": {
-                    "date_time": station_data.time.dt.strftime("%Y-%m-%dT%H:%M:%SZ").values.tolist()
+                    "date_time": station_data.time.dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    .values.tolist()
                 },
             }
 
@@ -364,7 +377,9 @@ class WeatherStationReader:
         required_dims = ["time", "station"]
         for dim in required_dims:
             if dim not in weatherreal_data.dims:
-                raise ValueError(f"Required dimension '{dim}' not found in observations")
+                raise ValueError(
+                    f"Required dimension '{dim}' not found in observations"
+                )
 
         # Rename variables to match WeatherReal conventions if needed
         var_mapping = {
@@ -381,7 +396,9 @@ class WeatherStationReader:
 
         # Add required attributes for WeatherReal compatibility
         weatherreal_data.attrs["source"] = "weather_station_reader"
-        weatherreal_data.attrs["creation_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        weatherreal_data.attrs[
+            "creation_date"
+        ] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Add units if they don't exist
         default_units = {
@@ -400,7 +417,9 @@ class WeatherStationReader:
 
         return weatherreal_data
 
-    def convert_files_to_weatherreal(self, input_files: List[str], output_dir: str) -> List[str]:
+    def convert_files_to_weatherreal(
+        self, input_files: List[str], output_dir: str
+    ) -> List[str]:
         """
         Convert multiple observation files to WeatherReal format.
 
@@ -447,7 +466,9 @@ class WeatherStationReader:
                 weatherreal_data.close()
 
                 converted_files.append(output_path)
-                logger.info(f"Converted {input_file} to WeatherReal format at {output_path}")
+                logger.info(
+                    f"Converted {input_file} to WeatherReal format at {output_path}"
+                )
 
             except Exception as e:
                 logger.error(f"Error converting {input_file}: {str(e)}")
@@ -468,20 +489,11 @@ class WeatherStationReader:
             True if initialization is successful, False otherwise.
         """
         try:
-            # Import synopticpy or use a mock for testing
-            try:
-                from synopticpy import Synoptic
-            except ImportError:
-                # Mock Synoptic for testing
-                class Synoptic:
-                    def __init__(self, token):
-                        self.token = token
-
-                    def get_observations(self, **kwargs):
-                        # Return mock data
-                        return {"STATION": {}}
-
-                logger.warning("Using mock SynopticPy implementation for testing")
+            if not SYNOPTIC_AVAILABLE:
+                logger.warning(
+                    "SynopticPy package is not installed - synoptic functionality unavailable"
+                )
+                return False
 
             # Get token from file if path is provided
             if token_path and not token:
@@ -506,7 +518,7 @@ class WeatherStationReader:
         start_date: str,
         end_date: str,
         stids: Optional[List[str]] = None,
-        vars: Optional[List[str]] = None,
+        variables: Optional[List[str]] = None,
     ) -> Optional[xr.Dataset]:
         """
         Fetch observations directly from SynopticPy API.
@@ -515,30 +527,30 @@ class WeatherStationReader:
             start_date: Start date (YYYY-MM-DD HH:MM).
             end_date: End date (YYYY-MM-DD HH:MM).
             stids: List of station IDs.
-            vars: List of variables to fetch.
+            variables: List of variables to fetch.
 
         Returns:
             Dataset with the observations or None if request failed.
         """
         if not self._synopticpy_client:
-            if not self.initialize_synopticpy(token="dummy_token"):
+            if not self.initialize_synopticpy():
                 logger.error("SynopticPy client not initialized")
-                return None
+                raise RuntimeError("SynopticPy client not initialized")
 
         try:
             # Use SynopticPy to fetch data
             stids_str = ",".join(stids) if stids else None
-            vars_str = ",".join(vars) if vars else None
+            variables_str = ",".join(variables) if variables else None
 
             data = self._synopticpy_client.get_observations(
-                stids=stids_str, start=start_date, end=end_date, vars=vars_str
+                stids=stids_str, start=start_date, end=end_date, vars=variables_str
             )
 
             # Create xarray Dataset from the response
             if isinstance(data, dict) and "STATION" in data:
                 stations = []
                 times = []
-                station_data = {}
+                data_vars = {}
 
                 # Extract all unique station IDs and times
                 for station_id, station_info in data["STATION"].items():
@@ -558,17 +570,14 @@ class WeatherStationReader:
                 # Create coordinates
                 coords = {"time": pd.DatetimeIndex(times), "station": stations}
 
-                # Create data variables
-                data_vars = {}
-
-                # Process variables
+                # Process variables and station metadata
                 for station_id, station_info in data["STATION"].items():
                     # Get station metadata
                     lat = station_info.get("LATITUDE")
                     lon = station_info.get("LONGITUDE")
                     elevation = station_info.get("ELEVATION")
 
-                    # Store metadata
+                    # Store metadata (only once)
                     if "lat" not in data_vars:
                         data_vars["lat"] = (["station"], [lat for _ in stations])
                     if "lon" not in data_vars:
@@ -600,10 +609,10 @@ class WeatherStationReader:
                 return ds
             else:
                 logger.error("Unexpected response format from SynopticPy")
-                return None
+                raise ValueError("Unexpected response format from SynopticPy")
         except Exception as e:
             logger.error(f"Error fetching data from SynopticPy: {str(e)}")
-            return None
+            raise
 
     def validate_observations(
         self, observations: xr.Dataset, qc_rules: Optional[Dict[str, Dict[str, float]]] = None
@@ -612,11 +621,11 @@ class WeatherStationReader:
         Apply quality control checks to observation data.
 
         Args:
-            observations: Dataset with observations
-            qc_rules: Quality control rules to apply
+            observations: Dataset with observations.
+            qc_rules: Quality control rules to apply.
 
         Returns:
-            Dataset with quality flags added
+            Dataset with quality flags added.
         """
         # Default QC rules if none provided - based on typical meteorological thresholds
         # References: WMO Guidelines on Quality Control Procedures (WMO-No. 488)
@@ -652,11 +661,11 @@ class WeatherStationReader:
         Interpolate missing data in time series.
 
         Args:
-            observations: Dataset with observations
-            method: Interpolation method ('linear', 'nearest', etc.)
+            observations: Dataset with observations.
+            method: Interpolation method ('linear', 'nearest', etc.).
 
         Returns:
-            Dataset with interpolated values
+            Dataset with interpolated values.
         """
         if observations is None:
             return None
@@ -680,12 +689,12 @@ class WeatherStationReader:
         Resample observations to a different time frequency.
 
         Args:
-            observations: Dataset with observations
-            freq: Target frequency ('1H', '1D', etc.)
-            aggregation: Aggregation method ('mean', 'sum', 'min', 'max')
+            observations: Dataset with observations.
+            freq: Target frequency ('1H', '1D', etc.).
+            aggregation: Aggregation method ('mean', 'sum', 'min', 'max').
 
         Returns:
-            Resampled dataset
+            Resampled dataset.
         """
         if observations is None or "time" not in observations.dims:
             return observations
@@ -761,7 +770,9 @@ class WeatherStationReader:
             required_dims = ["time", "station"]
             missing_dims = [dim for dim in required_dims if dim not in ds.dims]
             if missing_dims:
-                logger.warning(f"Missing required dimensions {missing_dims} in WeatherReal file")
+                logger.warning(
+                    f"Missing required dimensions {missing_dims} in WeatherReal file"
+                )
                 # Still return the dataset even if dimensions are missing
 
             logger.info(f"Successfully loaded WeatherReal file: {filepath}")
