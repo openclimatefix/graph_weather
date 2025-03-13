@@ -1,4 +1,12 @@
-"""Processes weather station data by scanning files, converting formats, running multi-threaded operations, and integrating with meteorological models."""
+"""
+The processor for weather station data.
+
+It has to:
+- scan directories for new observation files.
+- convert raw CSV files into standardized NetCDF formats.
+- execute multi-threaded processing to efficiently handle multiple files.
+- integrate the processed data with meteorological models.
+"""
 
 import glob
 import logging
@@ -14,7 +22,8 @@ import xarray as xr
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, 
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("WeatherStationReader")
 
@@ -272,7 +281,7 @@ class WeatherStationReader:
             observations: Dataset with observation data.
 
         Returns:
-            Dictionary formatted according to SynopticPy specifications or None if observations is empty.
+            Dictionary per SynopticPy specs, or None if empty
         """
         if observations is None:
             logger.warning("No observations to convert")

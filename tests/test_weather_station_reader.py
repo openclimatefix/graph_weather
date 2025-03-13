@@ -322,8 +322,7 @@ class TestWeatherStationReader:
         assert "temperature" in ds.data_vars
         ds.close()
 
-    def test_read_weatherreal_file(self, reader, temp_data_dir):
-        """Test reading a WeatherReal-formatted file."""
+    def test_read_weatherreal_file(self, reader, temp_data_dir, sample_csv_file):
         # First create a WeatherReal file
         observations = reader.get_observations_for_model()
         output_path = os.path.join(temp_data_dir, "weatherreal_test.nc")
