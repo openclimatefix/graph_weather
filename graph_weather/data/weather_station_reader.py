@@ -46,6 +46,7 @@ class WeatherStationReader:
     - efficiently manage and retrieve processed observation data.
     - integrate seamlessly with meteorological model input requirements.
     """
+
     def __init__(
         self,
         data_dir: str,
