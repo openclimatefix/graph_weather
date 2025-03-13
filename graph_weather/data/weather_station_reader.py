@@ -1,7 +1,4 @@
-"""
-Handles weather station data processing, including file scanning, format conversion,
-multi-threaded processing, and integration with meteorological models.
-"""
+"""Handles weather station data processing, including file scanning, format conversion, multi-threaded processing, and integration with meteorological models."""
 
 import glob
 import logging
@@ -32,10 +29,7 @@ except ImportError:
 
 
 class WeatherStationReader:
-    """
-    A reader for local weather station observations that supports dynamic loading
-    and format conversion for weather model input.
-    """
+    """A reader for local weather station observations that supports dynamic loading and format conversion for weather model input."""
 
     def __init__(
         self,
