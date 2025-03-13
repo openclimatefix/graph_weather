@@ -1,4 +1,4 @@
-"""Handles weather station data processing, including file scanning, format conversion, multi-threaded processing, and integration with meteorological models."""
+"""Processes weather station data by scanning files, converting formats, running multi-threaded operations, and integrating with meteorological models."""
 
 import glob
 import logging
@@ -450,7 +450,9 @@ class WeatherStationReader:
                 weatherreal_data.close()
 
                 converted_files.append(output_path)
-                logger.info(f"Converted {input_file} to WeatherReal format at {output_path}")
+                logger.info(
+                    f"Converted {input_file} to WeatherReal format at {output_path}"
+                )
 
             except Exception as e:
                 logger.error(f"Error converting {input_file}: {str(e)}")
