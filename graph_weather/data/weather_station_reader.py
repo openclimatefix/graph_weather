@@ -610,7 +610,7 @@ class WeatherStationReader:
                 raise ValueError("Unexpected response format from SynopticPy")
         except Exception as e:
             logger.error(f"Error fetching data from SynopticPy: {str(e)}")
-            raise
+            raise e
 
     def validate_observations(
         self, observations: xr.Dataset, qc_rules: Optional[Dict[str, Dict[str, float]]] = None
