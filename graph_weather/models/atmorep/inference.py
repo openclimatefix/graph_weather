@@ -3,9 +3,9 @@ This module contains functions for performing inference using a trained AtmoRep 
 Each function is designed to support the AtmoRep model and related configurations.
 """
 
-from unittest.mock import MagicMock
-
 import torch
+from graph_weather.models.atmorep.config import AtmoRepConfig
+from graph_weather.models.atmorep.model.atmorep import AtmoRep
 
 
 def load_model(model_path, config=None, device="cuda", map_location=None):
@@ -32,11 +32,10 @@ def load_model(model_path, config=None, device="cuda", map_location=None):
         config = checkpoint.get("config")
     if config is None:
         raise ValueError("Config not found in checkpoint and not provided")
-    if isinstance(config, dict):
-        from graph_weather.models.atmorep.config import AtmoRepConfig
 
+    # If config is a dictionary, instantiate the AtmoRepConfig class
+    if isinstance(config, dict):
         config = AtmoRepConfig(**config)
-    from graph_weather.models.atmorep.model.atmorep import AtmoRep
 
     model = AtmoRep(config)
     model.load_state_dict(checkpoint["model"], strict=False)
@@ -59,6 +58,8 @@ def inference(model, data, normalizer=None, ensemble_mode="mean"):
         Dictionary of predictions for each field with shape [B, T, H, W].
     """
     model.eval()
+
+    # Normalize data if a normalizer is provided
     if normalizer:
         normalized_data = {
             field: normalizer.normalize(field_data, field) for field, field_data in data.items()
@@ -66,15 +67,14 @@ def inference(model, data, normalizer=None, ensemble_mode="mean"):
     else:
         normalized_data = data
 
+    # Determine device
     try:
-        if isinstance(model, MagicMock):
-            device = torch.device("cpu")
-        else:
-            device = next(model.parameters()).device
+        device = next(model.parameters()).device
     except Exception:
         device = torch.device("cpu")
 
     patch_size = getattr(model.config, "patch_size", 16)
+    # Create dummy masks with zeros by default (if your model requires them)
     masks = {
         field: torch.zeros(
             field_data.shape[0],
@@ -84,15 +84,17 @@ def inference(model, data, normalizer=None, ensemble_mode="mean"):
         for field, field_data in normalized_data.items()
     }
 
+    # Move data and masks to the same device as the model
     normalized_data = {k: v.to(device) for k, v in normalized_data.items()}
     masks = {k: v.to(device) for k, v in masks.items()}
 
     with torch.no_grad():
-        # Explicitly call __call__ so that the mock records the call.
-        predictions = model.__call__(normalized_data, masks)
+        # Direct model call
+        predictions = model(normalized_data, masks)
 
     processed_predictions = {}
     for field, preds in predictions.items():
+        # Handle ensemble dimensions if present
         if preds.dim() == 5:
             if ensemble_mode == "mean":
                 field_pred = preds.mean(dim=0)
@@ -107,9 +109,13 @@ def inference(model, data, normalizer=None, ensemble_mode="mean"):
             field_pred = preds
         else:
             raise ValueError("Unexpected prediction tensor dimensions")
+
+        # Denormalize if a normalizer is provided
         if normalizer:
             field_pred = normalizer.denormalize(field_pred, field)
+
         processed_predictions[field] = field_pred
+
     return processed_predictions
 
 
@@ -125,33 +131,37 @@ def batch_inference(
         batch_size: The size of each batch for inference.
         normalizer: Optional normalizer to preprocess data.
         ensemble_mode: The method for combining predictions ('mean', 'median', or 'sample').
-        num_workers: Number of workers to load the dataset in parallel (not used in this implementation).
+        num_workers: Number of workers to load the dataset in parallel (unused in this manual approach).
 
     Returns:
         A dictionary where keys are field names and values are tensors of predictions.
     """
     all_predictions = {}
-    # Use manual iteration over dataset indices.
-    total = dataset.__len__() if callable(dataset.__len__) else len(dataset)
+    total = len(dataset)
+
+    # Manual batching over dataset indices
     for i in range(0, total, batch_size):
-        # Manually collect batch items using __getitem__
         items = [dataset[j] for j in range(i, min(i + batch_size, total))]
         batch_data = {}
-        # Collate items: assume each item is a dict of tensors.
+
+        # Collate items (assume each item is a dict of tensors with the same keys)
         for key in items[0]:
             stacked = torch.stack([item[key] for item in items])
-            # If stacking results in extra batch dims (e.g. [B1, B, T, H, W]), merge them.
+            # If stacking results in extra dimensions, flatten them as needed
             if stacked.dim() == 5:
                 B1, B2, T, H, W = stacked.shape
                 stacked = stacked.view(B1 * B2, T, H, W)
             batch_data[key] = stacked
-        # Call inference; this should now invoke model.__call__
+
+        # Run inference on the current batch
         preds = inference(model, batch_data, normalizer, ensemble_mode)
         for field, pred in preds.items():
             all_predictions.setdefault(field, []).append(pred)
 
+    # Concatenate predictions across all batches
     for field in all_predictions:
         all_predictions[field] = torch.cat(all_predictions[field], dim=0)
+
     return all_predictions
 
 
@@ -169,14 +179,18 @@ def create_forecast(model, initial_data, steps=3):
     """
     model.eval()
     forecast_data = {k: v.clone() for k, v in initial_data.items()}
+
+    # Ensure we have a time dimension
     for field in forecast_data:
         if forecast_data[field].dim() == 3:
             forecast_data[field] = forecast_data[field].unsqueeze(1)
+
     with torch.no_grad():
         for step in range(steps):
-            next_step = model.__call__(forecast_data)
+            next_step = model(forecast_data)
             for field in forecast_data:
                 pred = next_step[field]
+                # If there's an ensemble dimension, reduce it
                 if pred.dim() == 5:
                     reduced = pred.mean(dim=0)
                     next_value = reduced[:, -1:, :, :]
@@ -187,6 +201,7 @@ def create_forecast(model, initial_data, steps=3):
                 else:
                     raise ValueError("Unexpected prediction dimensions in forecast")
                 forecast_data[field] = torch.cat([forecast_data[field], next_value], dim=1)
+
     return forecast_data
 
 
@@ -206,18 +221,15 @@ def generate_training_masks(batch_data, config):
     mask_ratio = getattr(config, "mask_ratio", 0.75)
 
     for field_name, field_data in batch_data.items():
-        if isinstance(field_data, MagicMock):
-            shape = (1, config.time_steps, config.spatial_dims[0], config.spatial_dims[1])
-        else:
-            shape = tuple(field_data.shape)
+        shape = tuple(field_data.shape)
         if len(shape) < 4:
             raise ValueError(f"Field '{field_name}' expected to be at least 4D, got shape {shape}")
+
         B, T, H, W = shape[:4]
-        H = int(H)
-        W = int(W)
         h_patches = H // patch_size
         w_patches = W // patch_size
         N = h_patches * w_patches
+
         mask = torch.zeros(B, T, N)
         for b in range(B):
             flat_mask = torch.zeros(T * N)
@@ -226,5 +238,7 @@ def generate_training_masks(batch_data, config):
             mask_indices = torch.randperm(num_tokens)[:num_mask]
             flat_mask[mask_indices] = 1
             mask[b] = flat_mask.view(T, N)
+
         batch_masks[field_name] = mask
+
     return batch_masks

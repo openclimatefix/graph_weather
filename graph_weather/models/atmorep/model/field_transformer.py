@@ -1,109 +1,151 @@
 import torch
 import torch.nn as nn
 from einops import rearrange
+from typing import List, Optional
 
-from ..config import AtmoRepConfig
 from .transformer import TransformerBlock
-
 
 class FieldVisionTransformer(nn.Module):
     """
-    A Vision Transformer (ViT) designed to process individual fields in the AtmoRep model.
-    This model extracts features from spatial patches and temporal steps using a transformer architecture.
+    A Vision Transformer (ViT) designed to process individual fields in a model.
+    It extracts features from spatial patches across multiple time steps using
+    a transformer architecture.
 
     Args:
-        config (AtmoRepConfig): Configuration object containing model parameters such as hidden_dim,
-                                 patch_size, num_layers, etc.
-        field_name (str): Name of the field this transformer is processing (e.g., temperature, humidity).
+        hidden_dim (int): Dimensionality of the transformer embeddings.
+        patch_size (int): Size of each spatial patch (square).
+        spatial_dims (tuple[int, int]): Full spatial dimensions (height, width).
+        time_steps (int): Number of temporal steps in the input.
+        num_layers (int): Number of transformer blocks.
+        field_name (str): Name of the field this transformer is processing (e.g., 'temperature').
+        transformer_block_cls (nn.Module): Class to instantiate for each transformer block.
+            Defaults to a placeholder that you should replace with your actual TransformerBlock.
     """
 
-    def __init__(self, config: AtmoRepConfig, field_name: str):
+    def __init__(
+        self,
+        hidden_dim: int,
+        patch_size: int,
+        spatial_dims: tuple[int, int],
+        time_steps: int,
+        num_layers: int,
+        field_name: str = "unknown_field",
+        transformer_block_cls=nn.Module,  # replace with your actual block class
+    ) -> None:
         super().__init__()
-        self.config = config
+        self.hidden_dim = hidden_dim
+        self.patch_size = patch_size
+        self.spatial_dims = spatial_dims
+        self.time_steps = time_steps
+        self.num_layers = num_layers
         self.field_name = field_name
 
-        # Calculate patch and number of patches
-        self.patch_dim = config.patch_size**2
-        self.num_patches = (config.spatial_dims[0] // config.patch_size) * (
-            config.spatial_dims[1] // config.patch_size
-        )
+        # Calculate how many patches we'll get from the spatial dimensions
+        height, width = spatial_dims
+        self.num_patches = (height // patch_size) * (width // patch_size)
 
-        # Patch embedding layer
+        # Patch embedding layer: transforms each patch into a hidden_dim embedding
         self.patch_embed = nn.Conv2d(
-            1, config.hidden_dim, kernel_size=config.patch_size, stride=config.patch_size
+            in_channels=1,
+            out_channels=hidden_dim,
+            kernel_size=patch_size,
+            stride=patch_size
         )
 
-        # Position embeddings for spatial patches and temporal embeddings
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches, config.hidden_dim))
-        self.time_embed = nn.Parameter(torch.zeros(1, config.time_steps, config.hidden_dim))
+        # Positional embeddings for spatial patches + separate embeddings for time steps
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches, hidden_dim))
+        self.time_embed = nn.Parameter(torch.zeros(1, time_steps, hidden_dim))
 
-        # Transformer blocks (e.g., attention layers)
-        self.blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.num_layers)])
+        # Instantiate the transformer blocks
+        self.blocks = nn.ModuleList([
+            transformer_block_cls(hidden_dim=hidden_dim)
+            for _ in range(num_layers)
+        ])
 
-        # Layer normalization to stabilize the training process
-        self.norm = nn.LayerNorm(config.hidden_dim)
+        # Final layer normalization
+        self.norm = nn.LayerNorm(hidden_dim)
 
         # Initialize weights for layers and embeddings
         self.initialize_weights()
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         """
         Initializes the weights of the patch embedding and position/time embeddings.
         """
-        # Xavier initialization for patch embedding
         nn.init.xavier_uniform_(self.patch_embed.weight)
-
-        # Normal distribution initialization for position and time embeddings
         nn.init.normal_(self.pos_embed, std=0.02)
         nn.init.normal_(self.time_embed, std=0.02)
 
-    def forward(self, x, mask=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: Optional[torch.Tensor] = None
+    ) -> tuple[torch.Tensor, List[torch.Tensor]]:
         """
-        Forward pass through the Field Vision Transformer.
+        Forward pass through the FieldVisionTransformer.
 
         Args:
-            x (torch.Tensor): Input tensor of shape [B, T, H, W], where B is the batch size,
-                              T is the number of time steps, H and W are spatial dimensions.
-            mask (torch.Tensor, optional): Mask tensor of shape [B, T, N] where N is the number of patches,
-                                           used to mask certain input tokens.
+            x (torch.Tensor): Input tensor of shape [B, T, H, W], where:
+                - B is batch size
+                - T is number of time steps
+                - H, W are spatial dimensions
+            mask (torch.Tensor, optional): A mask tensor of shape [B, T, N], where
+                N is the number of patches. If provided, masked patches will be replaced
+                by a learnable mask token.
 
         Returns:
-            torch.Tensor: The transformed tensor after applying transformer blocks and layer normalization.
-            list: A list of multi-resolution features from the transformer blocks for U-Net like connections.
+            (torch.Tensor, list):
+                - The final output after the transformer blocks (shape [B, T, N, hidden_dim]).
+                - A list of intermediate features for U-Net-like skip connections.
         """
         B, T, H, W = x.shape
+        if T != self.time_steps:
+            raise ValueError(
+                f"Expected input with {self.time_steps} time steps, but got {T}."
+            )
 
-        # Process each time step separately to extract patch tokens
-        tokens = []
+        # === Extract patches for each time step ===
+        tokens_list = []
         for t in range(T):
-            # Apply patch embedding to each time step's image
-            patch_tokens = self.patch_embed(x[:, t].unsqueeze(1))  # [B, D, H//P, W//P]
-            # Flatten the spatial dimensions (height and width)
-            patch_tokens = rearrange(patch_tokens, "b d h w -> b (h w) d")  # [B, N, D]
-            tokens.append(patch_tokens)
+            # x[:, t] => shape [B, H, W]
+            # Unsqueeze to make it [B, 1, H, W] for Conv2d
+            frame = x[:, t].unsqueeze(1)
+            patch_tokens = self.patch_embed(frame)  # [B, hidden_dim, H//patch_size, W//patch_size]
+            # Flatten spatial dims => [B, (H//patch_size)*(W//patch_size), hidden_dim]
+            patch_tokens = rearrange(patch_tokens, "b d hp wp -> b (hp wp) d")
+            tokens_list.append(patch_tokens)
 
-        # Stack the time tokens into a single tensor: [B, T, N, D]
-        tokens = torch.stack(tokens, dim=1)
+        # Stack along the time dimension => shape [B, T, N, hidden_dim]
+        tokens = torch.stack(tokens_list, dim=1)
 
-        # Add position and time embeddings to the tokens
-        tokens = tokens + self.pos_embed.unsqueeze(1)  # Add position embeddings
-        tokens = tokens + self.time_embed.unsqueeze(2)  # Add time embeddings
+        # === Add positional and time embeddings ===
+        # pos_embed: shape [1, N, hidden_dim]
+        # time_embed: shape [1, T, hidden_dim]
+        # Expand them to match tokens shape
+        tokens = tokens + self.pos_embed.unsqueeze(1)      # [B, T, N, hidden_dim]
+        tokens = tokens + self.time_embed.unsqueeze(2)     # [B, T, N, hidden_dim]
 
-        # Apply mask if provided
+        # === Apply optional mask ===
         if mask is not None:
-            mask_token = nn.Parameter(torch.zeros(1, 1, 1, self.config.hidden_dim))
-            mask = mask.unsqueeze(-1).expand_as(tokens)  # Expand mask to match tokens shape
-            tokens = tokens * (1 - mask) + mask_token * mask  # Apply mask to tokens
+            # mask: shape [B, T, N]
+            # Expand mask to match tokens => [B, T, N, hidden_dim]
+            mask_expanded = mask.unsqueeze(-1).expand_as(tokens)
+            # Learnable mask token
+            mask_token = nn.Parameter(torch.zeros(1, 1, 1, self.hidden_dim))
+            # Replace masked patches
+            tokens = tokens * (1 - mask_expanded) + mask_token * mask_expanded
 
-        # Pass through the transformer blocks
+        # === Pass through transformer blocks ===
+        # We'll store intermediate features for U-Net-like connections.
         features = []
-        x = tokens
+        x_out = tokens
         for i, block in enumerate(self.blocks):
-            x = block(x)  # Apply transformer block
-            if i % 3 == 2:  # Store features at every 3rd block (for multi-resolution features)
-                features.append(x)
+            x_out = block(x_out)
+            # Optionally store intermediate feature maps
+            # Here, for example, we store every block's output.
+            features.append(x_out)
 
-        # Apply final layer normalization
-        x = self.norm(x)
+        # Final layer normalization
+        x_out = self.norm(x_out)
 
-        return x, features
+        return x_out, features

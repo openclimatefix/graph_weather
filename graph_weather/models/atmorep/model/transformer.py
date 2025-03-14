@@ -1,49 +1,69 @@
+import torch
 import torch.nn as nn
-
-from ..config import AtmoRepConfig
+import torch.nn.functional as F
+from typing import Optional
 
 
 class TransformerBlock(nn.Module):
     """
-    A transformer block consisting of multi-head attention and a feed-forward MLP layer.
-    The transformer block applies Layer Normalization, Multi-Head Attention, and an MLP to the input.
+    A single Transformer block consisting of:
+      1. Layer Normalization
+      2. Multi-Head Attention
+      3. Residual Connection
+      4. Layer Normalization
+      5. MLP (feed-forward) Layer
+      6. Residual Connection
 
     Args:
-        config (AtmoRepConfig): Configuration object containing model parameters such as
-                                 hidden dimension, number of attention heads, etc.
+        hidden_dim (int): The hidden dimension of the input/output tokens.
+        num_heads (int): The number of attention heads in the multi-head attention module.
+        mlp_ratio (float): Multiplier for the hidden dimension of the MLP. If `mlp_ratio=4.0`,
+            then the MLP hidden size is `4 * hidden_dim`.
+        dropout (float, optional): Dropout probability used in the MLP layers. Defaults to 0.0.
+        attention_dropout (float, optional): Dropout probability applied to the attention weights.
+            Defaults to 0.0.
     """
 
-    def __init__(self, config: AtmoRepConfig):
+    def __init__(
+        self,
+        hidden_dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.0,
+        attention_dropout: float = 0.0,
+    ) -> None:
         super().__init__()
-        self.norm1 = nn.LayerNorm(config.hidden_dim)
+        self.norm1 = nn.LayerNorm(hidden_dim)
         self.attn = MultiHeadAttention(
-            config.hidden_dim, config.num_heads, dropout=config.attention_dropout
+            dim=hidden_dim,
+            num_heads=num_heads,
+            dropout=attention_dropout
         )
-        self.norm2 = nn.LayerNorm(config.hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
         self.mlp = MLP(
-            config.hidden_dim,
-            config.hidden_dim * config.mlp_ratio,
-            config.hidden_dim,
-            dropout=config.dropout,
+            in_features=hidden_dim,
+            hidden_features=int(hidden_dim * mlp_ratio),
+            out_features=hidden_dim,
+            dropout=dropout
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the TransformerBlock.
 
         Args:
-            x (torch.Tensor): Input tensor of shape [B, N, C], where B is batch size,
-                              N is sequence length, and C is the channel dimension.
+            x (torch.Tensor): Input tensor of shape [B, N, C], where:
+                - B is the batch size
+                - N is the sequence length (number of tokens)
+                - C is the hidden dimension (channels)
 
         Returns:
-            torch.Tensor: The output tensor after applying multi-head attention and MLP.
+            torch.Tensor: Output tensor of the same shape [B, N, C].
         """
-        # Apply multi-head attention with residual connection
+        # Multi-head attention + residual
         x = x + self.attn(self.norm1(x))
-
-        # Apply MLP with residual connection
+        # MLP + residual
         x = x + self.mlp(self.norm2(x))
-
         return x
 
 
@@ -54,86 +74,96 @@ class MultiHeadAttention(nn.Module):
     Args:
         dim (int): The dimensionality of the input and output.
         num_heads (int): Number of attention heads.
-        dropout (float, optional): Dropout rate to apply on attention weights. Default is 0.0.
+        dropout (float, optional): Dropout rate to apply on attention weights and final projection.
+            Defaults to 0.0.
     """
 
-    def __init__(self, dim, num_heads, dropout=0.0):
+    def __init__(self, dim: int, num_heads: int, dropout: float = 0.0) -> None:
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
-        self.scale = self.head_dim**-0.5
+        self.scale = self.head_dim ** -0.5
 
-        self.qkv = nn.Linear(dim, dim * 3)  # Linear layer to compute queries, keys, and values
-        self.proj = nn.Linear(
-            dim, dim
-        )  # Linear layer to project the output back to the original dimension
-        self.dropout = nn.Dropout(dropout)  # Dropout layer to regularize the attention weights
+        # Linear layers to compute Q, K, V
+        self.qkv = nn.Linear(dim, dim * 3)
+        # Projection back to original dimension
+        self.proj = nn.Linear(dim, dim)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the MultiHeadAttention mechanism.
 
         Args:
-            x (torch.Tensor): Input tensor of shape [B, N, C], where B is batch size,
-                              N is the number of tokens, and C is the channel dimension.
+            x (torch.Tensor): Input tensor of shape [B, N, C], where:
+                - B is the batch size
+                - N is the sequence length
+                - C is the hidden dimension
 
         Returns:
-            torch.Tensor: The output tensor after applying the attention mechanism.
+            torch.Tensor: The output tensor after applying the attention mechanism, shape [B, N, C].
         """
         B, N, C = x.shape
 
         # Compute Q, K, V
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim)
+        # Permute => Q, K, V each of shape [B, num_heads, N, head_dim]
+        qkv = qkv.permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
-        # Calculate attention weights
+        # Calculate attention weights => shape [B, num_heads, N, N]
         attn = (q @ k.transpose(-2, -1)) * self.scale
-        attn = attn.softmax(dim=-1)  # Softmax to get attention weights
-        attn = self.dropout(attn)  # Apply dropout to attention weights
+        attn = attn.softmax(dim=-1)
+        attn = self.dropout(attn)
 
-        # Apply attention to values
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        # Apply attention => shape [B, num_heads, N, head_dim]
+        x = attn @ v
+        # Rearrange back => shape [B, N, num_heads, head_dim]
+        x = x.transpose(1, 2).reshape(B, N, C)
 
-        # Project the output back to the original dimension
+        # Final projection
         x = self.proj(x)
-        x = self.dropout(x)  # Apply dropout to the output
-
+        x = self.dropout(x)
         return x
 
 
 class MLP(nn.Module):
     """
-    A multi-layer perceptron (MLP) consisting of two fully connected layers with GELU activations.
+    A simple MLP (feed-forward) network used inside Transformer blocks.
 
     Args:
         in_features (int): Number of input features.
         hidden_features (int): Number of features in the hidden layer.
         out_features (int): Number of output features.
-        dropout (float, optional): Dropout rate to apply after each layer. Default is 0.0.
+        dropout (float, optional): Dropout probability to apply after each layer. Defaults to 0.0.
     """
 
-    def __init__(self, in_features, hidden_features, out_features, dropout=0.0):
+    def __init__(
+        self,
+        in_features: int,
+        hidden_features: int,
+        out_features: int,
+        dropout: float = 0.0
+    ) -> None:
         super().__init__()
-        self.fc1 = nn.Linear(in_features, hidden_features)  # First fully connected layer
-        self.act = nn.GELU()  # GELU activation function
-        self.fc2 = nn.Linear(hidden_features, out_features)  # Second fully connected layer
-        self.dropout = nn.Dropout(dropout)  # Dropout layer
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.act = nn.GELU()
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the MLP.
 
         Args:
-            x (torch.Tensor): Input tensor of shape [B, N, C], where B is batch size,
-                              N is the number of tokens, and C is the number of channels/features.
+            x (torch.Tensor): Input tensor of shape [B, N, C].
 
         Returns:
-            torch.Tensor: The output tensor after applying the MLP layers.
+            torch.Tensor: Output tensor of shape [B, N, out_features].
         """
-        x = self.fc1(x)  # Apply first fully connected layer
-        x = self.act(x)  # Apply GELU activation
-        x = self.dropout(x)  # Apply dropout
-        x = self.fc2(x)  # Apply second fully connected layer
-        x = self.dropout(x)  # Apply dropout again
-
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.dropout(x)
         return x
