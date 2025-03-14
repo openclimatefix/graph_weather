@@ -1,14 +1,15 @@
 import math
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
-from .field_transformer import FieldVisionTransformer
 from .attention import CrossAttention, SpatioTemporalAttention
 from .decoder import Decoder
+from .field_transformer import FieldVisionTransformer
+
 
 class MultiFormer(nn.Module):
     """
@@ -53,52 +54,58 @@ class MultiFormer(nn.Module):
         self.num_ensemble_members = num_ensemble_members
 
         # Create a Vision Transformer for each input field
-        self.field_transformers = nn.ModuleDict({
-            field: FieldVisionTransformer(
-                field_name=field,
-                hidden_dim=hidden_dim,
-                patch_size=patch_size,
-                spatial_dims=spatial_dims,
-                time_steps=time_steps,
-            )
-            for field in input_fields
-        })
+        self.field_transformers = nn.ModuleDict(
+            {
+                field: FieldVisionTransformer(
+                    field_name=field,
+                    hidden_dim=hidden_dim,
+                    patch_size=patch_size,
+                    spatial_dims=spatial_dims,
+                    time_steps=time_steps,
+                )
+                for field in input_fields
+            }
+        )
 
         # Create cross-attention layers between fields
-        self.cross_attentions = nn.ModuleDict({
-            f"{f2}_to_{f1}": CrossAttention(
-                hidden_dim=hidden_dim,
-                num_heads=cross_attn_num_heads,
-                attention_dropout=cross_attn_dropout,
-            )
-            for f1 in input_fields
-            for f2 in input_fields
-            if f1 != f2
-        })
+        self.cross_attentions = nn.ModuleDict(
+            {
+                f"{f2}_to_{f1}": CrossAttention(
+                    hidden_dim=hidden_dim,
+                    num_heads=cross_attn_num_heads,
+                    attention_dropout=cross_attn_dropout,
+                )
+                for f1 in input_fields
+                for f2 in input_fields
+                if f1 != f2
+            }
+        )
 
         # Create a decoder for each field
-        self.decoders = nn.ModuleDict({
-            field: Decoder(
-                hidden_dim=hidden_dim,
-                num_layers=decoder_num_layers,
-                num_heads=decoder_num_heads,
-                dropout=decoder_dropout,
-            )
-            for field in input_fields
-        })
+        self.decoders = nn.ModuleDict(
+            {
+                field: Decoder(
+                    hidden_dim=hidden_dim,
+                    num_layers=decoder_num_layers,
+                    num_heads=decoder_num_heads,
+                    dropout=decoder_dropout,
+                )
+                for field in input_fields
+            }
+        )
 
         # Create ensemble heads (linear layers) for each field
-        self.ensemble_heads = nn.ModuleDict({
-            field: nn.ModuleList([
-                nn.Linear(hidden_dim, 1) for _ in range(num_ensemble_members)
-            ])
-            for field in input_fields
-        })
+        self.ensemble_heads = nn.ModuleDict(
+            {
+                field: nn.ModuleList(
+                    [nn.Linear(hidden_dim, 1) for _ in range(num_ensemble_members)]
+                )
+                for field in input_fields
+            }
+        )
 
     def forward(
-        self,
-        x_dict: Dict[str, torch.Tensor],
-        mask_dict: Optional[Dict[str, torch.Tensor]] = None
+        self, x_dict: Dict[str, torch.Tensor], mask_dict: Optional[Dict[str, torch.Tensor]] = None
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass of the MultiFormer model.
@@ -122,9 +129,7 @@ class MultiFormer(nn.Module):
             multi_scale_features[field_name] = features
 
         # === 2) Apply cross-attention among fields ===
-        cross_attended_features = {
-            field: feat.clone() for field, feat in encoded_features.items()
-        }
+        cross_attended_features = {field: feat.clone() for field, feat in encoded_features.items()}
         for f1 in self.input_fields:
             for f2 in self.input_fields:
                 if f1 != f2:
@@ -154,10 +159,7 @@ class MultiFormer(nn.Module):
                 pred = head(field_decoded)
 
                 # Rearrange => [B, T, (H*C), W], then upsample
-                pred = rearrange(
-                    pred, "b t (h w) c -> b t (h c) w",
-                    h=patch_grid, w=patch_grid
-                )
+                pred = rearrange(pred, "b t (h w) c -> b t (h c) w", h=patch_grid, w=patch_grid)
                 pred = F.interpolate(pred, size=(H, W), mode="bilinear")
 
                 # Rearrange => [B, T, W, H] if desired (or keep as channels)
@@ -215,20 +217,20 @@ class EnhancedMultiFormer(MultiFormer):
         )
 
         # Spatiotemporal attention after cross-attention
-        self.spatiotemporal_attns = nn.ModuleDict({
-            field: SpatioTemporalAttention(
-                hidden_dim=hidden_dim,
-                num_heads=spatio_num_heads,
-                attention_dropout=spatio_attn_dropout,
-                dropout=spatio_output_dropout,
-            )
-            for field in input_fields
-        })
+        self.spatiotemporal_attns = nn.ModuleDict(
+            {
+                field: SpatioTemporalAttention(
+                    hidden_dim=hidden_dim,
+                    num_heads=spatio_num_heads,
+                    attention_dropout=spatio_attn_dropout,
+                    dropout=spatio_output_dropout,
+                )
+                for field in input_fields
+            }
+        )
 
     def forward(
-        self,
-        x_dict: Dict[str, torch.Tensor],
-        mask_dict: Optional[Dict[str, torch.Tensor]] = None
+        self, x_dict: Dict[str, torch.Tensor], mask_dict: Optional[Dict[str, torch.Tensor]] = None
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass includes cross-attention and spatiotemporal attention.
@@ -250,9 +252,7 @@ class EnhancedMultiFormer(MultiFormer):
             multi_scale_features[field_name] = features
 
         # === 2) Cross-attention among fields ===
-        cross_attended_features = {
-            field: feat.clone() for field, feat in encoded_features.items()
-        }
+        cross_attended_features = {field: feat.clone() for field, feat in encoded_features.items()}
         for f1 in self.input_fields:
             for f2 in self.input_fields:
                 if f1 != f2:

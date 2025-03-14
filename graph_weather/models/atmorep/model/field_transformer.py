@@ -1,9 +1,9 @@
+from typing import List, Optional
+
 import torch
 import torch.nn as nn
 from einops import rearrange
-from typing import List, Optional
 
-from .transformer import TransformerBlock
 
 class FieldVisionTransformer(nn.Module):
     """
@@ -46,10 +46,7 @@ class FieldVisionTransformer(nn.Module):
 
         # Patch embedding layer: transforms each patch into a hidden_dim embedding
         self.patch_embed = nn.Conv2d(
-            in_channels=1,
-            out_channels=hidden_dim,
-            kernel_size=patch_size,
-            stride=patch_size
+            in_channels=1, out_channels=hidden_dim, kernel_size=patch_size, stride=patch_size
         )
 
         # Positional embeddings for spatial patches + separate embeddings for time steps
@@ -57,10 +54,9 @@ class FieldVisionTransformer(nn.Module):
         self.time_embed = nn.Parameter(torch.zeros(1, time_steps, hidden_dim))
 
         # Instantiate the transformer blocks
-        self.blocks = nn.ModuleList([
-            transformer_block_cls(hidden_dim=hidden_dim)
-            for _ in range(num_layers)
-        ])
+        self.blocks = nn.ModuleList(
+            [transformer_block_cls(hidden_dim=hidden_dim) for _ in range(num_layers)]
+        )
 
         # Final layer normalization
         self.norm = nn.LayerNorm(hidden_dim)
@@ -77,9 +73,7 @@ class FieldVisionTransformer(nn.Module):
         nn.init.normal_(self.time_embed, std=0.02)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> tuple[torch.Tensor, List[torch.Tensor]]:
         """
         Forward pass through the FieldVisionTransformer.
@@ -100,9 +94,7 @@ class FieldVisionTransformer(nn.Module):
         """
         B, T, H, W = x.shape
         if T != self.time_steps:
-            raise ValueError(
-                f"Expected input with {self.time_steps} time steps, but got {T}."
-            )
+            raise ValueError(f"Expected input with {self.time_steps} time steps, but got {T}.")
 
         # === Extract patches for each time step ===
         tokens_list = []
@@ -122,8 +114,8 @@ class FieldVisionTransformer(nn.Module):
         # pos_embed: shape [1, N, hidden_dim]
         # time_embed: shape [1, T, hidden_dim]
         # Expand them to match tokens shape
-        tokens = tokens + self.pos_embed.unsqueeze(1)      # [B, T, N, hidden_dim]
-        tokens = tokens + self.time_embed.unsqueeze(2)     # [B, T, N, hidden_dim]
+        tokens = tokens + self.pos_embed.unsqueeze(1)  # [B, T, N, hidden_dim]
+        tokens = tokens + self.time_embed.unsqueeze(2)  # [B, T, N, hidden_dim]
 
         # === Apply optional mask ===
         if mask is not None:

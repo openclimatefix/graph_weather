@@ -1,10 +1,10 @@
+from typing import Any, Dict, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from typing import Dict, Any, Optional, Union
 
-from graph_weather.models.atmorep.config import AtmoRepConfig
 
 class AtmoRep(nn.Module):
     """
@@ -112,7 +112,7 @@ class AtmoRep(nn.Module):
         self,
         x: Dict[str, torch.Tensor],
         masks: Optional[Dict[str, torch.Tensor]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass through the model. The model encodes field data, applies temporal encoding,
@@ -140,9 +140,7 @@ class AtmoRep(nn.Module):
             encoded = self.field_encoders[field](field_data_flat)
 
             # Unflatten back to (B, T, C, H, W)
-            encoded = rearrange(
-                encoded, "(b t) c h w -> b t c h w", b=batch_size, t=time_steps
-            )
+            encoded = rearrange(encoded, "(b t) c h w -> b t c h w", b=batch_size, t=time_steps)
             encoded_fields[field] = encoded
 
         # === Combine fields and apply temporal encoding ===
@@ -213,9 +211,7 @@ class AtmoRep(nn.Module):
                         size=predictions[field].shape[2:],
                         mode="nearest",
                     )
-                    mask = rearrange(
-                        mask, "(b t) 1 h w -> b t h w", b=batch_size, t=time_steps
-                    )
+                    mask = rearrange(mask, "(b t) 1 h w -> b t h w", b=batch_size, t=time_steps)
 
                 # Apply mask: add offset of +2.0 to masked predictions
                 masked_pred = predictions[field] + 2.0
@@ -242,11 +238,7 @@ class AtmoRep(nn.Module):
         return predictions
 
     def _generate_ensemble_predictions(
-        self,
-        features: torch.Tensor,
-        batch_size: int,
-        time_steps: int,
-        ensemble_size: int
+        self, features: torch.Tensor, batch_size: int, time_steps: int, ensemble_size: int
     ) -> Dict[str, torch.Tensor]:
         """
         Generate ensemble predictions by perturbing features with random noise for each

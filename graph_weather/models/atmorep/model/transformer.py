@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional
 
 
 class TransformerBlock(nn.Module):
@@ -35,16 +33,14 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.attn = MultiHeadAttention(
-            dim=hidden_dim,
-            num_heads=num_heads,
-            dropout=attention_dropout
+            dim=hidden_dim, num_heads=num_heads, dropout=attention_dropout
         )
         self.norm2 = nn.LayerNorm(hidden_dim)
         self.mlp = MLP(
             in_features=hidden_dim,
             hidden_features=int(hidden_dim * mlp_ratio),
             out_features=hidden_dim,
-            dropout=dropout
+            dropout=dropout,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -82,7 +78,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
         # Linear layers to compute Q, K, V
         self.qkv = nn.Linear(dim, dim * 3)
@@ -139,11 +135,7 @@ class MLP(nn.Module):
     """
 
     def __init__(
-        self,
-        in_features: int,
-        hidden_features: int,
-        out_features: int,
-        dropout: float = 0.0
+        self, in_features: int, hidden_features: int, out_features: int, dropout: float = 0.0
     ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(in_features, hidden_features)

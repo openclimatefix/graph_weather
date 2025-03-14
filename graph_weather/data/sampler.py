@@ -5,6 +5,7 @@ import random
 import torch
 import xarray as xr
 
+
 class HierarchicalSampler:
     def __init__(self, config: dict, data_path: str, loader=None):
         """
@@ -39,6 +40,7 @@ class HierarchicalSampler:
         """
         Generate a list of available time segments based on the provided years.
         Default implementation assumes data is organized by year and month.
+
         Returns:
             list of tuples: Each tuple is (year, month).
         """
@@ -55,12 +57,15 @@ class HierarchicalSampler:
         Args:
             time_segment (tuple): Typically (year, month).
             field (str): The field name to load.
+
         Returns:
             xarray.Dataset or None
         """
         year, month = time_segment
         file_pattern = self.config.get("file_pattern", "{field}_{year}_{month:02d}.nc")
-        file_path = os.path.join(self.data_path, file_pattern.format(field=field, year=year, month=month))
+        file_path = os.path.join(
+            self.data_path, file_pattern.format(field=field, year=year, month=month)
+        )
         try:
             if os.path.exists(file_path):
                 ds = xr.open_dataset(file_path)
@@ -106,7 +111,9 @@ class HierarchicalSampler:
                     time_slice = slice(start_time, start_time + time_steps)
 
                     # Determine spatial patch size and number of neighborhoods to sample
-                    neighborhood_min, neighborhood_max = self.config.get("neighborhoods_per_slice", (1, 1))
+                    neighborhood_min, neighborhood_max = self.config.get(
+                        "neighborhoods_per_slice", (1, 1)
+                    )
                     num_neighborhoods = random.randint(neighborhood_min, neighborhood_max)
                     lat_size, lon_size = self.config.get("neighborhood_size", (1, 1))
                     patch_size = self.config.get("patch_size", 1)
@@ -115,23 +122,31 @@ class HierarchicalSampler:
                     for _ in range(num_neighborhoods):
                         # Check if dataset has the required spatial dimensions
                         if "latitude" not in ds.dims or "longitude" not in ds.dims:
-                            self.logger.warning(f"Dataset for field {field} missing latitude/longitude dims.")
+                            self.logger.warning(
+                                f"Dataset for field {field} missing latitude/longitude dims."
+                            )
                             continue
 
                         ds_lat = ds["latitude"]
                         ds_lon = ds["longitude"]
                         if ds_lat.size < lat_size or ds_lon.size < lon_size:
-                            self.logger.warning(f"Spatial dimensions too small for field {field} in segment {segment}.")
+                            self.logger.warning(
+                                f"Spatial dimensions too small for field {field} in segment {segment}."
+                            )
                             continue
 
                         lat_start = random.randint(0, ds_lat.size - lat_size)
                         lon_start = random.randint(0, ds_lon.size - lon_size)
 
-                        chunk = ds[field].isel(
-                            time=time_slice,
-                            latitude=slice(lat_start, lat_start + lat_size),
-                            longitude=slice(lon_start, lon_start + lon_size),
-                        ).values
+                        chunk = (
+                            ds[field]
+                            .isel(
+                                time=time_slice,
+                                latitude=slice(lat_start, lat_start + lat_size),
+                                longitude=slice(lon_start, lon_start + lon_size),
+                            )
+                            .values
+                        )
 
                         # Build a mask for tokenized representation
                         h_patches = lat_size // patch_size
@@ -158,8 +173,14 @@ class HierarchicalSampler:
                 default_mask_shape = (
                     0,
                     time_steps,
-                    (self.config.get("neighborhood_size", (0, 0))[0] // self.config.get("patch_size", 1)) *
-                    (self.config.get("neighborhood_size", (0, 0))[1] // self.config.get("patch_size", 1))
+                    (
+                        self.config.get("neighborhood_size", (0, 0))[0]
+                        // self.config.get("patch_size", 1)
+                    )
+                    * (
+                        self.config.get("neighborhood_size", (0, 0))[1]
+                        // self.config.get("patch_size", 1)
+                    ),
                 )
                 batch_data[field] = torch.empty(default_shape)
                 batch_masks[field] = torch.empty(default_mask_shape)

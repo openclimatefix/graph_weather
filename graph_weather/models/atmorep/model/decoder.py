@@ -1,8 +1,9 @@
-import torch
-import torch.nn as nn
 from typing import List
 
-from .transformer import TransformerBlock
+import torch
+import torch.nn as nn
+
+
 class Decoder(nn.Module):
     """
     A Decoder module designed to process features of a given field,
@@ -33,20 +34,22 @@ class Decoder(nn.Module):
         super().__init__()
 
         # We create half as many blocks as num_layers // 2 to match the U-Net-like pattern
-        self.blocks = nn.ModuleList([
-            transformer_block_cls(
-                hidden_dim=hidden_dim,
-                num_heads=num_heads,
-                dropout=dropout,
-                attention_dropout=attention_dropout
-            )
-            for _ in range(num_layers // 2)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                transformer_block_cls(
+                    hidden_dim=hidden_dim,
+                    num_heads=num_heads,
+                    dropout=dropout,
+                    attention_dropout=attention_dropout,
+                )
+                for _ in range(num_layers // 2)
+            ]
+        )
 
         # Skip connections: a linear projection for each block
-        self.skip_projections = nn.ModuleList([
-            nn.Linear(hidden_dim, hidden_dim) for _ in range(len(self.blocks))
-        ])
+        self.skip_projections = nn.ModuleList(
+            [nn.Linear(hidden_dim, hidden_dim) for _ in range(len(self.blocks))]
+        )
 
         # Final layer normalization
         self.norm = nn.LayerNorm(hidden_dim)

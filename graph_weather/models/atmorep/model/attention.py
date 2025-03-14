@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional
+
 
 class CrossAttention(nn.Module):
     """
@@ -26,7 +25,7 @@ class CrossAttention(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
         self.head_dim = hidden_dim // num_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
         # Projection layers for Q, K, V and the output projection
         self.q_proj = nn.Linear(hidden_dim, hidden_dim)
