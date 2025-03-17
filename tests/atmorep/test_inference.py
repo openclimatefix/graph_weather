@@ -14,8 +14,14 @@ import os
 import torch
 import pytest
 from graph_weather.models.atmorep.config import AtmoRepConfig
-from graph_weather.models.atmorep.inference import load_model, inference, batch_inference, create_forecast
+from graph_weather.models.atmorep.inference import (
+    load_model,
+    inference,
+    batch_inference,
+    create_forecast,
+)
 from graph_weather.models.atmorep.model.atmorep import AtmoRep
+
 
 @pytest.fixture
 def config():
@@ -47,8 +53,9 @@ def config():
         time_slices_per_ym=6,
         neighborhoods_per_slice=(2, 8),
         neighborhood_size=(32, 32),
-        num_ensemble_members=3
+        num_ensemble_members=3,
     )
+
 
 @pytest.fixture
 def sample_data(config):
@@ -60,6 +67,7 @@ def sample_data(config):
     """
     B, T, H, W = 1, config.time_steps, config.spatial_dims[0], config.spatial_dims[1]
     return {field: torch.randn(B, T, H, W) for field in config.input_fields}
+
 
 def test_load_model(tmp_path, config):
     """
@@ -78,6 +86,7 @@ def test_load_model(tmp_path, config):
     assert isinstance(loaded_model, AtmoRep)
     assert loaded_config.input_fields == config.input_fields
 
+
 def test_inference_function(config, sample_data):
     """
     Test that the inference function returns predictions with correct shapes.
@@ -91,6 +100,7 @@ def test_inference_function(config, sample_data):
     for field in config.input_fields:
         assert predictions[field].shape == sample_data[field].shape
 
+
 def test_batch_inference(config, sample_data):
     """
     Test the batch_inference function on a dummy dataset.
@@ -103,6 +113,7 @@ def test_batch_inference(config, sample_data):
     for field in config.input_fields:
         B, T, H, W = sample_data[field].shape
         assert preds[field].shape == (4, T, H, W)
+
 
 def test_create_forecast(config, sample_data):
     """

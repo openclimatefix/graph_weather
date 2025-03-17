@@ -16,6 +16,7 @@ from graph_weather.models.atmorep.training import train
 from graph_weather.models.atmorep.model.atmorep import AtmoRep
 from graph_weather.models.atmorep.config import AtmoRepConfig
 
+
 @pytest.fixture
 def config():
     """
@@ -46,8 +47,9 @@ def config():
         time_slices_per_ym=6,
         neighborhoods_per_slice=(2, 8),
         neighborhood_size=(32, 32),
-        num_ensemble_members=3
+        num_ensemble_members=3,
     )
+
 
 @pytest.fixture
 def dummy_batch(config):
@@ -57,13 +59,20 @@ def dummy_batch(config):
     Returns:
         dict: A batch with tensors for each input field of shape (B, T, H, W).
     """
-    B, T, H, W = config.batch_size, config.time_steps, config.spatial_dims[0], config.spatial_dims[1]
+    B, T, H, W = (
+        config.batch_size,
+        config.time_steps,
+        config.spatial_dims[0],
+        config.spatial_dims[1],
+    )
     return {field: torch.randn(B, T, H, W, requires_grad=True) for field in config.input_fields}
+
 
 class DummyLoss:
     """
     Dummy loss function for training tests that computes mean squared error.
     """
+
     def __init__(self, input_fields):
         self.input_fields = input_fields
 
@@ -76,11 +85,13 @@ class DummyLoss:
             field_losses[field] = field_loss.item()
         return loss, {"field_losses": field_losses}
 
+
 def dummy_generate_masks(batch_data, config):
     """
     Dummy mask generator that returns masks of ones matching the input data shape.
     """
     return {field: torch.ones_like(batch_data[field]) for field in config.input_fields}
+
 
 def test_train_epoch(monkeypatch, config, dummy_batch):
     """
@@ -99,6 +110,7 @@ def test_train_epoch(monkeypatch, config, dummy_batch):
     for field in config.input_fields:
         assert field in field_losses
 
+
 def test_save_checkpoint(tmp_path, config):
     """
     Test that _save_checkpoint creates a checkpoint file with the expected name.
@@ -111,9 +123,12 @@ def test_save_checkpoint(tmp_path, config):
     best_val_loss = 0.1
     is_best = True
     history = {}
-    train._save_checkpoint(model, optimizer, config, str(output_dir), epoch, best_val_loss, is_best, history)
+    train._save_checkpoint(
+        model, optimizer, config, str(output_dir), epoch, best_val_loss, is_best, history
+    )
     checkpoint_file = output_dir / f"checkpoint_epoch_{epoch}.pth"
     assert checkpoint_file.exists()
+
 
 def test_generate_training_masks(config, dummy_batch):
     """

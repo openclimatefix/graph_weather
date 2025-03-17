@@ -13,6 +13,7 @@ import torch
 from graph_weather.models.atmorep.training.loss import AtmoRepLoss
 from graph_weather.models.atmorep.config import AtmoRepConfig
 
+
 @pytest.fixture
 def config():
     """
@@ -43,8 +44,9 @@ def config():
         time_slices_per_ym=6,
         neighborhoods_per_slice=(2, 8),
         neighborhood_size=(32, 32),
-        num_ensemble_members=3
+        num_ensemble_members=3,
     )
+
 
 @pytest.fixture
 def dummy_data(config):
@@ -56,6 +58,7 @@ def dummy_data(config):
     """
     B, T, H, W = 1, config.time_steps, config.spatial_dims[0], config.spatial_dims[1]
     return {field: torch.randn(B, T, H, W) for field in config.input_fields}
+
 
 @pytest.fixture
 def dummy_predictions(config):
@@ -69,6 +72,7 @@ def dummy_predictions(config):
     E = 2
     return {field: torch.randn(E, B, T, H, W) for field in config.input_fields}
 
+
 @pytest.fixture
 def dummy_masks(config):
     """
@@ -79,6 +83,7 @@ def dummy_masks(config):
     """
     B, T, H, W = 1, config.time_steps, config.spatial_dims[0], config.spatial_dims[1]
     return {field: torch.ones(B, T, H, W) for field in config.input_fields}
+
 
 def test_loss_computation_with_masks(config, dummy_predictions, dummy_data, dummy_masks):
     """
@@ -97,6 +102,7 @@ def test_loss_computation_with_masks(config, dummy_predictions, dummy_data, dumm
     assert "physical" in loss_details
     assert "field_losses" in loss_details
     assert total_loss.item() >= 0
+
 
 def test_loss_computation_without_masks(config, dummy_predictions, dummy_data):
     """

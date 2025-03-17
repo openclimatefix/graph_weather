@@ -15,6 +15,7 @@ from graph_weather.models.atmorep.model.atmorep import AtmoRep
 from graph_weather.models.atmorep.inference import create_forecast
 from graph_weather.models.atmorep.config import AtmoRepConfig
 
+
 @pytest.fixture
 def config():
     """
@@ -45,8 +46,9 @@ def config():
         time_slices_per_ym=6,
         neighborhoods_per_slice=(2, 8),
         neighborhood_size=(32, 32),
-        num_ensemble_members=3
+        num_ensemble_members=3,
     )
+
 
 @pytest.fixture
 def sample_data(config):
@@ -62,6 +64,7 @@ def sample_data(config):
     B, T, H, W = 2, config.time_steps, config.spatial_dims[0], config.spatial_dims[1]
     return {field: torch.randn(B, T, H, W) for field in config.input_fields}
 
+
 def test_forward_pass(config, sample_data):
     """
     Test that a forward pass produces outputs with the expected shapes.
@@ -74,6 +77,7 @@ def test_forward_pass(config, sample_data):
     outputs = model(sample_data)
     for field in config.input_fields:
         assert outputs[field].shape == sample_data[field].shape
+
 
 def test_ensemble_predictions(config, sample_data):
     """
@@ -91,6 +95,7 @@ def test_ensemble_predictions(config, sample_data):
         assert out.dim() == 5
         assert out.shape[0] == ensemble_size
         assert out.shape[1:] == sample_data[field].shape
+
 
 def test_autoregressive_forecast(config, sample_data):
     """
