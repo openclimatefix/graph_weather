@@ -1,26 +1,39 @@
 import math
-
 import torch
-
-from ..config import AtmoRepConfig
-
+from einops import rearrange
 
 class UncertaintyEstimator:
-    def __init__(self, config: AtmoRepConfig):
-        self.config = config
+    """
+    Estimate uncertainty from ensemble predictions using vectorized operations.
+    """
+    def __init__(self, num_bins=10):
+        """
+        Initialize the UncertaintyEstimator.
+
+        Args:
+            num_bins (int): Number of bins for entropy calculation.
+        """
+        self.num_bins = num_bins
 
     def estimate_uncertainty(self, ensemble_predictions):
-        """Estimate uncertainty from ensemble predictions"""
+        """
+        Estimate uncertainty metrics for each field.
+
+        Args:
+            ensemble_predictions (dict): Dictionary of ensemble predictions,
+                                         each with shape [E, B, T, H, W].
+
+        Returns:
+            dict: Uncertainty metrics (variance, spread, and entropy) for each field.
+        """
         uncertainties = {}
 
         for field, preds in ensemble_predictions.items():
-            # Calculate mean and variance across ensemble dimension
+            # Mean and variance across ensemble dimension
             mean_pred = preds.mean(dim=0)  # [B, T, H, W]
-            variance = ((preds - mean_pred.unsqueeze(0)) ** 2).mean(dim=0)  # [B, T, H, W]
-
-            # Calculate additional uncertainty metrics
-            ensemble_spread = preds.std(dim=0)  # Standard deviation across ensemble
-            entropy = self._calculate_entropy(preds)  # Information entropy
+            variance = ((preds - mean_pred.unsqueeze(0)) ** 2).mean(dim=0)
+            ensemble_spread = preds.std(dim=0)
+            entropy = self.optimized_entropy(preds, self.num_bins)
 
             uncertainties[field] = {
                 "variance": variance,
@@ -30,428 +43,124 @@ class UncertaintyEstimator:
 
         return uncertainties
 
-    def _calculate_entropy(self, ensemble_preds, num_bins=10):
-        """Calculate entropy by binning predictions and computing Shannon entropy"""
-        # For continuous variables, we discretize into bins
-        E, B, T, H, W = ensemble_preds.shape
-
-        # Reshape for binning
-        flat_preds = ensemble_preds.reshape(E, -1)
-
-        # Find global min and max for consistent binning
-        global_min = flat_preds.min()
-        global_max = flat_preds.max()
-        bin_width = (global_max - global_min) / num_bins
-
-        # Initialize entropy map
-        entropy = torch.zeros(B, T, H, W)
-
-        # Calculate entropy for each pixel location
-        for b in range(B):
-            for t in range(T):
-                for h in range(H):
-                    for w in range(W):
-                        # Get ensemble predictions for this location
-                        pixel_preds = ensemble_preds[:, b, t, h, w]
-
-                        # Create histogram
-                        hist = torch.histc(
-                            pixel_preds, bins=num_bins, min=global_min, max=global_max
-                        )
-                        hist = hist / E  # Normalize to get probability
-
-                        # Calculate entropy (avoiding log(0))
-                        valid_probs = hist[hist > 0]
-                        pixel_entropy = -torch.sum(valid_probs * torch.log2(valid_probs))
-                        entropy[b, t, h, w] = pixel_entropy
-
-        return entropy
-
-
-class UncertaintyEstimator:
-    def __init__(self, config):
+    def optimized_entropy(self, ensemble_preds, num_bins):
         """
-        Initialize uncertainty estimator
+        Compute entropy in a vectorized fashion using einops for rearrangement.
 
         Args:
-            config: Configuration with model parameters
-        """
-        self.config = config
-
-    def estimate_uncertainty(self, ensemble_predictions):
-        """
-        Estimate uncertainty from ensemble predictions
-
-        Args:
-            ensemble_predictions: Dictionary of ensemble predictions,
-                                 each with shape [E, B, T, H, W]
+            ensemble_preds (torch.Tensor): Ensemble predictions with shape [E, B, T, H, W].
+            num_bins (int): Number of bins for discretization.
 
         Returns:
-            Dictionary of uncertainty metrics for each field
-        """
-        uncertainties = {}
-
-        for field, preds in ensemble_predictions.items():
-            # Calculate mean and variance across ensemble dimension
-            mean_pred = preds.mean(dim=0)  # [B, T, H, W]
-            variance = ((preds - mean_pred.unsqueeze(0)) ** 2).mean(dim=0)  # [B, T, H, W]
-
-            # Calculate additional uncertainty metrics
-            ensemble_spread = preds.std(dim=0)  # Standard deviation across ensemble
-            entropy = self._calculate_entropy(preds)  # Information entropy
-
-            uncertainties[field] = {
-                "variance": variance,
-                "spread": ensemble_spread,
-                "entropy": entropy,
-            }
-
-        return uncertainties
-
-    def _calculate_entropy(self, ensemble_preds, num_bins=10):
-        """
-        Calculate entropy by binning predictions and computing Shannon entropy
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            num_bins: Number of bins for discretization
-
-        Returns:
-            Entropy map with shape [B, T, H, W]
-        """
-        # For continuous variables, we discretize into bins
-        E, B, T, H, W = ensemble_preds.shape
-
-        # Reshape for binning
-        flat_preds = ensemble_preds.reshape(E, -1)
-
-        # Find global min and max for consistent binning
-        global_min = flat_preds.min()
-        global_max = flat_preds.max()
-        bin_width = (global_max - global_min) / num_bins
-
-        # Initialize entropy map
-        entropy = torch.zeros(B, T, H, W)
-
-        # Calculate entropy for each pixel location
-        for b in range(B):
-            for t in range(T):
-                for h in range(H):
-                    for w in range(W):
-                        # Get ensemble predictions for this location
-                        pixel_preds = ensemble_preds[:, b, t, h, w]
-
-                        # Create histogram
-                        hist = torch.histc(
-                            pixel_preds, bins=num_bins, min=global_min, max=global_max
-                        )
-                        hist = hist / E  # Normalize to get probability
-
-                        # Calculate entropy (avoiding log(0))
-                        valid_probs = hist[hist > 0]
-                        pixel_entropy = -torch.sum(valid_probs * torch.log2(valid_probs))
-                        entropy[b, t, h, w] = pixel_entropy
-
-        return entropy
-
-    def optimized_entropy(self, ensemble_preds, num_bins=10):
-        """
-        Vectorized implementation of entropy calculation for better performance
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            num_bins: Number of bins for discretization
-
-        Returns:
-            Entropy map with shape [B, T, H, W]
+            torch.Tensor: Entropy map with shape [B, T, H, W].
         """
         E, B, T, H, W = ensemble_preds.shape
+        # Rearrange tensor to shape [E, (B*T*H*W)]
+        preds_flat = rearrange(ensemble_preds, 'E B T H W -> E (B T H W)')
 
-        # Find global min and max for consistent binning
-        global_min = ensemble_preds.min()
-        global_max = ensemble_preds.max()
+        global_min = preds_flat.min()
+        global_max = preds_flat.max()
+        eps = 1e-8
 
-        # Reshape to [E, B*T*H*W]
-        reshaped_preds = ensemble_preds.reshape(E, -1)
+        # Normalize predictions and compute bin indices
+        norm = (preds_flat - global_min) / (global_max - global_min + eps)
+        bin_indices = (norm * num_bins).floor().clamp(max=num_bins - 1).long()
 
-        # Compute entropy for each spatial-temporal location
-        entropy = torch.zeros(B * T * H * W)
+        # One-hot encode and sum over ensemble dimension to get histogram counts
+        one_hot = torch.nn.functional.one_hot(bin_indices, num_bins)
+        hist = one_hot.sum(dim=0).float()  # shape: [(B*T*H*W), num_bins]
+        prob = hist / E
 
-        for i in range(B * T * H * W):
-            # Get predictions for this location
-            pixel_preds = reshaped_preds[:, i]
-
-            # Create histogram
-            hist = torch.histc(pixel_preds, bins=num_bins, min=global_min, max=global_max)
-            hist = hist / E  # Normalize
-
-            # Calculate entropy
-            valid_probs = hist[hist > 0]
-            pixel_entropy = -torch.sum(valid_probs * torch.log2(valid_probs))
-            entropy[i] = pixel_entropy
-
-        # Reshape back to [B, T, H, W]
-        return entropy.reshape(B, T, H, W)
-
-
-class CalibrationMetrics:
-    """
-    Calculate calibration metrics for probabilistic forecasts
-    """
-
-    def __init__(self):
-        pass
-
-    def rank_histogram(self, ensemble_preds, observations, bins=10):
-        """
-        Calculate rank histogram (verification rank histogram)
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            observations: Ground truth observations with shape [B, T, H, W]
-            bins: Number of bins for the histogram
-
-        Returns:
-            Rank histogram
-        """
-        E, B, T, H, W = ensemble_preds.shape
-
-        # Reshape for easier processing
-        ensemble_flat = ensemble_preds.reshape(E, -1)
-        obs_flat = observations.reshape(-1)
-
-        # Count ranks
-        ranks = torch.zeros(E + 1)
-
-        for i in range(len(obs_flat)):
-            rank = torch.sum(ensemble_flat[:, i] < obs_flat[i])
-            ranks[rank] += 1
-
-        # Normalize
-        ranks = ranks / ranks.sum()
-
-        return ranks
-
-    def crps(self, ensemble_preds, observations):
-        """
-        Calculate Continuous Ranked Probability Score (CRPS)
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            observations: Ground truth observations with shape [B, T, H, W]
-
-        Returns:
-            CRPS score
-        """
-        E, B, T, H, W = ensemble_preds.shape
-
-        # Reshape
-        ensemble_flat = ensemble_preds.reshape(E, -1)
-        obs_flat = observations.reshape(-1)
-
-        # Find global min and max for consistent intervals
-        global_min = ensemble_flat.min()
-        global_max = ensemble_flat.max()
-
-        crps_values = torch.zeros(len(obs_flat))
-
-        for i in range(len(obs_flat)):
-            # Sort ensemble members
-            sorted_ensemble = torch.sort(ensemble_flat[:, i])[0]
-
-            # Calculate CRPS
-            obs = obs_flat[i]
-            crps_sum = 0.0
-
-            # Implementation of CRPS formula
-            for j in range(E):
-                # Heaviside step function
-                heaviside = (sorted_ensemble[j] >= obs).float()
-
-                # Calculate squared difference between CDF and observation
-                if j == 0:
-                    prev_ens = sorted_ensemble[0]
-                    crps_sum += ((0.0 - heaviside) ** 2) * (sorted_ensemble[0] - global_min)
-                else:
-                    crps_sum += ((j / E - heaviside) ** 2) * (
-                        sorted_ensemble[j] - sorted_ensemble[j - 1]
-                    )
-
-            # Add last interval
-            crps_sum += ((1.0 - 1.0) ** 2) * (global_max - sorted_ensemble[-1])
-
-            crps_values[i] = crps_sum
-
-        # Return mean CRPS
-        return crps_values.mean()
-
-    def spread_skill_ratio(self, ensemble_preds, observations):
-        """
-        Calculate spread-skill ratio (ratio of ensemble spread to RMSE)
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            observations: Ground truth observations with shape [B, T, H, W]
-
-        Returns:
-            Spread-skill ratio
-        """
-        # Calculate ensemble mean
-        ensemble_mean = ensemble_preds.mean(dim=0)  # [B, T, H, W]
-
-        # Calculate ensemble spread (standard deviation)
-        ensemble_spread = ensemble_preds.std(dim=0)  # [B, T, H, W]
-
-        # Calculate RMSE between mean prediction and observations
-        rmse = torch.sqrt(((ensemble_mean - observations) ** 2).mean())
-
-        # Calculate mean spread
-        mean_spread = ensemble_spread.mean()
-
-        # Calculate ratio
-        ratio = mean_spread / rmse
-
-        return ratio
-
-    def pit_histogram(self, ensemble_preds, observations, bins=10):
-        """
-        Calculate Probability Integral Transform (PIT) histogram
-
-        Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            observations: Ground truth observations with shape [B, T, H, W]
-            bins: Number of bins for the histogram
-
-        Returns:
-            PIT histogram
-        """
-        E, B, T, H, W = ensemble_preds.shape
-
-        # Reshape
-        ensemble_flat = ensemble_preds.reshape(E, -1)
-        obs_flat = observations.reshape(-1)
-
-        pit_values = torch.zeros(len(obs_flat))
-
-        for i in range(len(obs_flat)):
-            # Sort ensemble members
-            sorted_ensemble = torch.sort(ensemble_flat[:, i])[0]
-
-            # Calculate empirical CDF value at observation
-            obs = obs_flat[i]
-            cdf_value = torch.sum(sorted_ensemble <= obs).float() / E
-
-            # Store PIT value
-            pit_values[i] = cdf_value
-
-        # Create histogram
-        hist = torch.histc(pit_values, bins=bins, min=0, max=1)
-        hist = hist / hist.sum()
-
-        return hist
+        # Compute entropy (adding eps to avoid log2(0))
+        entropy_flat = -(prob * torch.log2(prob + eps)).sum(dim=1)
+        return entropy_flat.reshape(B, T, H, W)
 
 
 class EnsemblePostProcessor:
     """
-    Post-process ensemble predictions to improve calibration
+    Post-process ensemble predictions to improve calibration.
     """
-
-    def __init__(self, config):
+    def __init__(self, bias_correction_value=0.0, inflation_factor=1.0):
         """
-        Initialize post-processor
+        Initialize the post-processor.
 
         Args:
-            config: Configuration with post-processing parameters
+            bias_correction_value (float): Value for bias correction.
+            inflation_factor (float): Factor to inflate the ensemble variance.
         """
-        self.config = config
+        self.bias_correction_value = bias_correction_value
+        self.inflation_factor = inflation_factor
 
     def bias_correction(self, ensemble_preds, bias_field):
         """
-        Apply bias correction to ensemble predictions
+        Apply bias correction to ensemble predictions.
 
         Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            bias_field: Bias field with shape [B, T, H, W]
+            ensemble_preds (torch.Tensor): Ensemble predictions with shape [E, B, T, H, W].
+            bias_field (torch.Tensor): Bias field with shape [B, T, H, W].
 
         Returns:
-            Bias-corrected ensemble predictions
+            torch.Tensor: Bias-corrected ensemble predictions.
         """
-        # Apply bias correction to each ensemble member
-        corrected_preds = ensemble_preds - bias_field.unsqueeze(0)
+        return ensemble_preds - bias_field.unsqueeze(0)
 
-        return corrected_preds
-
-    def variance_inflation(self, ensemble_preds, inflation_factor):
+    def variance_inflation(self, ensemble_preds, inflation_factor=None):
         """
-        Apply variance inflation to ensemble predictions
+        Apply variance inflation to ensemble predictions.
 
         Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            inflation_factor: Factor to inflate the variance
+            ensemble_preds (torch.Tensor): Ensemble predictions with shape [E, B, T, H, W].
+            inflation_factor (float, optional): Inflation factor to use. If None, uses instance value.
 
         Returns:
-            Variance-inflated ensemble predictions
+            torch.Tensor: Variance-inflated ensemble predictions.
         """
-        # Calculate ensemble mean
-        ensemble_mean = ensemble_preds.mean(dim=0)  # [B, T, H, W]
+        if inflation_factor is None:
+            inflation_factor = self.inflation_factor
 
-        # Calculate deviations from mean
+        ensemble_mean = ensemble_preds.mean(dim=0)
         deviations = ensemble_preds - ensemble_mean.unsqueeze(0)
-
-        # Apply inflation
-        inflated_preds = ensemble_mean.unsqueeze(0) + deviations * math.sqrt(inflation_factor)
-
-        return inflated_preds
+        return ensemble_mean.unsqueeze(0) + deviations * math.sqrt(inflation_factor)
 
     def quantile_mapping(self, ensemble_preds, target_distribution, num_quantiles=100):
         """
-        Apply quantile mapping to map ensemble distribution to a target distribution
+        Map the ensemble distribution to a target distribution using quantile mapping.
 
         Args:
-            ensemble_preds: Ensemble predictions with shape [E, B, T, H, W]
-            target_distribution: Function that generates samples from target distribution
-            num_quantiles: Number of quantiles for mapping
+            ensemble_preds (torch.Tensor): Ensemble predictions with shape [E, B, T, H, W].
+            target_distribution (callable): Function that generates samples given a sample size.
+            num_quantiles (int): Number of quantiles for mapping.
 
         Returns:
-            Mapped ensemble predictions
+            torch.Tensor: Quantile-mapped ensemble predictions.
         """
         E, B, T, H, W = ensemble_preds.shape
-
-        # Initialize output
         mapped_preds = torch.zeros_like(ensemble_preds)
 
-        # Process each location separately
+        # Process each location separately; vectorization is challenging here
         for b in range(B):
             for t in range(T):
                 for h in range(H):
                     for w in range(W):
-                        # Get ensemble predictions for this location
                         preds = ensemble_preds[:, b, t, h, w]
-
-                        # Sort predictions
                         sorted_preds, indices = torch.sort(preds)
-
-                        # Generate samples from target distribution
                         target_samples = target_distribution(E)
                         sorted_target, _ = torch.sort(target_samples)
-
-                        # Map values
                         for e in range(E):
                             mapped_preds[indices[e], b, t, h, w] = sorted_target[e]
-
         return mapped_preds
 
 
 def calculate_global_metrics(uncertainty_maps, observations):
     """
-    Calculate global uncertainty metrics across the entire domain
+    Calculate global uncertainty metrics across all fields.
 
     Args:
-        uncertainty_maps: Dictionary of uncertainty metrics for each field
-        observations: Ground truth observations
+        uncertainty_maps (dict): Dictionary of uncertainty metrics for each field.
+        observations (torch.Tensor): Ground truth observations.
 
     Returns:
-        Dictionary of global metrics
+        dict: Global metrics for each field.
     """
     global_metrics = {}
 

@@ -1,19 +1,30 @@
 import logging
 import os
-from unittest.mock import MagicMock
+from typing import Any, Dict, Tuple
 
 import torch
 import torch.optim as optim
+from einops import rearrange
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
+
+from graph_weather.models.atmorep.model.atmorep import AtmoRep
+from graph_weather.models.atmorep.data.dataset import ERA5Dataset
+from graph_weather.models.atmorep.training.loss import AtmoRepLoss
 
 
-def _train_epoch(model, dataloader, optimizer, loss_fn, epoch):
+def _train_epoch(
+    model: torch.nn.Module,
+    dataloader: DataLoader,
+    optimizer: optim.Optimizer,
+    loss_fn: AtmoRepLoss,
+    epoch: int,
+) -> Tuple[float, Dict[str, float]]:
     """
     Run one training epoch.
 
     Args:
-        model: The AtmoRep model.
+        model: The AtmoRep model (nn.Module).
         dataloader: DataLoader yielding batches from ERA5Dataset.
         optimizer: Optimizer for model parameters.
         loss_fn: Loss function instance.
@@ -55,7 +66,16 @@ def _train_epoch(model, dataloader, optimizer, loss_fn, epoch):
     return epoch_loss, epoch_field_losses
 
 
-def _save_checkpoint(model, optimizer, config, output_dir, epoch, best_val_loss, is_best, history):
+def _save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: optim.Optimizer,
+    config: Any,
+    output_dir: str,
+    epoch: int,
+    best_val_loss: float,
+    is_best: bool,
+    history: Dict[str, Any],
+) -> None:
     """
     Save a training checkpoint.
 
@@ -82,33 +102,35 @@ def _save_checkpoint(model, optimizer, config, output_dir, epoch, best_val_loss,
     torch.save(checkpoint, save_path)
 
 
-def train_atmorep(config, era5_path: str, output_dir: str, model=None, resume_from=None):
+def train_atmorep(
+    config: Any,
+    era5_path: str,
+    output_dir: str,
+    model: torch.nn.Module = None,
+    resume_from: str = None,
+) -> torch.nn.Module:
     """
     Train the AtmoRep model.
 
     Args:
-        config: Configuration object with model parameters.
+        config: Configuration object with model parameters (must include
+                'input_fields', 'patch_size', 'mask_ratio', etc.).
         era5_path: Path to ERA5 data.
         output_dir: Directory to save model checkpoints.
         model: Optional pre-created model (if None, will be created).
         resume_from: Optional path to checkpoint to resume training from.
 
     Returns:
-        Trained model.
+        Trained model (torch.nn.Module).
     """
     # Create model if not provided.
     if model is None:
-        # Use absolute import so that the test patch is effective.
-        from graph_weather.models.atmorep.model.atmorep import AtmoRep
-
         model = AtmoRep(config)
 
-    # Ensure the model has parameters; if not, attach a dummy parameter.
-    try:
-        params = list(model.parameters())
-    except Exception:
-        params = []
+    # Ensure the model has parameters; if it fails, let it break.
+    params = list(model.parameters())
     if len(params) == 0:
+        # If for some reason the model has no parameters, register a dummy parameter.
         dummy_param = torch.nn.Parameter(torch.zeros(1))
         if hasattr(model, "register_parameter"):
             model.register_parameter("dummy_param", dummy_param)
@@ -117,49 +139,17 @@ def train_atmorep(config, era5_path: str, output_dir: str, model=None, resume_fr
         params = [dummy_param]
 
     # Create dataset and dataloader.
-    from graph_weather.models.atmorep.data.dataset import ERA5Dataset
-
     dataset = ERA5Dataset(config, era5_path)
-    # Workaround: if the dataset is empty, override __len__ and __getitem__ to provide a dummy sample.
-    if len(dataset) == 0:
-
-        def dummy_len(self):
-            return 1
-
-        def dummy_getitem(self, idx):
-            return {
-                field: torch.zeros(config.time_steps, *config.spatial_dims)
-                for field in config.input_fields
-            }
-
-        dataset.__class__.__len__ = dummy_len
-        dataset.__class__.__getitem__ = dummy_getitem
-
     dataloader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True)
 
     # Loss function.
-    from graph_weather.models.atmorep.training.loss import AtmoRepLoss
-
     loss_fn = AtmoRepLoss(config)
 
-    # Use torch.optim.Adam (so that the test patch on torch.optim.Adam is applied).
+    # Optimizer and scheduler.
     optimizer = optim.Adam(params, lr=config.learning_rate, weight_decay=config.weight_decay)
-
-    # Create scheduler.
-    if isinstance(optimizer, MagicMock):
-
-        class DummyScheduler:
-            def step(self):
-                pass
-
-            def state_dict(self):
-                return {}
-
-        scheduler = DummyScheduler()
-    else:
-        scheduler = CosineAnnealingLR(
-            optimizer, T_max=config.epochs, eta_min=config.learning_rate / 100
-        )
+    scheduler = CosineAnnealingLR(
+        optimizer, T_max=config.epochs, eta_min=config.learning_rate / 100
+    )
 
     # Resume training if needed.
     start_epoch = 0
@@ -167,7 +157,7 @@ def train_atmorep(config, era5_path: str, output_dir: str, model=None, resume_fr
         checkpoint = torch.load(resume_from)
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
-        scheduler.load_state_dict(checkpoint["scheduler"])
+        scheduler.load_state_dict(checkpoint.get("scheduler", {}))
         start_epoch = checkpoint["epoch"] + 1
         print(f"Resuming from epoch {start_epoch}")
 
@@ -182,13 +172,14 @@ def train_atmorep(config, era5_path: str, output_dir: str, model=None, resume_fr
                 model, dataloader, optimizer, loss_fn, epoch
             )
         except KeyboardInterrupt:
+            logger.info("Training interrupted by user.")
             break
 
         scheduler.step()
 
         avg_epoch_loss = epoch_loss / len(dataloader)
         avg_field_losses = {
-            field: loss / len(dataloader) for field, loss in epoch_field_losses.items()
+            field: (field_loss / len(dataloader)) for field, field_loss in epoch_field_losses.items()
         }
 
         logger.info(f"Epoch {epoch} completed. Average loss: {avg_epoch_loss:.4f}")
@@ -212,180 +203,50 @@ def train_atmorep(config, era5_path: str, output_dir: str, model=None, resume_fr
     return model
 
 
-def train_with_dataset(
-    config,
-    dataset,
-    output_dir: str,
-    model=None,
-    resume_from=None,
-    num_workers: int = 4,
-    pin_memory: bool = True,
-):
-    """
-    Train the AtmoRep model using a Dataset.
-
-    Args:
-        config: Configuration object with model parameters.
-        dataset: ERA5Dataset for training.
-        output_dir: Directory to save model checkpoints.
-        model: Optional pre-created model (if None, will be created).
-        resume_from: Optional path to checkpoint to resume training from.
-        num_workers: Number of data loading workers.
-        pin_memory: Whether to pin memory for faster data transfer to GPU.
-
-    Returns:
-        Trained model.
-    """
-    if model is None:
-        from graph_weather.models.atmorep.model.atmorep import AtmoRep
-
-        model = AtmoRep(config)
-
-    try:
-        params = list(model.parameters())
-    except Exception:
-        params = []
-    if len(params) == 0:
-        dummy_param = torch.nn.Parameter(torch.zeros(1))
-        if hasattr(model, "register_parameter"):
-            model.register_parameter("dummy_param", dummy_param)
-        else:
-            setattr(model, "dummy_param", dummy_param)
-        params = [dummy_param]
-
-    dataloader = DataLoader(
-        dataset,
-        batch_size=config.batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-    )
-
-    from graph_weather.models.atmorep.training.loss import AtmoRepLoss
-
-    loss_fn = AtmoRepLoss(config)
-
-    optimizer = optim.Adam(params, lr=config.learning_rate, weight_decay=config.weight_decay)
-
-    if isinstance(optimizer, MagicMock):
-
-        class DummyScheduler:
-            def step(self):
-                pass
-
-            def state_dict(self):
-                return {}
-
-        scheduler = DummyScheduler()
-    else:
-        scheduler = CosineAnnealingLR(
-            optimizer, T_max=config.epochs, eta_min=config.learning_rate / 100
-        )
-
-    start_epoch = 0
-    if resume_from and os.path.exists(resume_from):
-        checkpoint = torch.load(resume_from)
-        model.load_state_dict(checkpoint["model"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        scheduler.load_state_dict(checkpoint["scheduler"])
-        start_epoch = checkpoint["epoch"] + 1
-        print(f"Resuming from epoch {start_epoch}")
-
-    logger = logging.getLogger("AtmoRep-Training")
-    logger.setLevel(logging.INFO)
-
-    for epoch in range(start_epoch, config.epochs):
-        try:
-            epoch_loss, epoch_field_losses = _train_epoch(
-                model, dataloader, optimizer, loss_fn, epoch
-            )
-        except KeyboardInterrupt:
-            break
-
-        scheduler.step()
-
-        avg_epoch_loss = epoch_loss / len(dataloader)
-        avg_field_losses = {
-            field: loss / len(dataloader) for field, loss in epoch_field_losses.items()
-        }
-
-        logger.info(f"Epoch {epoch} completed. Average loss: {avg_epoch_loss:.4f}")
-        for field, field_loss in avg_field_losses.items():
-            logger.info(f"  {field} loss: {field_loss:.4f}")
-
-        if epoch % 5 == 0 or epoch == config.epochs - 1:
-            os.makedirs(output_dir, exist_ok=True)
-            _save_checkpoint(
-                model,
-                optimizer,
-                config,
-                output_dir,
-                epoch,
-                best_val_loss=0.0,
-                is_best=True,
-                history={},
-            )
-
-    return model
-
-
-def generate_training_masks(batch_data, config):
+def generate_training_masks(batch_data: Dict[str, torch.Tensor], config: Any) -> Dict[str, torch.Tensor]:
     """
     Generate random masks for training.
 
     Args:
         batch_data: Dictionary of input tensors.
-        config: Configuration with mask parameters.
+        config: Configuration with mask parameters (patch_size, mask_ratio, etc.).
 
     Returns:
         Dictionary of mask tensors matching the spatial dimensions of the input.
     """
     batch_masks = {}
 
-    # Get the patch size as an integer, with fallback
-    try:
-        patch_size = int(getattr(config, "patch_size", 16))
-    except (TypeError, ValueError):
-        patch_size = 16
-
-    # Get mask ratio as a float, with fallback
-    try:
-        mask_ratio = float(getattr(config, "mask_ratio", 0.75))
-    except (TypeError, ValueError):
-        mask_ratio = 0.75
+    # Assume config provides valid patch_size and mask_ratio
+    patch_size = int(config.patch_size)   # Removed fallback
+    mask_ratio = float(config.mask_ratio) # Removed fallback
 
     for field_name, field_data in batch_data.items():
         # Extract tensor shape safely
-        if hasattr(field_data, "shape"):
-            shape = list(field_data.shape)
-            B = shape[0] if len(shape) > 0 else 1
-            T = shape[1] if len(shape) > 1 else 1
+        if not hasattr(field_data, "shape"):
+            raise ValueError(f"Field {field_name} is missing shape information.")
 
-            # Directly use tensor dimensions
-            if len(shape) >= 4:
-                H, W = shape[2], shape[3]
-            else:
-                H, W = 16, 32
-        else:
-            # Fallback values
-            B, T, H, W = 1, 1, 16, 32
+        shape = list(field_data.shape)
+        if len(shape) < 4:
+            raise ValueError(
+                f"Expected input of shape (B, T, H, W), got {tuple(shape)} for field '{field_name}'"
+            )
+        B, T, H, W = shape[0], shape[1], shape[2], shape[3]
 
         # Create mask with the same spatial dimensions as the input
-        # Instead of creating patch-based masks, create full resolution masks
         mask = torch.zeros(B, T, H, W)
 
         # Apply random masking directly on the spatial dimensions
         for b in range(B):
             for t in range(T):
-                # Create a random mask with the specified ratio of masked elements
                 flat_size = H * W
                 indices = torch.randperm(flat_size)
                 num_to_mask = max(1, int(flat_size * mask_ratio))
 
-                # Create the flat mask and then reshape
                 flat_mask = torch.zeros(flat_size)
                 flat_mask[indices[:num_to_mask]] = 1.0
-                mask[b, t] = flat_mask.reshape(H, W)
+
+                # Use einops for clarity
+                mask[b, t] = rearrange(flat_mask, "(h w) -> h w", h=H, w=W)
 
         batch_masks[field_name] = mask
 
