@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from einops import rearrange, repeat
 
 
@@ -12,6 +11,7 @@ class MaskedReconstructionLoss(nn.Module):
     Computes a masked MSE loss for each field and returns the average loss
     across all fields, as well as a dictionary of per-field losses.
     """
+
     def __init__(self, reduction: str = "none"):
         """
         Args:
@@ -67,24 +67,15 @@ class MaskedReconstructionLoss(nn.Module):
                     N = field_mask.shape[-1]
                     grid_size = int(math.sqrt(N))
                     spatial_mask = rearrange(
-                        field_mask.float(),
-                        "b t (x y) -> b t x y",
-                        x=grid_size,
-                        y=grid_size
+                        field_mask.float(), "b t (x y) -> b t x y", x=grid_size, y=grid_size
                     )
-                    spatial_mask = F.interpolate(
-                        spatial_mask,
-                        size=(H, W),
-                        mode="nearest"
-                    )
+                    spatial_mask = F.interpolate(spatial_mask, size=(H, W), mode="nearest")
                     spatial_mask = rearrange(spatial_mask, "b t h w -> 1 b t h w")
                 else:
                     raise ValueError("Unexpected mask dimensions.")
             else:
                 # If no mask is provided, use a mask of all ones
-                spatial_mask = torch.ones(
-                    (1, B, T, H, W), device=field_target.device
-                )
+                spatial_mask = torch.ones((1, B, T, H, W), device=field_target.device)
 
             # -------------------------------------------------
             # Expand the target if predictions have an
@@ -128,6 +119,7 @@ class PhysicalConsistencyLoss(nn.Module):
       - Non-negative wind speed from u10, v10
       - Penalizes large temperature gradients in t2m
     """
+
     def __init__(self, grad_threshold: float = 10.0):
         """
         Args:
@@ -142,6 +134,7 @@ class PhysicalConsistencyLoss(nn.Module):
         Args:
             predictions (dict): Dict of field predictions, each with shape
                 [E, B, T, H, W] or [B, T, H, W].
+
         Returns:
             loss (torch.Tensor): A scalar tensor with the physical constraint loss.
         """
@@ -180,9 +173,8 @@ class PhysicalConsistencyLoss(nn.Module):
                 temp_grad = torch.tensor(0.0, device=temp.device)
 
             # Penalize if gradients exceed a threshold
-            excessive_grad_loss = (
-                F.relu(horiz_grad - self.grad_threshold)
-                + F.relu(temp_grad - self.grad_threshold)
+            excessive_grad_loss = F.relu(horiz_grad - self.grad_threshold) + F.relu(
+                temp_grad - self.grad_threshold
             )
             loss += excessive_grad_loss
 
@@ -194,6 +186,7 @@ class AtmoRepLoss(nn.Module):
     Combines the reconstruction loss (with optional masks) and a physical
     consistency loss into one total loss.
     """
+
     def __init__(
         self,
         input_fields: list,
@@ -223,12 +216,7 @@ class AtmoRepLoss(nn.Module):
         # Default to weight=1.0 for all fields if not provided
         self.field_weights = field_weights or {field: 1.0 for field in input_fields}
 
-    def forward(
-        self,
-        predictions: dict,
-        targets: dict,
-        masks: dict = None
-    ):
+    def forward(self, predictions: dict, targets: dict, masks: dict = None):
         """
         Args:
             predictions (dict): Dict of predicted fields, each with shape
@@ -243,10 +231,7 @@ class AtmoRepLoss(nn.Module):
         """
         # Reconstruction loss
         recon_loss, field_losses = self.recon_loss(
-            predictions,
-            targets,
-            masks,
-            field_weights=self.field_weights
+            predictions, targets, masks, field_weights=self.field_weights
         )
 
         # Physical consistency loss

@@ -1,11 +1,14 @@
 import math
+
 import torch
 from einops import rearrange
+
 
 class UncertaintyEstimator:
     """
     Estimate uncertainty from ensemble predictions using vectorized operations.
     """
+
     def __init__(self, num_bins=10):
         """
         Initialize the UncertaintyEstimator.
@@ -56,7 +59,7 @@ class UncertaintyEstimator:
         """
         E, B, T, H, W = ensemble_preds.shape
         # Rearrange tensor to shape [E, (B*T*H*W)]
-        preds_flat = rearrange(ensemble_preds, 'E B T H W -> E (B T H W)')
+        preds_flat = rearrange(ensemble_preds, "E B T H W -> E (B T H W)")
 
         global_min = preds_flat.min()
         global_max = preds_flat.max()
@@ -80,6 +83,7 @@ class EnsemblePostProcessor:
     """
     Post-process ensemble predictions to improve calibration.
     """
+
     def __init__(self, bias_correction_value=0.0, inflation_factor=1.0):
         """
         Initialize the post-processor.

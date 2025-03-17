@@ -6,10 +6,10 @@ import torch
 import torch.optim as optim
 from einops import rearrange
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
-from graph_weather.models.atmorep.model.atmorep import AtmoRep
 from graph_weather.models.atmorep.data.dataset import ERA5Dataset
+from graph_weather.models.atmorep.model.atmorep import AtmoRep
 from graph_weather.models.atmorep.training.loss import AtmoRepLoss
 
 
@@ -179,7 +179,8 @@ def train_atmorep(
 
         avg_epoch_loss = epoch_loss / len(dataloader)
         avg_field_losses = {
-            field: (field_loss / len(dataloader)) for field, field_loss in epoch_field_losses.items()
+            field: (field_loss / len(dataloader))
+            for field, field_loss in epoch_field_losses.items()
         }
 
         logger.info(f"Epoch {epoch} completed. Average loss: {avg_epoch_loss:.4f}")
@@ -203,7 +204,9 @@ def train_atmorep(
     return model
 
 
-def generate_training_masks(batch_data: Dict[str, torch.Tensor], config: Any) -> Dict[str, torch.Tensor]:
+def generate_training_masks(
+    batch_data: Dict[str, torch.Tensor], config: Any
+) -> Dict[str, torch.Tensor]:
     """
     Generate random masks for training.
 
@@ -217,8 +220,8 @@ def generate_training_masks(batch_data: Dict[str, torch.Tensor], config: Any) ->
     batch_masks = {}
 
     # Assume config provides valid patch_size and mask_ratio
-    patch_size = int(config.patch_size)   # Removed fallback
-    mask_ratio = float(config.mask_ratio) # Removed fallback
+    patch_size = int(config.patch_size)  # Removed fallback
+    mask_ratio = float(config.mask_ratio)  # Removed fallback
 
     for field_name, field_data in batch_data.items():
         # Extract tensor shape safely

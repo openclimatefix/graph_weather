@@ -1,6 +1,7 @@
 import torch
 from einops import rearrange
 
+
 def rank_histogram(ensemble_preds, observations):
     """
     Calculate the verification rank histogram in a vectorized manner.
@@ -14,8 +15,8 @@ def rank_histogram(ensemble_preds, observations):
     """
     E, B, T, H, W = ensemble_preds.shape
     # Rearrange tensors to flatten the spatial-temporal dimensions
-    ensemble_flat = rearrange(ensemble_preds, 'E B T H W -> E (B T H W)')
-    obs_flat = rearrange(observations, 'B T H W -> (B T H W)')
+    ensemble_flat = rearrange(ensemble_preds, "E B T H W -> E (B T H W)")
+    obs_flat = rearrange(observations, "B T H W -> (B T H W)")
 
     # Count how many ensemble members are less than the observation for each location
     ranks = (ensemble_flat < obs_flat.unsqueeze(0)).sum(dim=0)
@@ -36,8 +37,8 @@ def crps(ensemble_preds, observations):
         float: Mean CRPS score.
     """
     E, B, T, H, W = ensemble_preds.shape
-    ensemble_flat = rearrange(ensemble_preds, 'E B T H W -> E (B T H W)')
-    obs_flat = rearrange(observations, 'B T H W -> (B T H W)')
+    ensemble_flat = rearrange(ensemble_preds, "E B T H W -> E (B T H W)")
+    obs_flat = rearrange(observations, "B T H W -> (B T H W)")
 
     global_min = ensemble_flat.min()
     global_max = ensemble_flat.max()
@@ -53,7 +54,9 @@ def crps(ensemble_preds, observations):
             if j == 0:
                 crps_sum += ((0.0 - heaviside) ** 2) * (sorted_ensemble[0] - global_min)
             else:
-                crps_sum += (((j / E) - heaviside) ** 2) * (sorted_ensemble[j] - sorted_ensemble[j - 1])
+                crps_sum += (((j / E) - heaviside) ** 2) * (
+                    sorted_ensemble[j] - sorted_ensemble[j - 1]
+                )
         # Last interval (contributes zero)
         crps_sum += ((1.0 - 1.0) ** 2) * (global_max - sorted_ensemble[-1])
         crps_values[i] = crps_sum
