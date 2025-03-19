@@ -3,4 +3,4 @@
 from .data.nnja_ai import SensorDataset, collate_fn
 from .models.analysis import GraphWeatherAssimilator
 from .models.forecast import GraphWeatherForecaster
-from .data.icoshedral_graph_gen import IcosahedralGrid, create_icosahedral_graph, get_grid_metadata
+from .data.icosahedral_graph_gen import IcosahedralGrid, create_icosahedral_graph, get_grid_metadata
