@@ -1,8 +1,9 @@
 """
-This module defines the `AtmoRepConfig` class, which holds configuration settings for the AtmoRep. 
+This module defines the `AtmoRepConfig` class, which holds configuration settings for the AtmoRep.
 
 It includes parameters for data, model architecture, training, and hierarchical sampling.
 """
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 

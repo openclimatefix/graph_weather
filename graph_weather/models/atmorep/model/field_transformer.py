@@ -3,7 +3,9 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 from einops import rearrange
+
 from .transformer import TransformerBlock
+
 
 class FieldVisionTransformer(nn.Module):
     """
