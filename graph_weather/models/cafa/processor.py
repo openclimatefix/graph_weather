@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from einops import rearrange
 from .factorize import FactorizedTransformerBlock
 
@@ -8,12 +7,26 @@ class Processor(nn.Module):
     """
     Processor module that applies multiple FactorizedTransformerBlocks.
 
+    This module is designed to process a 2D feature map by flattening it, applying a series of 
+    transformer blocks that utilize efficient axial attention, and then reshaping it back to its 
+    original spatial dimensions.
+
     Args:
-        dim (int): Embedding dimension.
+        dim (int): Embedding dimension (number of channels) of the input.
         depth (int): Number of Transformer blocks to stack.
-        num_heads (int): Number of attention heads.
-        mlp_ratio (float): Expansion factor for the MLP.
-        dropout (float): Dropout probability.
+        num_heads (int): Number of attention heads used in each Transformer block.
+        mlp_ratio (float): Expansion factor for the hidden dimension in the feed-forward MLP.
+        dropout (float): Dropout probability applied in both the attention and MLP layers.
+
+    Expected Input:
+        x (torch.Tensor): Input tensor of shape [B, C, H, W], where:
+            - B: Batch size.
+            - C: Number of channels (should match the embedding dimension).
+            - H: Height of the feature map.
+            - W: Width of the feature map.
+
+    Returns:
+        torch.Tensor: Processed features of shape [B, C, H, W].
     """
     def __init__(self,
                  dim: int,
@@ -34,27 +47,25 @@ class Processor(nn.Module):
 
     def forward(self, x: torch.Tensor, H: int, W: int) -> torch.Tensor:
         """
-        Forward pass of the processor.
+        Forward pass of the Processor.
 
         Args:
-            x (torch.Tensor): [B, C, H, W] feature map where.
-            - B: Batch size.
-            - C: Number of channels (should equal the embedding dimension).
-            - H: Height of the feature map(needed for reshaping).
-            - W: Width of the feature map(needed for reshaping).
+            x (torch.Tensor): Input tensor of shape [B, C, H, W].
+            H (int): Height of the feature map (needed for reshaping).
+            W (int): Width of the feature map (needed for reshaping).
 
         Returns:
-            torch.Tensor: Processed features of shape [B, C, H, W].
+            torch.Tensor: Processed feature map of shape [B, C, H, W].
         """
         B, C, _, _ = x.shape
         
-        # Flatten spatial dimensions for factorized attention
+        # Flatten the spatial dimensions for transformer processing.
         x = rearrange(x, 'b c h w -> b (h w) c')  # [B, H*W, C]
         
+        # Process the flattened features through each transformer block.
         for block in self.blocks:
-            x = block(x)
+            x = block(x, H, W)
         
-        # Reshape back to [B, C, H, W]
+        # Reshape back to the original 2D feature map dimensions.
         x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         return x
-

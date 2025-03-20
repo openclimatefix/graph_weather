@@ -45,6 +45,7 @@ def test_processor():
     )
     
     x = torch.randn(batch_size, channels, height, width)
+    # Updated call to pass spatial dimensions (height, width) to the processor.
     output = processor(x, height, width)
     
     # Expected output shape is identical to input: [B, C, H, W]
