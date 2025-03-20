@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
 import pandas as pd
 try:
-    from anemoi.datasets import open_dataset  # Use anemoi's dataset loading utility
+    from anemoi.datasets import open_dataset 
 except ImportError as e:
     print(f"Import Error : {e}, use command `pip install anemoi-datasets`")
 class AnemoiDataset(Dataset):
