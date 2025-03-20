@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 from graph_weather.data.anemoi_graph_gen import AnemoiGraphAdapter, AnemoiGrid
 
+
 def test_Anemoi_grid_vertex_properties():
     """
     Verify that AnemoiGrid produces a valid set of vertices.
@@ -12,6 +13,7 @@ def test_Anemoi_grid_vertex_properties():
     vertices = grid.get_vertices()
     assert vertices.ndim == 2, "Vertices should be a 2D array."
     assert vertices.shape[1] == 3, "Each vertex should have 3 coordinates."
+
 
 def test_Anemoi_grid_latlon_range():
     """
@@ -25,6 +27,7 @@ def test_Anemoi_grid_latlon_range():
         assert -90 <= lat <= 90, f"Latitude {lat} out of range."
         assert -180 <= lon <= 180, f"Longitude {lon} out of range."
 
+
 def test_Anemoi_grid_graph_connectivity():
     """
     Verify that the graph built by AnemoiGrid is fully connected.
@@ -32,6 +35,7 @@ def test_Anemoi_grid_graph_connectivity():
     grid = AnemoiGrid(grid_resolution=128)
     G = grid.get_graph()
     assert nx.is_connected(G), "Graph should be connected."
+
 
 def test_Anemoi_grid_adjacency_symmetry():
     """
@@ -47,6 +51,7 @@ def test_Anemoi_grid_adjacency_symmetry():
         for v in adj[u]:
             assert u in adj.get(v, []), f"Edge ({u}, {v}) is not symmetric."
 
+
 def test_sliding_window_attention_indices():
     """
     Verify that sliding window attention indices are generated.
@@ -60,6 +65,7 @@ def test_sliding_window_attention_indices():
         assert isinstance(window, list), "Each attention window should be a list of indices."
         assert len(window) >= 40 // 2, "Attention window size is too small."
 
+
 def test_adapter_node_features():
     """
     Test that AnemoiGraphAdapter correctly maps input data to node features.
@@ -70,7 +76,10 @@ def test_adapter_node_features():
     dummy_data = np.ones((3, 10, 20))
     features = adapter.get_node_features(dummy_data, variable_idx=0)
     assert features.ndim == 1, "Node features should be a 1D array."
-    assert features.shape[0] == adapter.n_nodes, "Feature vector length should equal number of nodes."
+    assert (
+        features.shape[0] == adapter.n_nodes
+    ), "Feature vector length should equal number of nodes."
+
 
 def test_prepare_model_inputs():
     """
@@ -80,26 +89,29 @@ def test_prepare_model_inputs():
     """
     adapter = AnemoiGraphAdapter(resolution=128)
     data = {
-        'temperature': np.ones((3, 10, 20)),
-        'pressure': np.ones((3, 10, 20)),
-        'humidity': np.ones((3, 10, 20))
+        "temperature": np.ones((3, 10, 20)),
+        "pressure": np.ones((3, 10, 20)),
+        "humidity": np.ones((3, 10, 20)),
     }
     inputs = adapter.prepare_model_inputs(data)
-    expected_keys = {'node_features', 'edge_index', 'attention_masks', 'positions'}
+    expected_keys = {"node_features", "edge_index", "attention_masks", "positions"}
     assert expected_keys.issubset(set(inputs.keys())), "Missing expected keys in model inputs."
-    
-    nf = inputs['node_features']
+
+    nf = inputs["node_features"]
     assert nf.ndim == 2, "node_features should be a 2D array."
-    assert nf.shape[0] == adapter.n_nodes, "First dimension of node_features must equal number of nodes."
-    
-    ei = inputs['edge_index']
+    assert (
+        nf.shape[0] == adapter.n_nodes
+    ), "First dimension of node_features must equal number of nodes."
+
+    ei = inputs["edge_index"]
     assert ei.ndim == 2 and ei.shape[0] == 2, "edge_index should have shape (2, num_edges)."
-    
-    am = inputs['attention_masks']
+
+    am = inputs["attention_masks"]
     assert am.ndim == 2 and am.shape[1] == adapter.n_nodes, "attention_masks shape is incorrect."
-    
-    pos = inputs['positions']
+
+    pos = inputs["positions"]
     assert pos.ndim == 2 and pos.shape[1] == 3, "positions should have shape (n_nodes, 3)."
+
 
 def test_process_model_outputs():
     """
@@ -109,9 +121,9 @@ def test_process_model_outputs():
     adapter = AnemoiGraphAdapter(resolution=128)
     dummy_outputs = np.random.rand(adapter.n_nodes, 3)  # Assume 3 output variables
     processed = adapter.process_model_outputs(dummy_outputs)
-    
+
     for var_idx in range(3):
-        key = f'var_{var_idx}'
+        key = f"var_{var_idx}"
         assert key in processed, f"Missing output for variable {var_idx}."
         grid = processed[key]
         assert grid.shape == (180, 360), f"Regridded output shape for {key} should be (180, 360)."
