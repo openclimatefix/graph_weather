@@ -1,27 +1,30 @@
 import numpy as np
+import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
-import pandas as pd
+
 try:
-    from anemoi.datasets import open_dataset 
+    from anemoi.datasets import open_dataset
 except ImportError as e:
     print(f"Import Error : {e}, use command `pip install anemoi-datasets`")
+
+
 class AnemoiDataset(Dataset):
     """
     AnemoiDataset leverages the anemoi library to load, preprocess, and manage weather datasets.
-    
+
     This implementation extends the basic functionality by supporting:
       - Spatial subsetting via latitude and longitude bounds.
       - Missing data handling (e.g., interpolation).
       - Computation of climatological statistics for bias correction or anomaly detection.
       - Ensemble and grid operations can be integrated further if needed.
-    
+
     The dataset is expected to include:
       - A 'time' dimension and 1D spatial coordinates ('latitude' and 'longitude').
       - Meteorological features (e.g., "temperature", "geopotential", etc.) normalized using per-feature min–max scaling.
       - Additional geographical context computed from static features (sin/cos of lat/lon) and a dynamic day-of-year feature.
-    
+
     Args:
         filepath (str): Path to the main dataset (in Zarr format) loaded via anemoi's open_dataset.
         features (list): List of meteorological features to extract.
@@ -36,6 +39,7 @@ class AnemoiDataset(Dataset):
         missing_method (str): Method to handle missing data. Default is 'interpolate'.
         compute_stats (bool): If True, compute climatological statistics for each feature.
     """
+
     def __init__(
         self,
         filepath: str,
@@ -48,18 +52,18 @@ class AnemoiDataset(Dataset):
         normalizer: callable = None,
         lat_bounds: tuple = None,
         lon_bounds: tuple = None,
-        missing_method: str = 'interpolate',
+        missing_method: str = "interpolate",
         compute_stats: bool = False,
     ):
         super().__init__()
-        assert start_year <= end_year, (
-            f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
-        )
+        assert (
+            start_year <= end_year
+        ), f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
 
         # Load the main dataset using anemoi's open_dataset
         self.data = open_dataset(filepath)
         self.data = self.data.sel(time=slice(str(start_year), str(end_year)))
-        
+
         # Optional: spatial subsetting based on provided latitude/longitude bounds.
         self.lat_bounds = lat_bounds
         self.lon_bounds = lon_bounds
@@ -110,7 +114,7 @@ class AnemoiDataset(Dataset):
         Handle missing values in the dataset using the specified method.
         Currently supports interpolation along spatial dimensions.
         """
-        if self.missing_method == 'interpolate':
+        if self.missing_method == "interpolate":
             # Use xarray's interpolation over spatial dims; time dimension left untouched.
             self.data = self.data.interpolate_na(dim="latitude", method="linear")
             self.data = self.data.interpolate_na(dim="longitude", method="linear")
@@ -119,7 +123,7 @@ class AnemoiDataset(Dataset):
     def compute_climatology(self):
         """
         Compute the climatological mean for each meteorological feature.
-        
+
         Returns:
             dict: A dictionary with feature names as keys and corresponding climatological
                   means as numpy arrays.
@@ -133,7 +137,7 @@ class AnemoiDataset(Dataset):
     def __len__(self) -> int:
         """
         Return the number of time steps in the dataset.
-        
+
         Returns:
             int: Number of samples based on the 'time' dimension.
         """
@@ -142,7 +146,7 @@ class AnemoiDataset(Dataset):
     def __getitem__(self, idx: int):
         """
         Retrieve a processed sample from the dataset.
-        
+
         Steps:
           1. Extract the time slice at the given index.
           2. Extract and stack meteorological features.
@@ -150,7 +154,7 @@ class AnemoiDataset(Dataset):
           4. Concatenate meteorological and static geographical features.
           5. Apply normalization to meteorological channels.
           6. Convert to a PyTorch tensor.
-        
+
         Returns:
             torch.Tensor: Tensor with shape (channels, height, width) containing processed data.
         """
@@ -175,23 +179,21 @@ class AnemoiDataset(Dataset):
     def _extract_features(self, sample: xr.Dataset) -> np.ndarray:
         """
         Extract and stack the specified meteorological features from a time slice.
-        
+
         Args:
             sample (xr.Dataset): Single time slice from the dataset.
-        
+
         Returns:
             np.ndarray: Array of shape (lat, lon, num_features) containing meteorological data.
         """
-        feature_arrays = [
-            sample[feature].values.astype(np.float32) for feature in self.features
-        ]
+        feature_arrays = [sample[feature].values.astype(np.float32) for feature in self.features]
         return np.stack(feature_arrays, axis=-1)
 
     def _compute_static_geographical_features(self):
         """
         Compute static geographical features from latitude and longitude:
           - sin(latitude), cos(latitude), sin(longitude), cos(longitude)
-        
+
         The resulting features are stored in self.geo_static with shape (lat, lon, 4).
         Assumes the dataset contains 1D 'latitude' and 'longitude' coordinates.
         """
@@ -220,10 +222,10 @@ class AnemoiDataset(Dataset):
         """
         Apply default min–max normalization to meteorological features only.
         The geographical features (last 5 channels) remain unchanged.
-        
+
         Args:
             data (np.ndarray): Array of shape (H, W, C) where C = (num_features + 5).
-        
+
         Returns:
             np.ndarray: Normalized data.
         """

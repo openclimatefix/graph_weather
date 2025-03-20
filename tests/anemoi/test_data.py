@@ -9,6 +9,7 @@ from graph_weather.data import anemoi_dataloader
 # Import the class from the module
 AnemoiDataset = anemoi_dataloader.AnemoiDataset
 
+
 def create_dummy_data():
     """
     Create a dummy xarray Dataset with two features ('temperature' and 'geopotential'),
@@ -19,21 +20,18 @@ def create_dummy_data():
     lons = np.linspace(-180, 180, 10)
 
     # Create dummy data for two features.
-    temp = (np.random.rand(10, 10, 10).astype(np.float32) * 300)
-    geopot = (np.random.rand(10, 10, 10).astype(np.float32) * 5000)
+    temp = np.random.rand(10, 10, 10).astype(np.float32) * 300
+    geopot = np.random.rand(10, 10, 10).astype(np.float32) * 5000
 
     ds = xr.Dataset(
         {
             "temperature": (["time", "latitude", "longitude"], temp),
-            "geopotential": (["time", "latitude", "longitude"], geopot)
+            "geopotential": (["time", "latitude", "longitude"], geopot),
         },
-        coords={
-            "time": times,
-            "latitude": lats,
-            "longitude": lons
-        }
+        coords={"time": times, "latitude": lats, "longitude": lons},
     )
     return ds
+
 
 @pytest.fixture(scope="session")
 def dummy_zarr_path(tmp_path_factory):
@@ -46,6 +44,7 @@ def dummy_zarr_path(tmp_path_factory):
     ds.to_zarr(zarr_dir, mode="w")
     return str(zarr_dir)
 
+
 @pytest.fixture(autouse=True)
 def patch_open_dataset(monkeypatch):
     """
@@ -54,19 +53,18 @@ def patch_open_dataset(monkeypatch):
     """
     monkeypatch.setattr(anemoi_dataloader, "open_dataset", xr.open_zarr)
 
+
 def test_dataset_length(dummy_zarr_path):
     """
     Test that the dataset length equals the number of time steps.
     """
     features = ["temperature", "geopotential"]
     dataset = AnemoiDataset(
-        filepath=dummy_zarr_path,
-        features=features,
-        start_year=2016,
-        end_year=2016
+        filepath=dummy_zarr_path, features=features, start_year=2016, end_year=2016
     )
     # Our dummy dataset has 10 time steps.
     assert len(dataset) == 10
+
 
 def test_getitem_output_shape(dummy_zarr_path):
     """
@@ -75,15 +73,13 @@ def test_getitem_output_shape(dummy_zarr_path):
     """
     features = ["temperature", "geopotential"]
     dataset = AnemoiDataset(
-        filepath=dummy_zarr_path,
-        features=features,
-        start_year=2016,
-        end_year=2016
+        filepath=dummy_zarr_path, features=features, start_year=2016, end_year=2016
     )
     sample = dataset[0]  # Get the first sample.
     expected_channels = len(features) + 5  # meteorological + 4 geo channels + 1 day-of-year channel
     # Our dummy dataset has 10 latitudes and 10 longitudes.
     assert sample.shape == (expected_channels, 10, 10)
+
 
 def test_normalization(dummy_zarr_path):
     """
@@ -91,16 +87,14 @@ def test_normalization(dummy_zarr_path):
     """
     features = ["temperature", "geopotential"]
     dataset = AnemoiDataset(
-        filepath=dummy_zarr_path,
-        features=features,
-        start_year=2016,
-        end_year=2016
+        filepath=dummy_zarr_path, features=features, start_year=2016, end_year=2016
     )
     sample = dataset[0].numpy()
-    meteo_features = sample[:len(features)]
+    meteo_features = sample[: len(features)]
     # Check that all meteorological feature values are between 0 and 1.
     assert np.all(meteo_features >= 0)
     assert np.all(meteo_features <= 1)
+
 
 def test_day_of_year(dummy_zarr_path):
     """
@@ -109,10 +103,7 @@ def test_day_of_year(dummy_zarr_path):
     """
     features = ["temperature", "geopotential"]
     dataset = AnemoiDataset(
-        filepath=dummy_zarr_path,
-        features=features,
-        start_year=2016,
-        end_year=2016
+        filepath=dummy_zarr_path, features=features, start_year=2016, end_year=2016
     )
     sample = dataset[0].numpy()
     expected_channels = len(features) + 5
@@ -122,16 +113,14 @@ def test_day_of_year(dummy_zarr_path):
     expected_doy = 1 / 366
     np.testing.assert_allclose(doy_channel[0, 0], expected_doy, atol=1e-3)
 
+
 def test_tensor_type(dummy_zarr_path):
     """
     Ensure that __getitem__ returns a PyTorch tensor.
     """
     features = ["temperature", "geopotential"]
     dataset = AnemoiDataset(
-        filepath=dummy_zarr_path,
-        features=features,
-        start_year=2016,
-        end_year=2016
+        filepath=dummy_zarr_path, features=features, start_year=2016, end_year=2016
     )
     sample = dataset[0]
     assert isinstance(sample, torch.Tensor)
