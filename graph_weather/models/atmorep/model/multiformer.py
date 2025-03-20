@@ -21,13 +21,13 @@ class MultiFormer(nn.Module):
         hidden_dim (int): Dimensionality of ViT patch embeddings and attention features.
         patch_size (int): Spatial patch size used by each FieldVisionTransformer.
         spatial_dims (Tuple[int, int]): The (height, width) of input data for each field.
-        time_steps (int): Number of time steps in each field’s input.
+        time_steps (int): Number of time steps in each field's input.
         num_ensemble_members (int): How many ensemble heads to apply per field.
         cross_attn_num_heads (int): Number of heads for cross-attention layers.
         cross_attn_dropout (float): Dropout probability in cross-attention.
         decoder_num_layers (int): Number of layers in each Decoder.
-        decoder_num_heads (int): Number of attention heads in each Decoder’s transformer blocks.
-        decoder_dropout (float): Dropout probability within the Decoder’s transformer blocks.
+        decoder_num_heads (int): Number of attention heads in each Decoder's transformer blocks.
+        decoder_dropout (float): Dropout probability within the Decoder's transformer blocks.
     """
 
     def __init__(
@@ -179,10 +179,20 @@ class EnhancedMultiFormer(MultiFormer):
     after the regular transformer blocks to better capture temporal/spatial dependencies.
 
     Args:
-        All the same args as MultiFormer, plus any needed for SpatioTemporalAttention.
+        input_fields (List[str]): Names of the input fields (e.g. ["temperature", "humidity"]).
+        hidden_dim (int): Dimensionality of ViT patch embeddings and attention features.
+        patch_size (int): Spatial patch size used by each FieldVisionTransformer.
+        spatial_dims (Tuple[int, int]): The (height, width) of input data for each field.
+        time_steps (int): Number of time steps in each field's input.
+        num_ensemble_members (int): How many ensemble heads to apply per field.
+        cross_attn_num_heads (int): Number of heads for cross-attention layers.
+        cross_attn_dropout (float): Dropout probability in cross-attention.
+        decoder_num_layers (int): Number of layers in each Decoder.
+        decoder_num_heads (int): Number of attention heads in each Decoder's transformer blocks.
+        decoder_dropout (float): Dropout probability within the Decoder's transformer blocks.
         spatio_num_heads (int): Number of heads for spatiotemporal attention.
-        spatio_attn_dropout (float): Dropout for spatiotemporal attention.
-        spatio_output_dropout (float): Dropout after spatiotemporal attention’s output.
+        spatio_attn_dropout (float): Dropout probability in spatiotemporal attention. Default is 0.1.
+        spatio_output_dropout (float): Dropout probability after spatiotemporal attention's output. Default is 0.1.
     """
 
     def __init__(

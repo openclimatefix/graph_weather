@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from .transformer import TransformerBlock
 
 
 class Decoder(nn.Module):
@@ -18,8 +19,6 @@ class Decoder(nn.Module):
             Defaults to 0.1.
         attention_dropout (float, optional): Dropout probability for attention weights.
             Defaults to 0.1.
-        transformer_block_cls (optional): Custom transformer block class if you want
-            to inject your own implementation. Defaults to `TransformerBlock`.
     """
 
     def __init__(
@@ -29,14 +28,14 @@ class Decoder(nn.Module):
         num_heads: int,
         dropout: float = 0.1,
         attention_dropout: float = 0.1,
-        transformer_block_cls=nn.Module,  # replace with your actual block class if needed
     ) -> None:
         super().__init__()
 
-        # We create half as many blocks as num_layers // 2 to match the U-Net-like pattern
+        #  creating half as many blocks as num_layers // 2 to match the U-Net-like pattern
         self.blocks = nn.ModuleList(
             [
-                transformer_block_cls(
+                # Use the default transformer block from the codebase
+                TransformerBlock(
                     hidden_dim=hidden_dim,
                     num_heads=num_heads,
                     dropout=dropout,
@@ -71,7 +70,7 @@ class Decoder(nn.Module):
                 - D is the hidden dimension
             skip_features (List[torch.Tensor]): A list of skip-connection tensors from earlier
                 layers, each shaped [B, T, N, D]. The list is typically in order from shallowest
-                to deepest features. We’ll pick from the end of this list for the most
+                to deepest features. We'll pick from the end of this list for the most
                 relevant skip.
 
         Returns:

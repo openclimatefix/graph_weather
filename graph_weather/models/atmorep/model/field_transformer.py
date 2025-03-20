@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 from einops import rearrange
-
+from .transformer import TransformerBlock
 
 class FieldVisionTransformer(nn.Module):
     """
@@ -18,8 +18,6 @@ class FieldVisionTransformer(nn.Module):
         time_steps (int): Number of temporal steps in the input.
         num_layers (int): Number of transformer blocks.
         field_name (str): Name of the field this transformer is processing (e.g., 'temperature').
-        transformer_block_cls (nn.Module): Class to instantiate for each transformer block.
-            Defaults to a placeholder that you should replace with your actual TransformerBlock.
     """
 
     def __init__(
@@ -30,7 +28,6 @@ class FieldVisionTransformer(nn.Module):
         time_steps: int,
         num_layers: int,
         field_name: str = "unknown_field",
-        transformer_block_cls=nn.Module,  # replace with your actual block class
     ) -> None:
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -55,7 +52,7 @@ class FieldVisionTransformer(nn.Module):
 
         # Instantiate the transformer blocks
         self.blocks = nn.ModuleList(
-            [transformer_block_cls(hidden_dim=hidden_dim) for _ in range(num_layers)]
+            [TransformerBlock(hidden_dim=hidden_dim) for _ in range(num_layers)]
         )
 
         # Final layer normalization
