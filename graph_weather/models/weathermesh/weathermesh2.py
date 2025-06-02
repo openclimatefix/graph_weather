@@ -133,10 +133,10 @@ class WeatherMesh(nn.Module):
         self.timesteps = timesteps
 
     def forward(
-        self, x_2d: torch.Tensor, x_3d: torch.Tensor, forecast_steps: int
+        self, surface: torch.Tensor, pressure: torch.Tensor, forecast_steps: int
     ) -> WeatherMeshOutput:
         # Encode input
-        latent = self.encoder(x_2d, x_3d)
+        latent = self.encoder(surface, pressure)
 
         # Apply processors for each forecast step
         for _ in range(forecast_steps):
