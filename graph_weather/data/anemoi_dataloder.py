@@ -14,6 +14,7 @@ class AnemoiDataset(Dataset):
         time_range: Optional tuple of (start_date, end_date)
         time_step: Time step between input and target (default: 1)
         max_samples: Maximum number of samples to use (for testing)
+        allow_mock_data: If True, creates mock data when real dataset fails (default: False)
     """
     
     def __init__(
@@ -23,23 +24,25 @@ class AnemoiDataset(Dataset):
         time_range: tuple = None,
         time_step: int = 1,
         max_samples: int = None,
+        allow_mock_data: bool = False,
         **kwargs
     ):
         super().__init__()
         
-        # Set features FIRST to avoid AttributeError
         self.features = features
         self.time_step = time_step
         self.max_samples = max_samples
+        self.allow_mock_data = allow_mock_data
+        self.using_mock_data = False
         
         # Build Anemoi dataset configuration
         config = {"dataset": dataset_name}
         if time_range:
-            config["start"] = time_range[0]  # Fix: use [0] for start
-            config["end"] = time_range[1]    # Fix: use [1] for end
+            config["start"] = time_range[0]  # Fixed: use [0] for start
+            config["end"] = time_range[1]    # Fixed: use [1] for end
         config.update(kwargs)
         
-        # Load the dataset
+        # Load the dataset with controlled mock data fallback
         try:
             self.dataset = open_dataset(config)
             # Try different methods to get xarray data
@@ -50,10 +53,27 @@ class AnemoiDataset(Dataset):
             else:
                 # Assume it's already xarray-like
                 self.data = self.dataset
+            print(f"✅ Successfully loaded Anemoi dataset: {dataset_name}")
+            
         except Exception as e:
-            print(f"Warning: Could not load Anemoi dataset: {e}")
-            # Create mock data for development/testing
-            self.data = self._create_mock_data()
+            if self.allow_mock_data:
+                print(f"⚠️  Warning: Could not load real dataset '{dataset_name}': {e}")
+                print("🎭 Creating mock data for testing purposes...")
+                self.data = self._create_mock_data()
+                self.using_mock_data = True
+            else:
+                raise RuntimeError(
+                    f"Failed to load Anemoi dataset '{dataset_name}': {e}. "
+                    f"Please ensure the dataset is available and properly configured. "
+                    f"Set allow_mock_data=True to use mock data for testing."
+                )
+        
+        # Validate that we have the required features
+        missing_features = [f for f in self.features if f not in self.data.data_vars]
+        if missing_features and not self.using_mock_data:
+            available_features = list(self.data.data_vars.keys())
+            raise ValueError(f"Features {missing_features} not found in dataset. "
+                           f"Available features: {available_features}")
         
         # Get grid information - try multiple coordinate name variations
         coord_names = ['latitude', 'lat', 'y']
@@ -71,7 +91,10 @@ class AnemoiDataset(Dataset):
                 break
         
         if self.grid_lat is None or self.grid_lon is None:
-            raise ValueError("Could not find latitude/longitude coordinates in dataset")
+            if not self.using_mock_data:
+                available_coords = list(self.data.coords.keys())
+                raise ValueError(f"Could not find latitude/longitude coordinates in dataset. "
+                               f"Available coordinates: {available_coords}")
             
         self.num_lat = len(self.grid_lat)
         self.num_lon = len(self.grid_lon)
@@ -81,12 +104,10 @@ class AnemoiDataset(Dataset):
     
     def _create_mock_data(self):
         """Create mock data for testing when real datasets aren't available"""
-        print("Creating mock Anemoi data for testing...")
-        
         # Create mock coordinates
         lat = np.linspace(-90, 90, 32)
         lon = np.linspace(0, 360, 64)
-        time = pd.date_range('2020-01-01', periods=100, freq='6h')  # Fix: use 'h' instead of 'H'
+        time = pd.date_range('2020-01-01', periods=100, freq='6h')
         
         # Create mock data
         data_vars = {}
@@ -100,6 +121,10 @@ class AnemoiDataset(Dataset):
             data_vars,
             coords={'time': time, 'latitude': lat, 'longitude': lon}
         )
+    
+    def is_using_mock_data(self):
+        """Return True if using mock data instead of real dataset"""
+        return self.using_mock_data
     
     def _init_normalization(self):
         """Initialize normalization parameters"""
@@ -191,3 +216,18 @@ class AnemoiDataset(Dataset):
         target_data = np.concatenate([target_data, time_features], axis=1)
         
         return input_data.astype(np.float32), target_data.astype(np.float32)
+    
+    def get_dataset_info(self):
+        """Return information about the loaded dataset"""
+        return {
+            "dataset_name": getattr(self, 'dataset_name', 'unknown'),
+            "features": self.features,
+            "grid_shape": (self.num_lat, self.num_lon),
+            "time_steps": len(self.data.time),
+            "dataset_length": len(self),
+            "using_mock_data": self.using_mock_data,
+            "normalization_stats": {
+                "means": self.means,
+                "stds": self.stds
+            }
+        }
