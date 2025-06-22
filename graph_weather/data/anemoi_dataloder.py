@@ -1,9 +1,10 @@
+import logging
+
 import numpy as np
 import pandas as pd
-import xarray as xr
 from anemoi.datasets import open_dataset
-import logging
 from torch.utils.data import Dataset
+
 
 class AnemoiDataset(Dataset):
     """
@@ -24,21 +25,21 @@ class AnemoiDataset(Dataset):
         time_range: tuple = None,
         time_step: int = 1,
         max_samples: int = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
 
         self.features = features
         self.time_step = time_step
         self.max_samples = max_samples
-        
+
         # Build Anemoi dataset configuration
         config = {"dataset": dataset_name}
         if time_range:
             config["start"] = time_range[0]
             config["end"] = time_range[1]
         config.update(kwargs)
-        
+
         # Load the dataset
         try:
             self.dataset = open_dataset(config)
@@ -55,7 +56,7 @@ class AnemoiDataset(Dataset):
                 f"Failed to load Anemoi dataset '{dataset_name}': {e}. "
                 "Please ensure the dataset is available and properly configured."
             )
-        
+
         # Validate that we have the required features
         missing_features = [f for f in self.features if f not in self.data.data_vars]
         if missing_features:
@@ -82,15 +83,17 @@ class AnemoiDataset(Dataset):
 
         if self.grid_lat is None or self.grid_lon is None:
             available_coords = list(self.data.coords.keys())
-            raise ValueError(f"Could not find latitude/longitude coordinates in dataset. "
-                               f"Available coordinates: {available_coords}")
-            
+            raise ValueError(
+                f"Could not find latitude/longitude coordinates in dataset. "
+                f"Available coordinates: {available_coords}"
+            )
+
         self.num_lat = len(self.grid_lat)
         self.num_lon = len(self.grid_lon)
 
         # Initialize normalization parameters
         self.means, self.stds = self._init_normalization()
-    
+
     def _init_normalization(self):
         """Initialize normalization parameters"""
         means = {}
@@ -114,19 +117,19 @@ class AnemoiDataset(Dataset):
 
     def _generate_clock_features(self, data_time):
         """Generate time features following GenCast pattern"""
-        if hasattr(data_time, 'values'):
+        if hasattr(data_time, "values"):
             timestamp = pd.Timestamp(data_time.values)
         else:
             timestamp = data_time
-        
+
         day_of_year = timestamp.dayofyear / 365.0
         sin_day_of_year = np.sin(2 * np.pi * day_of_year)
         cos_day_of_year = np.cos(2 * np.pi * day_of_year)
-        
+
         hour_of_day = timestamp.hour / 24.0
         sin_hour_of_day = np.sin(2 * np.pi * hour_of_day)
         cos_hour_of_day = np.cos(2 * np.pi * hour_of_day)
-        
+
         num_locations = self.num_lat * self.num_lon
         time_features = np.column_stack(
             [
@@ -148,7 +151,7 @@ class AnemoiDataset(Dataset):
     def __getitem__(self, idx):
         input_data_slice = self.data.isel(time=idx)
         target_data_slice = self.data.isel(time=idx + self.time_step)
-        
+
         input_features = []
         target_features = []
 
@@ -160,10 +163,10 @@ class AnemoiDataset(Dataset):
                 target_vals = self._normalize(target_vals, feature)
                 input_features.append(input_vals.reshape(-1, 1))
                 target_features.append(target_vals.reshape(-1, 1))
-        
+
         input_data = np.concatenate(input_features, axis=1)
         target_data = np.concatenate(target_features, axis=1)
-        
+
         time_features = self._generate_clock_features(input_data_slice.time)
         input_data = np.concatenate([input_data, time_features], axis=1)
         target_data = np.concatenate([target_data, time_features], axis=1)
@@ -178,8 +181,5 @@ class AnemoiDataset(Dataset):
             "grid_shape": (self.num_lat, self.num_lon),
             "time_steps": len(self.data.time),
             "dataset_length": len(self),
-            "normalization_stats": {
-                "means": self.means,
-                "stds": self.stds
-            }
+            "normalization_stats": {"means": self.means, "stds": self.stds},
         }

@@ -17,7 +17,7 @@ def test_anemoi_dataset():
         "features": ["temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"],
         "time_range": ("2020-01-01", "2020-01-31"),
         "time_step": 1,
-        "max_samples": 10
+        "max_samples": 10,
     }
     dataset = AnemoiDataset(**dataset_config)
     assert len(dataset) > 0
@@ -28,7 +28,9 @@ def test_anemoi_dataset():
     input_data, target_data = dataset[0]
     assert input_data.shape == target_data.shape
     assert input_data.dtype == np.float32
-    assert not (np.isnan(input_data).any() or np.isnan(target_data).any()), "Found NaN values in data!"
+    assert not (
+        np.isnan(input_data).any() or np.isnan(target_data).any()
+    ), "Found NaN values in data!"
 
     # Test with DataLoader
     dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
@@ -39,11 +41,7 @@ def test_anemoi_dataset():
 
 def test_normalization():
     """Test that normalization is working correctly"""
-    dataset = AnemoiDataset(
-        dataset_name="test",
-        features=["temperature"],
-        max_samples=5
-    )
+    dataset = AnemoiDataset(dataset_name="test", features=["temperature"], max_samples=5)
     samples = []
     for i in range(min(3, len(dataset))):
         input_data, _ = dataset[i]
@@ -56,17 +54,14 @@ def test_normalization():
 
 def test_time_features():
     """Test that time features are being added correctly"""
-    dataset = AnemoiDataset(
-        dataset_name="test",
-        features=["temperature"],
-        max_samples=2
-    )
+    dataset = AnemoiDataset(dataset_name="test", features=["temperature"], max_samples=2)
     input_data, _ = dataset[0]
     num_features = len(dataset.features)
     num_time_features = 4  # sin/cos day, sin/cos hour
     expected_total_features = num_features + num_time_features
     actual_features = input_data.shape[1]
     assert actual_features == expected_total_features, "Feature count mismatch"
+
 
 def test_compare_with_gencast_format():
     """Compare output format with GenCast dataloader expectations"""
