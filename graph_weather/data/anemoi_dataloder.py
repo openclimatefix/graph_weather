@@ -2,8 +2,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from anemoi.datasets import open_dataset
+<<<<<<< HEAD
 from torch.utils.data import Dataset
 
+=======
+import logging
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
 
 class AnemoiDataset(Dataset):
     """
@@ -15,7 +19,6 @@ class AnemoiDataset(Dataset):
         time_range: Optional tuple of (start_date, end_date)
         time_step: Time step between input and target (default: 1)
         max_samples: Maximum number of samples to use (for testing)
-        allow_mock_data: If True, creates mock data when real dataset fails (default: False)
     """
 
     def __init__(
@@ -25,14 +28,19 @@ class AnemoiDataset(Dataset):
         time_range: tuple = None,
         time_step: int = 1,
         max_samples: int = None,
+<<<<<<< HEAD
         allow_mock_data: bool = False,
         **kwargs,
+=======
+        **kwargs
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
     ):
         super().__init__()
 
         self.features = features
         self.time_step = time_step
         self.max_samples = max_samples
+<<<<<<< HEAD
         self.allow_mock_data = allow_mock_data
         self.using_mock_data = False
 
@@ -44,6 +52,17 @@ class AnemoiDataset(Dataset):
         config.update(kwargs)
 
         # Load the dataset with controlled mock data fallback
+=======
+        
+        # Build Anemoi dataset configuration
+        config = {"dataset": dataset_name}
+        if time_range:
+            config["start"] = time_range[0]
+            config["end"] = time_range[1]
+        config.update(kwargs)
+        
+        # Load the dataset
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         try:
             self.dataset = open_dataset(config)
             # Try different methods to get xarray data
@@ -52,8 +71,8 @@ class AnemoiDataset(Dataset):
             elif hasattr(self.dataset, "to_dataset"):
                 self.data = self.dataset.to_dataset()
             else:
-                # Assume it's already xarray-like
                 self.data = self.dataset
+<<<<<<< HEAD
             print(f"✅ Successfully loaded Anemoi dataset: {dataset_name}")
 
         except Exception as e:
@@ -69,9 +88,18 @@ class AnemoiDataset(Dataset):
                     f"Set allow_mock_data=True to use mock data for testing."
                 )
 
+=======
+            logging.info(f"Successfully loaded Anemoi dataset: {dataset_name}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load Anemoi dataset '{dataset_name}': {e}. "
+                "Please ensure the dataset is available and properly configured."
+            )
+        
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         # Validate that we have the required features
         missing_features = [f for f in self.features if f not in self.data.data_vars]
-        if missing_features and not self.using_mock_data:
+        if missing_features:
             available_features = list(self.data.data_vars.keys())
             raise ValueError(
                 f"Features {missing_features} not found in dataset. "
@@ -94,6 +122,7 @@ class AnemoiDataset(Dataset):
                 break
 
         if self.grid_lat is None or self.grid_lon is None:
+<<<<<<< HEAD
             if not self.using_mock_data:
                 available_coords = list(self.data.coords.keys())
                 raise ValueError(
@@ -101,11 +130,18 @@ class AnemoiDataset(Dataset):
                     f"Available coordinates: {available_coords}"
                 )
 
+=======
+            available_coords = list(self.data.coords.keys())
+            raise ValueError(f"Could not find latitude/longitude coordinates in dataset. "
+                               f"Available coordinates: {available_coords}")
+            
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         self.num_lat = len(self.grid_lat)
         self.num_lon = len(self.grid_lon)
 
         # Initialize normalization parameters
         self.means, self.stds = self._init_normalization()
+<<<<<<< HEAD
 
     def _create_mock_data(self):
         """Create mock data for testing when real datasets aren't available"""
@@ -130,6 +166,9 @@ class AnemoiDataset(Dataset):
         """Return True if using mock data instead of real dataset"""
         return self.using_mock_data
 
+=======
+    
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
     def _init_normalization(self):
         """Initialize normalization parameters"""
         means = {}
@@ -137,13 +176,11 @@ class AnemoiDataset(Dataset):
 
         for feature in self.features:
             if feature in self.data.data_vars:
-                # Calculate statistics from the data
                 data_values = self.data[feature].values
                 means[feature] = np.nanmean(data_values)
                 stds[feature] = np.nanstd(data_values)
             else:
-                # Use default values if feature not found
-                print(f"Warning: Feature {feature} not found, using default normalization")
+                logging.warning(f"Feature {feature} not found, using default normalization")
                 means[feature] = 0.0
                 stds[feature] = 1.0
 
@@ -155,6 +192,7 @@ class AnemoiDataset(Dataset):
 
     def _generate_clock_features(self, data_time):
         """Generate time features following GenCast pattern"""
+<<<<<<< HEAD
         # Convert xarray DataArray to pandas Timestamp if needed
         if hasattr(data_time, "values"):
             timestamp = pd.Timestamp(data_time.values)
@@ -172,6 +210,21 @@ class AnemoiDataset(Dataset):
         cos_hour_of_day = np.cos(2 * np.pi * hour_of_day)
 
         # Broadcast to all grid points
+=======
+        if hasattr(data_time, 'values'):
+            timestamp = pd.Timestamp(data_time.values)
+        else:
+            timestamp = data_time
+        
+        day_of_year = timestamp.dayofyear / 365.0
+        sin_day_of_year = np.sin(2 * np.pi * day_of_year)
+        cos_day_of_year = np.cos(2 * np.pi * day_of_year)
+        
+        hour_of_day = timestamp.hour / 24.0
+        sin_hour_of_day = np.sin(2 * np.pi * hour_of_day)
+        cos_hour_of_day = np.cos(2 * np.pi * hour_of_day)
+        
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         num_locations = self.num_lat * self.num_lon
         time_features = np.column_stack(
             [
@@ -191,16 +244,20 @@ class AnemoiDataset(Dataset):
         return total_length
 
     def __getitem__(self, idx):
-        # Get input and target time steps
         input_data_slice = self.data.isel(time=idx)
         target_data_slice = self.data.isel(time=idx + self.time_step)
+<<<<<<< HEAD
 
         # Extract and normalize features
+=======
+        
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         input_features = []
         target_features = []
 
         for feature in self.features:
             if feature in self.data.data_vars:
+<<<<<<< HEAD
                 # Get data and reshape to (num_locations, 1) - flatten spatial dimensions
                 input_vals = input_data_slice[feature].values.reshape(
                     -1
@@ -219,6 +276,18 @@ class AnemoiDataset(Dataset):
         target_data = np.concatenate(target_features, axis=1)
 
         # Add time features (following GenCast pattern)
+=======
+                input_vals = input_data_slice[feature].values.reshape(-1)
+                target_vals = target_data_slice[feature].values.reshape(-1)
+                input_vals = self._normalize(input_vals, feature)
+                target_vals = self._normalize(target_vals, feature)
+                input_features.append(input_vals.reshape(-1, 1))
+                target_features.append(target_vals.reshape(-1, 1))
+        
+        input_data = np.concatenate(input_features, axis=1)
+        target_data = np.concatenate(target_features, axis=1)
+        
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         time_features = self._generate_clock_features(input_data_slice.time)
         input_data = np.concatenate([input_data, time_features], axis=1)
         target_data = np.concatenate([target_data, time_features], axis=1)
@@ -233,6 +302,13 @@ class AnemoiDataset(Dataset):
             "grid_shape": (self.num_lat, self.num_lon),
             "time_steps": len(self.data.time),
             "dataset_length": len(self),
+<<<<<<< HEAD
             "using_mock_data": self.using_mock_data,
             "normalization_stats": {"means": self.means, "stds": self.stds},
+=======
+            "normalization_stats": {
+                "means": self.means,
+                "stds": self.stds
+            }
+>>>>>>> 070f345 (Removed mock data functionality and print statements from dataloader as well as test file)
         }
