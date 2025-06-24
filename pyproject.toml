@@ -44,7 +44,7 @@ platforms = ["linux-64", "osx-arm64"]
 #natten = "*"
 
 [tool.pixi.dependencies]
-python = "3.13.*"
+python = "3.12.*"
 pip = "*"
 pytest = "*"
 pre-commit = "*"
