@@ -13,7 +13,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [tool.pixi.project]
-channels = ["pyg", "conda-forge", "pytorch"]
+channels = ["conda-forge", "pytorch"]
 platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.cuda]
@@ -23,8 +23,8 @@ channels = ["nvidia", {channel = "pytorch", priority = -1}]
 cuda = "12"
 
 [tool.pixi.feature.cuda.target.linux-64.dependencies]
-cuda-version = "12.4"
-pytorch-gpu = {version = "2.4.1", channel = "conda-forge"}
+cuda-version = "12.8"
+pytorch-gpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.cuda.target.linux-64.pypi-dependencies]
 #natten = {url = "https://shi-labs.com/natten/wheels/cu124/torch2.4.0/natten-0.17.4%2Btorch240cu124-cp312-cp312-linux_x86_64.whl"}
@@ -35,7 +35,7 @@ system-requirements = {macos = "13.5"}
 
 [tool.pixi.feature.mlx.target.osx-arm64.dependencies]
 mlx = {version = "*", channel = "conda-forge"}
-pytorch-cpu = {version = "2.4.1", channel = "conda-forge"}
+pytorch-cpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.mlx.target.osx-arm64.pypi-dependencies]
 #natten = "*"
@@ -44,7 +44,7 @@ pytorch-cpu = {version = "2.4.1", channel = "conda-forge"}
 platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.cpu.dependencies]
-pytorch-cpu = {version = "2.4.1", channel = "conda-forge"}
+pytorch-cpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.cpu.pypi-dependencies]
 #natten = "*"
@@ -62,11 +62,6 @@ h3-py = "3.*"
 numcodecs = "*"
 scipy = "*"
 zarr = ">=3.0.0"
-pyg = "*"
-pytorch-cluster = "*"
-pytorch-scatter = "*"
-pytorch-spline-conv = "*"
-pytorch-sparse = "*"
 tqdm = "*"
 lightning = "*"
 einops = "*"
@@ -79,6 +74,29 @@ pixi-pycharm = ">=0.0.8,<0.0.9"
 uv = ">=0.6.2,<0.7"
 healpy = ">=1.18.1,<2"
 
+[tool.pixi.pypi-dependencies]
+torch_geometric = "*"
+
+[tool.pixi.feature.cuda.pypi-dependencies]
+pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+
+[tool.pixi.feature.mlx.pypi-dependencies]
+pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+
+[tool.pixi.feature.cpu.pypi-dependencies]
+pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
 
 [tool.pixi.environments]
 default = ["cpu"]
