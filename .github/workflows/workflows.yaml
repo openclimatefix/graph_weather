@@ -9,11 +9,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.11", "3.12", "3.13"]
         torch-version: [2.7.0]
+        environment: ["default"]
         include:
           - torch-version: 2.7.0
             torchvision-version: 0.21.0
