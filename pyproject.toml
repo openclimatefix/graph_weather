@@ -66,6 +66,7 @@ rtree = "*"
 pixi-pycharm = "*"
 uv = ">=0.6.2,<0.7"
 healpy = ">=1.18.1,<2"
+dacite = "*"
 
 [tool.pixi.pypi-dependencies]
 torch_geometric = "*"
