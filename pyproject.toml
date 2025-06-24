@@ -13,18 +13,17 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [tool.pixi.project]
-channels = ["conda-forge", "pytorch"]
+channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.feature.cuda]
-channels = ["nvidia", {channel = "pytorch", priority = -1}]
+channels = ["nvidia",]
 
 [tool.pixi.feature.cuda.system-requirements]
 cuda = "12"
 
 [tool.pixi.feature.cuda.target.linux-64.dependencies]
 cuda-version = "12.8"
-pytorch-gpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.cuda.target.linux-64.pypi-dependencies]
 #natten = {url = "https://shi-labs.com/natten/wheels/cu124/torch2.4.0/natten-0.17.4%2Btorch240cu124-cp312-cp312-linux_x86_64.whl"}
@@ -35,23 +34,17 @@ system-requirements = {macos = "13.5"}
 
 [tool.pixi.feature.mlx.target.osx-arm64.dependencies]
 mlx = {version = "*", channel = "conda-forge"}
-pytorch-cpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.mlx.target.osx-arm64.pypi-dependencies]
 #natten = "*"
-
 [tool.pixi.feature.cpu]
 platforms = ["linux-64", "osx-arm64"]
-
-[tool.pixi.feature.cpu.dependencies]
-pytorch-cpu = {version = "2.7.0", channel = "conda-forge"}
 
 #[tool.pixi.feature.cpu.pypi-dependencies]
 #natten = "*"
 
 [tool.pixi.dependencies]
-python = "3.12.*"
-torchvision = {version = "*", channel = "conda-forge"}
+python = ">=3.12"
 pip = "*"
 pytest = "*"
 pre-commit = "*"
@@ -70,7 +63,7 @@ datasets = "*"
 trimesh = "*"
 pysolar = "*"
 rtree = "*"
-pixi-pycharm = ">=0.0.8,<0.0.9"
+pixi-pycharm = "*"
 uv = ">=0.6.2,<0.7"
 healpy = ">=1.18.1,<2"
 
@@ -80,25 +73,16 @@ pytest = "*"
 pytest-xdist = "*"
 
 [tool.pixi.feature.cuda.pypi-dependencies]
-pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
-torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
-torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
-torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
-torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
+torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128" }
+torchvision = {version = "*", index = "https://download.pytorch.org/whl/cu128"}
 
 [tool.pixi.feature.mlx.pypi-dependencies]
-pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu" }
+torchvision = {version = "*", index = "https://download.pytorch.org/whl/cpu"}
 
 [tool.pixi.feature.cpu.pypi-dependencies]
-pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_scatter = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_sparse = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_cluster = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
-torch_spline_conv = {url = "https://data.pyg.org/whl/torch-2.7.0+cpu.html"}
+torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu" }
+torchvision = {version = "*", index = "https://download.pytorch.org/whl/cpu"}
 
 [tool.pixi.environments]
 default = ["cpu"]
@@ -109,6 +93,8 @@ mlx = ["mlx"]
 install = "pip install --editable ."
 installnat = "pip install natten"
 installnatcuda = "pip install natten==0.17.4+torch240cu124 -f https://shi-labs.com/natten/wheels/"
+installpyg = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cpu.html"
+installpygcuda = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cuda128.html"
 test = "pytest"
 format = "ruff format"
 

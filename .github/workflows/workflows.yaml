@@ -25,6 +25,7 @@ jobs:
           environments: ${{ matrix.environment }}
       - name: Install dependencies
         run: |
+          pixi run -e ${{ matrix.environment }} installpyg
           pixi run -e ${{ matrix.environment }} pip install coverage==7.4.3 pytest-cov
           pixi run -e ${{ matrix.environment }} installnat
           pixi run -e ${{ matrix.environment }} install
