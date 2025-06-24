@@ -9,70 +9,38 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.11", "3.12"]
-        torch-version: [2.4.0]
+        python-version: ["3.12"]
+        torch-version: [2.7.0]
+        environment: ["default"]
         include:
-          - torch-version: 2.4.0
-            torchvision-version: 0.19.0
+          - torch-version: 2.7.0
+            torchvision-version: 0.21.0
     steps:
-      - uses: prefix-dev/setup-pixi@v0.8.3
-          with:
-            pixi-version: v0.41.4
-            cache: true
-      - run: pixi run test
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.10
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install PyTorch ${{ matrix.torch-version }}+cpu
+          environments: ${{ matrix.environment }}
+      - name: Install dependencies
         run: |
-          pip install torch==${{ matrix.torch-version}} torchvision==${{ matrix.torchvision-version}} --index-url https://download.pytorch.org/whl/cpu
-      - name: Install internal dependencies
-        run: |
-          pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-${{ matrix.torch-version}}+cpu.html
-          if [ ${{ matrix.torch-version}} == 2.4.0 ]; then pip install dgl -f https://data.dgl.ai/wheels/torch-2.4/repo.html; fi
-      - name: Install main package
-        run: |
-          pip install -e .
-          pip install pytest-xdist
-      - name: Setup with pytest-xdist
-        run: |
-          # lets get the string for how many cpus to use with pytest
-          echo "Will be using ${{ inputs.pytest_numcpus }} cpus for pytest testing"
-          #
-          # make PYTESTXDIST
-          export PYTESTXDIST="-n 2"
-          if [ 2 -gt 0 ]; then export PYTESTXDIST="$PYTESTXDIST --dist=loadfile"; fi
-          #
-          # echo results and save env var for other jobs
-          echo "pytest-xdist options that will be used are: $PYTESTXDIST"
-          echo "PYTESTXDIST=$PYTESTXDIST" >> $GITHUB_ENV
+          pixi run -e ${{ matrix.environment }} installpyg
+          pixi run -e ${{ matrix.environment }} pip install coverage==7.4.3 pytest-cov
+          pixi run -e ${{ matrix.environment }} installnat
+          pixi run -e ${{ matrix.environment }} install
       - name: Setup with pytest-cov
         run: |
-          # let make pytest run with coverage
-          echo "Will be looking at coverage of dir  graph_weather"
-          #
-          # install pytest-cov
-          pip install coverage==7.4.3
-          pip install pytest-cov
-          #
           # make PYTESTCOV
           export PYTESTCOV="--cov=graph_weather tests/ --cov-report=xml"
           # echo results and save env var for other jobs
           echo "pytest-cov options that will be used are: $PYTESTCOV"
           echo "PYTESTCOV=$PYTESTCOV" >> $GITHUB_ENV
-      - name: Run pytest
+      - name: Run tests
         run: |
-          # import dgl to initialize backend
-          if [ ${{ matrix.torch-version}} == 2.4.0 ]; then python3 -c "import dgl"; fi
           export PYTEST_COMMAND="pytest $PYTESTCOV $PYTESTXDIST -s"
           echo "Will be running this command: $PYTEST_COMMAND"
-          eval $PYTEST_COMMAND
+          pixi run -e ${{ matrix.environment }} $PYTEST_COMMAND
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v2
         with:
