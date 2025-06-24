@@ -71,7 +71,7 @@ dacite = "*"
 torch_geometric = "*"
 pytest = "*"
 pytest-xdist = "*"
-h3 = "3.7.0"
+h3 = "3.7.7"
 
 [tool.pixi.feature.cuda.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128" }
