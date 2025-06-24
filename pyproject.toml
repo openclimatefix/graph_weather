@@ -23,7 +23,7 @@ channels = ["nvidia",]
 cuda = "12"
 
 [tool.pixi.feature.cuda.target.linux-64.dependencies]
-cuda-version = "12.8"
+cuda-version = "==12.8"
 
 #[tool.pixi.feature.cuda.target.linux-64.pypi-dependencies]
 #natten = {url = "https://shi-labs.com/natten/wheels/cu124/torch2.4.0/natten-0.17.4%2Btorch240cu124-cp312-cp312-linux_x86_64.whl"}
@@ -71,7 +71,7 @@ dacite = "*"
 torch_geometric = "*"
 pytest = "*"
 pytest-xdist = "*"
-h3 = "3.7.7"
+h3 = "==3.7.7"
 
 [tool.pixi.feature.cuda.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128" }
