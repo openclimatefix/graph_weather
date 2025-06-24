@@ -76,6 +76,8 @@ healpy = ">=1.18.1,<2"
 
 [tool.pixi.pypi-dependencies]
 torch_geometric = "*"
+pytest = "*"
+pytest-xdist = "*"
 
 [tool.pixi.feature.cuda.pypi-dependencies]
 pyg_lib = {url = "https://data.pyg.org/whl/torch-2.7.0+cu128.html"}
