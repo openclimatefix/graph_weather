@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from unittest.mock import patch
 from graph_weather.data import AnemoiDataset
 
+
 def fake_open_dataset(config):
     # Create a small, synthetic xarray.Dataset for testing
     data = xr.Dataset(
@@ -21,6 +22,7 @@ def fake_open_dataset(config):
         },
     )
     return data
+
 
 def test_anemoi_dataset():
     """Test the AnemoiDataset class with synthetic data"""
@@ -53,13 +55,16 @@ def test_anemoi_dataset():
         input_data, target_data = dataset[0]
         assert input_data.shape == target_data.shape
         assert input_data.dtype == np.float32
-        assert not (np.isnan(input_data).any() or np.isnan(target_data).any()), "Found NaN values in data!"
+        assert not (
+            np.isnan(input_data).any() or np.isnan(target_data).any()
+        ), "Found NaN values in data!"
 
         # Test with DataLoader
         dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
         batch_input, batch_target = next(iter(dataloader))
         assert batch_input.shape[0] == 2
         assert batch_target.shape[0] == 2
+
 
 def test_normalization():
     """Test that normalization is working correctly"""
@@ -78,7 +83,10 @@ def test_normalization():
         all_values = np.concatenate(samples)
         mean_val = np.mean(all_values)
         std_val = np.std(all_values)
-        assert abs(mean_val) < 0.5 and abs(std_val - 1.0) < 0.5, "Normalization might need adjustment"
+        assert (
+            abs(mean_val) < 0.5 and abs(std_val - 1.0) < 0.5
+        ), "Normalization might need adjustment"
+
 
 def test_time_features():
     """Test that time features are being added correctly"""
@@ -96,6 +104,7 @@ def test_time_features():
         expected_total_features = num_features + num_time_features
         actual_features = input_data.shape[1]
         assert actual_features == expected_total_features, "Feature count mismatch"
+
 
 def test_check_anemoi_dataset_output():
     """Compare output format with GenCast dataloader expectations"""

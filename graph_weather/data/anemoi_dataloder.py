@@ -97,8 +97,10 @@ class AnemoiDataset(Dataset):
 
         if self.grid_lat is None or self.grid_lon is None:
             available_coords = list(self.data.coords.keys())
-            raise ValueError(f"Could not find latitude/longitude coordinates in dataset. "
-                             f"Available coordinates: {available_coords}")
+            raise ValueError(
+                f"Could not find latitude/longitude coordinates in dataset. "
+                f"Available coordinates: {available_coords}"
+            )
 
         self.num_lat = len(self.grid_lat)
         self.num_lon = len(self.grid_lon)
@@ -118,7 +120,7 @@ class AnemoiDataset(Dataset):
 
         # Leap year aware normalization
         year = timestamp.year
-        is_leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+        is_leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
         days_in_year = 366.0 if is_leap else 365.0
         day_of_year = timestamp.dayofyear / days_in_year
 
