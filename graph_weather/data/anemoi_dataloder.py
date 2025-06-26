@@ -13,6 +13,8 @@ class AnemoiDataset(Dataset):
     Args:
         dataset_name: Name of the Anemoi dataset (e.g., "era5-o48-2020-2021-6h-v1")
         features: List of atmospheric variables to use
+        means: Dict of means for each feature (required)
+        stds: Dict of stddevs for each feature (required)
         time_range: Optional tuple of (start_date, end_date)
         time_step: Time step between input and target (default: 1)
         max_samples: Maximum number of samples to use (for testing)
@@ -22,6 +24,8 @@ class AnemoiDataset(Dataset):
         self,
         dataset_name: str,
         features: list[str],
+        means: dict,
+        stds: dict,
         time_range: tuple = None,
         time_step: int = 1,
         max_samples: int = None,
@@ -32,6 +36,17 @@ class AnemoiDataset(Dataset):
         self.features = features
         self.time_step = time_step
         self.max_samples = max_samples
+        self.means = means
+        self.stds = stds
+
+        # Validate that normalization stats are provided for all features
+        missing_means = [f for f in self.features if f not in self.means]
+        missing_stds = [f for f in self.features if f not in self.stds]
+        if missing_means or missing_stds:
+            raise ValueError(
+                f"Normalization statistics missing for features: "
+                f"means missing: {missing_means}, stds missing: {missing_stds}"
+            )
 
         # Build Anemoi dataset configuration
         config = {"dataset": dataset_name}
@@ -43,7 +58,6 @@ class AnemoiDataset(Dataset):
         # Load the dataset
         try:
             self.dataset = open_dataset(config)
-            # Try different methods to get xarray data
             if hasattr(self.dataset, "to_xarray"):
                 self.data = self.dataset.to_xarray()
             elif hasattr(self.dataset, "to_dataset"):
@@ -83,36 +97,16 @@ class AnemoiDataset(Dataset):
 
         if self.grid_lat is None or self.grid_lon is None:
             available_coords = list(self.data.coords.keys())
-            raise ValueError(
-                f"Could not find latitude/longitude coordinates in dataset. "
-                f"Available coordinates: {available_coords}"
-            )
+            raise ValueError(f"Could not find latitude/longitude coordinates in dataset. "
+                             f"Available coordinates: {available_coords}")
 
         self.num_lat = len(self.grid_lat)
         self.num_lon = len(self.grid_lon)
 
-        # Initialize normalization parameters
-        self.means, self.stds = self._init_normalization()
-
-    def _init_normalization(self):
-        """Initialize normalization parameters"""
-        means = {}
-        stds = {}
-
-        for feature in self.features:
-            if feature in self.data.data_vars:
-                data_values = self.data[feature].values
-                means[feature] = np.nanmean(data_values)
-                stds[feature] = np.nanstd(data_values)
-            else:
-                logging.warning(f"Feature {feature} not found, using default normalization")
-                means[feature] = 0.0
-                stds[feature] = 1.0
-
-        return means, stds
-
     def _normalize(self, data, feature):
         """Normalize data using feature-specific statistics"""
+        if feature not in self.means or feature not in self.stds:
+            raise ValueError(f"Normalization stats for feature '{feature}' not provided.")
         return (data - self.means[feature]) / (self.stds[feature] + 1e-6)
 
     def _generate_clock_features(self, data_time):
@@ -122,7 +116,12 @@ class AnemoiDataset(Dataset):
         else:
             timestamp = data_time
 
-        day_of_year = timestamp.dayofyear / 365.0
+        # Leap year aware normalization
+        year = timestamp.year
+        is_leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+        days_in_year = 366.0 if is_leap else 365.0
+        day_of_year = timestamp.dayofyear / days_in_year
+
         sin_day_of_year = np.sin(2 * np.pi * day_of_year)
         cos_day_of_year = np.cos(2 * np.pi * day_of_year)
 
@@ -156,13 +155,12 @@ class AnemoiDataset(Dataset):
         target_features = []
 
         for feature in self.features:
-            if feature in self.data.data_vars:
-                input_vals = input_data_slice[feature].values.reshape(-1)
-                target_vals = target_data_slice[feature].values.reshape(-1)
-                input_vals = self._normalize(input_vals, feature)
-                target_vals = self._normalize(target_vals, feature)
-                input_features.append(input_vals.reshape(-1, 1))
-                target_features.append(target_vals.reshape(-1, 1))
+            input_vals = input_data_slice[feature].values.reshape(-1)
+            target_vals = target_data_slice[feature].values.reshape(-1)
+            input_vals = self._normalize(input_vals, feature)
+            target_vals = self._normalize(target_vals, feature)
+            input_features.append(input_vals.reshape(-1, 1))
+            target_features.append(target_vals.reshape(-1, 1))
 
         input_data = np.concatenate(input_features, axis=1)
         target_data = np.concatenate(target_features, axis=1)
