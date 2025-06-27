@@ -9,3 +9,5 @@
 .vscode/
 checkpoints/
 lightning_logs/
+pixi.lock
+.python-version
