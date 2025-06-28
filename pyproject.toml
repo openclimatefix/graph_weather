@@ -94,7 +94,7 @@ mlx = ["mlx"]
 install = "pip install --editable ."
 installnnja = "pip install git+https://github.com/brightbandtech/nnja-ai.git"
 installnat = "pip install natten"
-installnatcuda = "pip install natten==0.17.4+torch240cu124 -f https://shi-labs.com/natten/wheels/"
+installnatcuda = "pip install natten==0.20.1+torch270cu128 -f https://whl.natten.org"
 installpyg = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cpu.html"
 installpygcuda = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cuda128.html"
 test = "pytest"
