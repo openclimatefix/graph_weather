@@ -9,7 +9,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="graph_weather",
-    version="1.0.110",
+    version="1.0.111",
     packages=find_packages(),
     url="https://github.com/openclimatefix/graph_weather",
     license="MIT License",
