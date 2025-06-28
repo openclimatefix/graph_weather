@@ -103,9 +103,9 @@ class WeatherMesh(nn.Module):
                 num_transformer_layers=encoder_num_transformer_layers,
             )
         if processors is not None:
-            assert len(processors) == len(
-                timesteps
-            ), "Number of processors must match number of timesteps"
+            assert len(processors) == len(timesteps), (
+                "Number of processors must match number of timesteps"
+            )
             self.processors = processors
         else:
             self.processors = [

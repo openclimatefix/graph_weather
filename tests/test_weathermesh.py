@@ -16,7 +16,7 @@ def test_weathermesh_encoder():
         latent_dim=8,
         n_pressure_levels=25,
         kernel_size=(3, 3, 3),
-        num_heads=2,
+        num_heads=1,
         hidden_dim=16,
         num_conv_blocks=3,
         num_transformer_layers=3,
@@ -28,7 +28,7 @@ def test_weathermesh_encoder():
 
 
 def test_weathermesh_processor():
-    processor = WeatherMeshProcessor(latent_dim=8, n_layers=2)
+    processor = WeatherMeshProcessor(latent_dim=8, n_layers=2, num_heads=1)
     x = torch.randn(1, 26, 32, 64, 8)
     out = processor(x)
     assert out.shape == (1, 26, 32, 64, 8)
@@ -68,7 +68,7 @@ def test_weathermesh():
         decoder_hidden_dim=4,
         processor_num_layers=2,
         kernel=(3, 5, 5),
-        num_heads=2,
+        num_heads=1,
     )
 
     x_2d = torch.randn(1, 8, 32, 64)

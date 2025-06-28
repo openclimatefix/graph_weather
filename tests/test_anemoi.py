@@ -45,7 +45,7 @@ def test_anemoi_dataset():
             "v_component_of_wind": 0.2,
         },
     }
-    with patch("graph_weather.data.open_dataset", new=fake_open_dataset):
+    with patch("graph_weather.data.anemoi_dataloader.open_dataset", new=fake_open_dataset):
         dataset = AnemoiDataset(**dataset_config)
         assert len(dataset) > 0
         assert dataset.num_lat > 0 and dataset.num_lon > 0
@@ -68,7 +68,7 @@ def test_anemoi_dataset():
 
 def test_normalization():
     """Test that normalization is working correctly"""
-    with patch("graph_weather.data.open_dataset", new=fake_open_dataset):
+    with patch("graph_weather.data.anemoi_dataloader.open_dataset", new=fake_open_dataset):
         dataset = AnemoiDataset(
             dataset_name="synthetic",
             features=["temperature"],
@@ -90,7 +90,7 @@ def test_normalization():
 
 def test_time_features():
     """Test that time features are being added correctly"""
-    with patch("graph_weather.data.open_dataset", new=fake_open_dataset):
+    with patch("graph_weather.data.anemoi_dataloader.open_dataset", new=fake_open_dataset):
         dataset = AnemoiDataset(
             dataset_name="synthetic",
             features=["temperature"],
@@ -108,7 +108,7 @@ def test_time_features():
 
 def test_check_anemoi_dataset_output():
     """Compare output format with GenCast dataloader expectations"""
-    with patch("graph_weather.data.open_dataset", new=fake_open_dataset):
+    with patch("graph_weather.data.anemoi_dataloader.open_dataset", new=fake_open_dataset):
         dataset = AnemoiDataset(
             dataset_name="synthetic",
             features=["temperature", "geopotential"],

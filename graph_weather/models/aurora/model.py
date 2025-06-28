@@ -43,7 +43,8 @@ class PointEncoder(nn.Module):
 
         # Normalize coordinates to [-1, 1] range
         normalized_points = torch.stack(
-            [points[..., 0] / 180.0, points[..., 1] / 90.0], dim=-1  # longitude  # latitude
+            [points[..., 0] / 180.0, points[..., 1] / 90.0],
+            dim=-1,  # longitude  # latitude
         )
 
         # Separately encode coordinates and features

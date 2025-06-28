@@ -31,7 +31,7 @@ class WeatherMeshProcessor(nn.Module):
         self.layers = nn.ModuleList(
             [
                 NeighborhoodAttention3D(
-                    dim=latent_dim,
+                    embed_dim=latent_dim,
                     num_heads=num_heads,
                     kernel_size=kernel,
                 )

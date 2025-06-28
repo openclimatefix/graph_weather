@@ -76,7 +76,7 @@ class WeatherMeshEncoder(nn.Module):
         self.transformer_layers = nn.ModuleList(
             [
                 NeighborhoodAttention3D(
-                    dim=latent_dim, kernel_size=kernel_size, num_heads=num_heads
+                    embed_dim=latent_dim, kernel_size=kernel_size, num_heads=num_heads
                 )
                 for _ in range(num_transformer_layers)
             ]
