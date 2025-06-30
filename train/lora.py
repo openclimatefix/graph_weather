@@ -31,9 +31,9 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         lr: float = 3e-4,
     ):
         super().__init__()
-        assert time_step > 1, (
-            "Time step must be greater than 1. Remember that 1 is the simple model time step."
-        )
+        assert (
+            time_step > 1
+        ), "Time step must be greater than 1. Remember that 1 is the simple model time step."
         ssmodel = MetaModel(
             lat_lons,
             image_size=image_size,
