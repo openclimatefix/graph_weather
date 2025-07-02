@@ -309,7 +309,9 @@ class GraphBuilder:
             edge_index,
             values=torch.ones_like(edge_index[0], dtype=torch.float32),
             size=(self._num_mesh_nodes, self._num_mesh_nodes),
-        ).to(self.khop_device)  # cpu is more memory-efficient, why?
+        ).to(
+            self.khop_device
+        )  # cpu is more memory-efficient, why?
 
         adj_k = adj.coalesce()
         for _ in range(self.num_hops - 1):
