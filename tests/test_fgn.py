@@ -6,6 +6,7 @@ from torch_geometric.transforms import TwoHop
 
 from graph_weather.models.fgn import FunctionalGenerativeNetwork
 
+
 def test_fgn_forward():
     grid_lat = np.arange(-90, 90, 1)
     grid_lon = np.arange(0, 360, 1)
