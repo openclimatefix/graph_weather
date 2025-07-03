@@ -27,10 +27,10 @@ def test_fgn_forward():
         device=torch.device("cpu"),
     ).eval()
 
-    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), 2 * input_features_dim))
+    prev_inputs = torch.randn((batch_size, len(grid_lon), len(grid_lat), input_features_dim))
 
     with torch.no_grad():
         preds = model(previous_weather_state=prev_inputs)
 
     assert not torch.isnan(preds).any()
-    assert preds.shape == (1, 2, len(grid_lon), len(grid_lat), output_features_dim)
+    assert preds.shape == (3, 2, len(grid_lon), len(grid_lat), output_features_dim)

@@ -82,7 +82,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
 
         # Initialize Encoder
         self.encoder = Encoder(
-            grid_dim=output_features_dim + 2 * input_features_dim + self.graphs.grid_nodes_dim,
+            grid_dim=input_features_dim + self.graphs.grid_nodes_dim,
             mesh_dim=self.graphs.mesh_nodes_dim,
             edge_dim=self.graphs.g2m_edges_dim,
             hidden_dims=hidden_dims,
@@ -116,7 +116,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             use_layer_norm=True,
         )
 
-    def _run_encoder(self, grid_features: torch.Tensor) -> torch.Tensor:
+    def _run_encoder(self, grid_features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # build big graph with batch_size disconnected copies of the graph, with features [(b n) f].
         batch_size = grid_features.shape[0]
         batched_senders, batched_receivers, batched_edge_index, batched_edge_attr = hetero_batch(
