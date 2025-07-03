@@ -302,4 +302,6 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             # restore lon/lat dimensions.
             prediction = einops.rearrange(out, "b (lon lat) f -> b lon lat f", lon=self.num_lon)
             predictions.append(prediction)
-        return torch.stack(predictions, dim=1)
+        return (
+            torch.stack(predictions, dim=1) if len(prediction) > 1 else predictions[0].unsqueeze(1)
+        )
