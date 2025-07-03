@@ -34,7 +34,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
         use_edges_features: bool = True,
         scale_factor: float = 1.0,
     ):
-        """Initialize the Denoiser.
+        """Initialize the FGN.
 
         Args:
             grid_lon (np.ndarray): array of longitudes.
@@ -66,6 +66,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
         self.input_features_dim = input_features_dim
         self.output_features_dim = output_features_dim
         self.use_edges_features = use_edges_features
+        self.noise_dimension = noise_dimension
 
         # Initialize graph
         self.graphs = GraphBuilder(
@@ -268,7 +269,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             persistent=False,
         )
 
-    def forward(self, previous_weather_state: torch.Tensor, num_ensemble: int = 1) -> torch.Tensor:
+    def forward(self, previous_weather_state: torch.Tensor, num_ensemble: int = 2) -> torch.Tensor:
         """
         Predict the next weather state given the previous weather state
 
@@ -277,7 +278,7 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
         Args:
             previous_weather_state: Torch tensor
                 The previous weather state, shape (batch_size, num_channels, height, width).
-            num_ensemble: number of ensemble predictions to make, default is 1
+            num_ensemble: number of ensemble predictions to make, default is 2
 
         Returns:
             torch.Tensor: The predicted future weather state, shape (batch_size, num_ensemble, num_channels, height, width).
