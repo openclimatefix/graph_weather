@@ -1,13 +1,12 @@
-import torch
-import numpy as np
-from huggingface_hub import PyTorchModelHubMixin
 import einops
+import numpy as np
+import torch
+from huggingface_hub import PyTorchModelHubMixin
 
-
+from graph_weather.models.fgn.layers.processor import Processor
 from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
-from graph_weather.models.fgn.layers.processor import Processor
 from graph_weather.models.gencast.utils.batching import batch, hetero_batch
 
 

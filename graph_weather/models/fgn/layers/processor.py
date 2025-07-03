@@ -7,7 +7,7 @@ The processor:
 
 import torch
 
-from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBlock, FourierEmbedding
+from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBlock
 
 try:
     from graph_weather.models.gencast.layers.experimental import SparseTransformer
