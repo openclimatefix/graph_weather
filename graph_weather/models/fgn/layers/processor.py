@@ -38,8 +38,6 @@ class Processor(torch.nn.Module):
         hidden_dims: list[int],
         num_blocks: int,
         num_heads: int,
-        num_frequencies: int,
-        base_period: int,
         noise_emb_dim: int,
         edges_dim: int | None = None,
         activation_layer: torch.nn.Module = torch.nn.ReLU,
@@ -68,11 +66,6 @@ class Processor(torch.nn.Module):
         self.latent_dim = latent_dim
         if latent_dim % num_heads != 0:
             raise ValueError("The latent dimension should be divisible by the number of heads.")
-
-        # Embedders
-        self.fourier_embedder = FourierEmbedding(
-            output_dim=noise_emb_dim, num_frequencies=num_frequencies, base_period=base_period
-        )
 
         self.edges_dim = edges_dim
         if edges_dim is not None:
@@ -170,9 +163,6 @@ class Processor(torch.nn.Module):
         """
         self._check_args(latent_mesh_nodes, noise_vector, input_edge_attr)
 
-        # embedding TODO Change this
-        noise_emb = self.fourier_embedder(noise_levels)
-
         if self.edges_dim is not None:
             edges_emb = self.edges_mlp(input_edge_attr)
         else:
@@ -183,7 +173,7 @@ class Processor(torch.nn.Module):
             latent_mesh_nodes = cond_transformer(
                 x=latent_mesh_nodes,
                 edge_index=edge_index,
-                cond_param=noise_emb,
+                cond_param=noise_vector,
                 edge_attr=edges_emb,
             )
 
