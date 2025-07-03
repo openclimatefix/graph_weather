@@ -41,8 +41,10 @@ class FunctionalGenerativeNetwork(torch.nn.Module):
                 (previous_weather_state.shape[0], self.noise_dimension),
                 device=previous_weather_state.device,
             )
-            encoded_state = self.encoder(previous_weather_state, noise_vector)
+            encoded_state = self.encoder(previous_weather_state)
+            # TODO Append in the sin/cos day of year here to the encoded state
+            # TODO Processor is only one with the conditional state
             processed_state = self.processor(encoded_state, noise_vector)
-            prediction = self.decoder(processed_state, noise_vector)
+            prediction = self.decoder(processed_state)
             predictions.append(prediction)
         return torch.stack(predictions, dim=1)
