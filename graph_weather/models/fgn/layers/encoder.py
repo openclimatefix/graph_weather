@@ -102,7 +102,7 @@ class Encoder(torch.nn.Module):
         input_mesh_nodes: torch.Tensor,
         input_edge_attr: torch.Tensor,
         edge_index: torch.Tensor,
-        noise_vector: torch.Tensor
+        noise_vector: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward pass.
 
