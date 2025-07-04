@@ -5,7 +5,7 @@
 
 This repo implements graph neural networks for weather forecasting, originally an implementation of
 the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, multiple other
-models have now been added, as well as general models for assimilation and forecasting. 
+models have now been added, as well as general models for assimilation and forecasting.
 
 The models implemented include:
 
