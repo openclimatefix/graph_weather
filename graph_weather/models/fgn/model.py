@@ -167,7 +167,6 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
         input_grid_nodes = einops.rearrange(latent_grid_nodes, "b n f -> (b n) f")
         input_edge_attr = batched_edge_attr
         edge_index = batched_edge_index
-
         # run the decoder.
         output_grid_nodes = self.decoder(
             input_mesh_nodes=input_mesh_nodes,
@@ -196,7 +195,6 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # load features.
-        # TODO Add Sin/cos day of year here to the features
         latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
         input_edge_attr = batched_edge_attr
         edge_index = batched_edge_index
@@ -294,10 +292,8 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
                 (previous_weather_state.shape[0], self.noise_dimension),
                 device=previous_weather_state.device,
             )
-            # TODO Append in the sin/cos day of year here to the encoded state
-            # TODO Processor is only one with the conditional state
             latent_grid_nodes, latent_mesh_nodes = self._run_encoder(previous_weather_state)
-            latent_mesh_nodes = self._run_processor(latent_mesh_nodes, noise_vector)
+            latent_mesh_nodes = self._run_processor(latent_mesh_nodes, noise_vectors=noise_vector)
             out = self._run_decoder(latent_mesh_nodes, latent_grid_nodes)
             # restore lon/lat dimensions.
             prediction = einops.rearrange(out, "b (lon lat) f -> b lon lat f", lon=self.num_lon)
