@@ -2,9 +2,24 @@
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-11-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
-Implementation of the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, an implementation
-of a modified model that assimilates raw or processed observations into analysis files.
 
+This repo implements graph neural networks for weather forecasting, originally an implementation of
+the Graph Weather paper (https://arxiv.org/pdf/2202.07575.pdf) in PyTorch. Additionally, multiple other
+models have now been added, as well as general models for assimilation and forecasting. 
+
+The models implemented include:
+
+DeepMind's [Functional Generative Network (FGN)](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/how-we-re-supporting-better-tropical-cyclone-prediction-with-ai/skillful-joint-probabilistic-weather-forecasting-from-marginals.pdf) for probablistic ensemble forecasting
+
+DeepMind's [GenCast](https://www.nature.com/articles/s41586-024-08252-9) for graph diffusion-based forecasting
+
+WindBorne's [WeatherMesh-3](https://arxiv.org/abs/2503.22235) for highly efficient forecasting with Neighborhood Attention
+
+Microsoft's [Aurora](https://arxiv.org/abs/2405.13063) forecasting model
+
+And [FengWu-GHR](https://arxiv.org/abs/2402.00059) forecasting, using LoRA to correct for per-forecast step errors
+
+The components of these models should be fairly modular and be able to be swapped around to experiment with graph-based weather forecasting.
 
 ## Installation
 
