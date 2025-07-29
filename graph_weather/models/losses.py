@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 import torch_harmonics as th
-
+import torch.nn as nn
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
 
@@ -115,9 +115,13 @@ class AMSENormalizedLoss(nn.Module):
 
     def __init__(self, feature_variance: list | torch.Tensor, epsilon: float = 1e-9):
         super().__init__()
-        self.register_buffer(
-            "feature_variance", torch.tensor(feature_variance, dtype=torch.float32)
-        )
+        if not isinstance(feature_variance, torch.Tensor):
+            feature_variance = torch.tensor(feature_variance, dtype=torch.float32)
+        else:
+            feature_variance = feature_variance.clone().detach().float()
+
+        self.register_buffer("feature_variance", feature_variance)
+
         # SHT cache to avoid re-initializing on every forward pass since object performs some expensive pre-computation when it's initialized. Doing this repeatedly inside the training loop can add unnecessary overhead.
         self.epsilon = epsilon
         self.sht_cache = {} 
