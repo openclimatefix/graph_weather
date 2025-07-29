@@ -4,16 +4,19 @@ import torch_harmonics as th
 
 from graph_weather.models.losses import AMSENormalizedLoss
 
+
 @pytest.fixture
 def default_shape():
     """Provides a default shape for tensors: (B, C, H, W)."""
     return (2, 3, 32, 64)
+
 
 @pytest.fixture
 def feature_variance(default_shape):
     """Provides a default feature variance tensor."""
     _, num_channels, _, _ = default_shape
     return (torch.rand(num_channels) + 0.5).clone().detach()
+
 
 @pytest.fixture
 def loss_fn(feature_variance):
@@ -53,7 +56,7 @@ class TestAMSENormalizedLoss:
         loss = loss_fn_cuda(pred, target)
         assert loss.is_cuda
         assert torch.isfinite(loss)
-    
+
     def test_known_value_simple_case(self, feature_variance):
         """
         Tests the loss function against a known value by creating a simple case
@@ -72,12 +75,12 @@ class TestAMSENormalizedLoss:
         target_coeffs = torch.zeros(coeffs_shape, dtype=torch.complex64)
         target_coeffs[:, 1, 0] = 1.0 + 0.0j
         pred_coeffs = target_coeffs * 0.5
-        
+
         # 2. Use the INVERSE transform object to create the spatial grids
         isht = th.InverseRealSHT(nlat, nlon, grid="equiangular")
         target = isht(target_coeffs)
         pred = isht(pred_coeffs)
-        
+
         # Reshape to (B, C, H, W)
         target = target.view(batch_size, num_channels, nlat, nlon)
         pred = pred.view(batch_size, num_channels, nlat, nlon)
@@ -85,7 +88,9 @@ class TestAMSENormalizedLoss:
         # 3. Calculate expected loss
         psd_target_l1 = 1.0**2
         psd_pred_l1 = 0.5**2
-        amp_error_l1 = (torch.sqrt(torch.tensor(psd_pred_l1)) - torch.sqrt(torch.tensor(psd_target_l1)))**2
+        amp_error_l1 = (
+            torch.sqrt(torch.tensor(psd_pred_l1)) - torch.sqrt(torch.tensor(psd_target_l1))
+        ) ** 2
         expected_spectral_loss_per_channel = amp_error_l1
         expected_normalized_loss = (expected_spectral_loss_per_channel / feature_variance).mean()
 

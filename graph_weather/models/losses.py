@@ -2,8 +2,10 @@
 
 import numpy as np
 import torch
-import torch_harmonics as th
 import torch.nn as nn
+import torch_harmonics as th
+
+
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
 
@@ -91,7 +93,8 @@ class NormalizedMSELoss(torch.nn.Module):
         assert not torch.isnan(out).any()
         return out.mean()
 
-# Spectrally Adjusted Mean Squared Error (AMSE) loss 
+
+# Spectrally Adjusted Mean Squared Error (AMSE) loss
 class AMSENormalizedLoss(nn.Module):
     """
     Spectrally Adjusted Mean Squared Error (AMSE) Loss.
@@ -124,7 +127,7 @@ class AMSENormalizedLoss(nn.Module):
 
         # SHT cache to avoid re-initializing on every forward pass since object performs some expensive pre-computation when it's initialized. Doing this repeatedly inside the training loop can add unnecessary overhead.
         self.epsilon = epsilon
-        self.sht_cache = {} 
+        self.sht_cache = {}
 
     def _get_sht(self, nlat: int, nlon: int, device: torch.device) -> th.RealSHT:
         """
@@ -160,21 +163,23 @@ class AMSENormalizedLoss(nn.Module):
 
         # Get the (potentially cached) SHT object
         sht = self._get_sht(nlat, nlon, pred.device)
-        pred_coeffs = sht(pred_reshaped)      # (B*C, L, M) complex
+        pred_coeffs = sht(pred_reshaped)  # (B*C, L, M) complex
         target_coeffs = sht(target_reshaped)  # (B*C, L, M) complex
 
         # Compute Power Spectral Densities (PSD): sum |coeff|^2 over M
-        pred_psd = torch.sum(torch.abs(pred_coeffs) ** 2, dim=-1)      # (B*C, L)
+        pred_psd = torch.sum(torch.abs(pred_coeffs) ** 2, dim=-1)  # (B*C, L)
         target_psd = torch.sum(torch.abs(target_coeffs) ** 2, dim=-1)  # (B*C, L)
 
         # Compute spectral coherence between prediction and target
-        cross_power = pred_coeffs * torch.conj(target_coeffs)           # (B*C, L, M)
-        coherence_num = torch.sum(cross_power.real, dim=-1)             # (B*C, L)
+        cross_power = pred_coeffs * torch.conj(target_coeffs)  # (B*C, L, M)
+        coherence_num = torch.sum(cross_power.real, dim=-1)  # (B*C, L)
         coherence_denom = torch.sqrt(pred_psd * target_psd)
-        coherence = coherence_num / (coherence_denom + self.epsilon)    # (B*C, L)
+        coherence = coherence_num / (coherence_denom + self.epsilon)  # (B*C, L)
 
         # Compute amplitude error: difference in sqrt(PSD)
-        amp_error = (torch.sqrt(pred_psd + self.epsilon) - torch.sqrt(target_psd + self.epsilon)) ** 2
+        amp_error = (
+            torch.sqrt(pred_psd + self.epsilon) - torch.sqrt(target_psd + self.epsilon)
+        ) ** 2
 
         # Compute decorrelation error
         decor_error = 2.0 * coherence_denom * (1.0 - coherence)
