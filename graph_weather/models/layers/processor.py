@@ -11,6 +11,7 @@ and its immediate neighbors. There are residual connections between each round o
 import torch
 
 from graph_weather.models.layers.graph_net_block import GraphProcessor
+from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
 
 class Processor(torch.nn.Module):
@@ -26,6 +27,7 @@ class Processor(torch.nn.Module):
         hidden_layers_processor_node: int = 2,
         hidden_layers_processor_edge: int = 2,
         mlp_norm_type: str = "LayerNorm",
+        use_thermalizer: bool = False,
     ):
         """
         Latent graph processor
@@ -40,11 +42,13 @@ class Processor(torch.nn.Module):
             hidden_layers_processor_edge: Number of hidden layers in the edge processors
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_thermalizer: Whether to use the thermalizer layer
         """
         super().__init__()
         # Build the default graph
         # Take features from encoder and put into processor graph
         self.input_dim = input_dim
+        self.use_thermalizer = use_thermalizer
 
         self.graph_processor = GraphProcessor(
             num_blocks,
@@ -56,8 +60,10 @@ class Processor(torch.nn.Module):
             hidden_layers_processor_edge,
             mlp_norm_type,
         )
+        if self.use_thermalizer:
+            self.thermalizer = ThermalizerLayer(input_dim)
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edge_index, edge_attr, t: int = 0) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
@@ -65,9 +71,12 @@ class Processor(torch.nn.Module):
             x: Torch tensor containing node features
             edge_index: Connectivity of graph, of shape [2, Num edges] in COO format
             edge_attr: Edge attribues in [Num edges, Features] shape
+            t: Timestep for the thermalizer
 
         Returns:
             torch Tensor containing the values of the nodes of the graph
         """
         out, _ = self.graph_processor(x, edge_index, edge_attr)
+        if self.use_thermalizer:
+            out = self.thermalizer(out, t)
         return out
