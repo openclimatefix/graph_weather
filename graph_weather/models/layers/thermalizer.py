@@ -110,14 +110,10 @@ class AdaptiveUNet(nn.Module):
         """Create a contracting block for the UNet."""
         # Use GroupNorm instead of BatchNorm for robustness
         contract = nn.Sequential(
-            nn.Conv2d(
-                in_channels, out_channels, kernel_size=kernel_size, padding=padding
-            ),
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
-            nn.Conv2d(
-                out_channels, out_channels, kernel_size=kernel_size, padding=padding
-            ),
+            nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
@@ -223,22 +219,15 @@ class ThermalizerLayer(nn.Module):
         t = max(0, min(t, self.timesteps - 1))
 
         sqrt_alphas_cumprod_t = self.alphas_cumprod[t].sqrt().to(x.device)
-        sqrt_one_minus_alphas_cumprod_t = (
-            (1.0 - self.alphas_cumprod[t]).sqrt().to(x.device)
-        )
+        sqrt_one_minus_alphas_cumprod_t = (1.0 - self.alphas_cumprod[t]).sqrt().to(x.device)
 
-        noisy_x = (
-            sqrt_alphas_cumprod_t * x_reshaped
-            + sqrt_one_minus_alphas_cumprod_t * noise
-        )
+        noisy_x = sqrt_alphas_cumprod_t * x_reshaped + sqrt_one_minus_alphas_cumprod_t * noise
 
         # Predict the noise using the score model (UNet)
         score = self.score_model(noisy_x)
 
         # Estimate the original input from the noisy input and predicted noise
-        pred_x = (
-            noisy_x - sqrt_one_minus_alphas_cumprod_t * score
-        ) / sqrt_alphas_cumprod_t
+        pred_x = (noisy_x - sqrt_one_minus_alphas_cumprod_t * score) / sqrt_alphas_cumprod_t
 
         # Reshape the output back to original input shape
         return pred_x.permute(0, 2, 3, 1).reshape(total_nodes, features)
@@ -255,9 +244,7 @@ class ThermalizerLayer(nn.Module):
         """
         steps = timesteps + 1
         x = torch.linspace(0, timesteps, steps, dtype=torch.float64)
-        alphas_cumprod = (
-            torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
-        )
+        alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
         alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
         return torch.clip(betas, 0, 0.999)

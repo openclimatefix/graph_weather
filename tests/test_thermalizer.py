@@ -83,8 +83,7 @@ def test_thermalizer_different_sizes():
 
     for batch_size, nodes, height, width in test_cases:
         print(
-            f"\n=== Testing {batch_size} batch(es), {height}x{width} grid "
-            f"({nodes} nodes) ==="
+            f"\n=== Testing {batch_size} batch(es), {height}x{width} grid " f"({nodes} nodes) ==="
         )
 
         total_samples = batch_size * nodes
@@ -131,9 +130,7 @@ def test_grid_reconstruction():
     out_flat = layer(x_flat, t, height=height, width=width, batch=batch_size)
 
     # Reconstruct grid
-    out_grid = out_flat.reshape(batch_size, height, width, features).permute(
-        0, 3, 1, 2
-    )
+    out_grid = out_flat.reshape(batch_size, height, width, features).permute(0, 3, 1, 2)
 
     print(f"Output flat shape: {out_flat.shape}")
     print(f"Reconstructed grid shape: {out_grid.shape}")
