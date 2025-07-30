@@ -330,9 +330,9 @@ class WeatherStationReader:
                     values = station_data[var_name].values
 
                     # Add to observations
-                    synoptic_data["STATION"][str(station)]["OBSERVATIONS"][
-                        var_name
-                    ] = values.tolist()
+                    synoptic_data["STATION"][str(station)]["OBSERVATIONS"][var_name] = (
+                        values.tolist()
+                    )
 
         return synoptic_data
 

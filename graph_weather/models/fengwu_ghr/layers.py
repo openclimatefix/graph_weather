@@ -105,9 +105,9 @@ class Transformer(nn.Module):
                 )
             )
             if self.res:
-                assert (
-                    image_size is not None and scale_factor is not None
-                ), "If res=True, you must provide h, w and scale_factor"
+                assert image_size is not None and scale_factor is not None, (
+                    "If res=True, you must provide h, w and scale_factor"
+                )
                 h, w = pair(image_size)
                 s_h, s_w = pair(scale_factor)
                 self.res_layers.append(
