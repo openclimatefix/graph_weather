@@ -4,6 +4,8 @@ import torch_harmonics as th
 
 from graph_weather.models.losses import AMSENormalizedLoss
 
+# This file contains tests for the AMSENormalizedLoss class, which computes the
+
 
 @pytest.fixture
 def default_shape() -> tuple[int, int, int, int]:
