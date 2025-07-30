@@ -1,4 +1,5 @@
 import torch
+
 from graph_weather.models.forecast import GraphWeatherForecaster
 
 
@@ -8,7 +9,7 @@ def test_gencast_thermal_integration():
     lat_lons = [(i // 3, i % 3) for i in range(9)]  # 3x3 grid
 
     print(f"Number of lat_lons: {len(lat_lons)}")
-    print(f"Grid should be: 3x3")
+    print("Grid should be: 3x3")
 
     model = GraphWeatherForecaster(
         lat_lons,
@@ -125,7 +126,12 @@ def test_small_grid_integration():
     lat_lons = [(i // 2, i % 2) for i in range(4)]  # 2x2 grid
 
     model = GraphWeatherForecaster(
-        lat_lons, use_thermalizer=True, feature_dim=3, aux_dim=0, node_dim=256, num_blocks=1
+        lat_lons,
+        use_thermalizer=True,
+        feature_dim=3,
+        aux_dim=0,
+        node_dim=256,
+        num_blocks=1,
     )
 
     features = torch.randn(1, len(lat_lons), 3)
@@ -144,14 +150,8 @@ def test_small_grid_integration():
         raise
 
 
-if __name__ == "__main__":
-    print("Testing thermalizer standalone...")
-    test_thermalizer_standalone()
-    print("\nTesting small grid integration...")
-    test_small_grid_integration()
-    print("\nTesting larger grid integration...")
-    test_gencast_thermal_integration()
-
+def test_additional_thermalizer():
+    """Additional thermalizer test"""
     from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
     batch, nodes, features = 1, 4, 256
@@ -174,8 +174,14 @@ if __name__ == "__main__":
         traceback.print_exc()
         raise
 
+
 if __name__ == "__main__":
     print("Testing thermalizer standalone...")
     test_thermalizer_standalone()
-    print("\nTesting full model integration...")
+    print("\nTesting small grid integration...")
+    test_small_grid_integration()
+    print("\nTesting larger grid integration...")
     test_gencast_thermal_integration()
+    print("\nTesting additional thermalizer...")
+    test_additional_thermalizer()
+    print("\nAll tests completed!")

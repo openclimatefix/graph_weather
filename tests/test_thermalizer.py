@@ -1,4 +1,5 @@
 import torch
+
 from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
 
@@ -81,7 +82,10 @@ def test_thermalizer_different_sizes():
     layer = ThermalizerLayer(input_dim=features)
 
     for batch_size, nodes, height, width in test_cases:
-        print(f"\n=== Testing {batch_size} batch(es), {height}x{width} grid ({nodes} nodes) ===")
+        print(
+            f"\n=== Testing {batch_size} batch(es), {height}x{width} grid "
+            f"({nodes} nodes) ==="
+        )
 
         total_samples = batch_size * nodes
         x = torch.randn(total_samples, features)
@@ -127,7 +131,9 @@ def test_grid_reconstruction():
     out_flat = layer(x_flat, t, height=height, width=width, batch=batch_size)
 
     # Reconstruct grid
-    out_grid = out_flat.reshape(batch_size, height, width, features).permute(0, 3, 1, 2)
+    out_grid = out_flat.reshape(batch_size, height, width, features).permute(
+        0, 3, 1, 2
+    )
 
     print(f"Output flat shape: {out_flat.shape}")
     print(f"Reconstructed grid shape: {out_grid.shape}")
@@ -145,4 +151,4 @@ if __name__ == "__main__":
     test_thermalizer_auto_inference()
     test_thermalizer_different_sizes()
     test_grid_reconstruction()
-    print("\n All tests passed!")
+    print("\nAll tests passed!")
