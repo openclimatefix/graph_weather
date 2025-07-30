@@ -152,7 +152,9 @@ def get_icosahedron() -> TriangularMesh:
     )
 
 
-def _two_split_unit_sphere_triangle_faces(triangular_mesh: TriangularMesh) -> TriangularMesh:
+def _two_split_unit_sphere_triangle_faces(
+    triangular_mesh: TriangularMesh,
+) -> TriangularMesh:
     """Splits each triangular face into 4 triangles keeping the orientation."""
 
     # Every time we split a triangle into 4 we will be adding 3 extra vertices,
@@ -192,7 +194,8 @@ def _two_split_unit_sphere_triangle_faces(triangular_mesh: TriangularMesh) -> Tr
             ]
         )
     return TriangularMesh(
-        vertices=new_vertices_builder.get_all_vertices(), faces=np.array(new_faces, dtype=np.int32)
+        vertices=new_vertices_builder.get_all_vertices(),
+        faces=np.array(new_faces, dtype=np.int32),
     )
 
 

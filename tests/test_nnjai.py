@@ -195,7 +195,10 @@ def test_collate_function():
     assert batched["timestamp"].shape == (batch_size,), "Timestamp batch shape mismatch"
     assert batched["latitude"].shape == (batch_size,), "Latitude batch shape mismatch"
     assert batched["longitude"].shape == (batch_size,), "Longitude batch shape mismatch"
-    assert batched["metadata"].shape == (batch_size, metadata_size), "Metadata batch shape mismatch"
+    assert batched["metadata"].shape == (
+        batch_size,
+        metadata_size,
+    ), "Metadata batch shape mismatch"
     assert batched["timestamp"].dtype == torch.float32, "Timestamp dtype mismatch"
     assert batched["latitude"].dtype == torch.float32, "Latitude dtype mismatch"
     assert batched["longitude"].dtype == torch.float32, "Longitude dtype mismatch"

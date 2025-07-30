@@ -253,7 +253,10 @@ class TestWeatherStationReader:
         observations = reader.get_observations_for_model()
 
         # Apply validation
-        qc_rules = {"temperature": {"min": 0, "max": 30}, "pressure": {"min": 950, "max": 1050}}
+        qc_rules = {
+            "temperature": {"min": 0, "max": 30},
+            "pressure": {"min": 950, "max": 1050},
+        }
 
         validated = reader.validate_observations(observations, qc_rules)
 

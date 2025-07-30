@@ -66,7 +66,9 @@ class PointDecoder(nn.Module):
     def __init__(self, embed_dim: int, output_features: int):
         super().__init__()
         self.decoder = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim), nn.ReLU(), nn.Linear(embed_dim, output_features)
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, output_features),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -105,7 +107,9 @@ class SelfAttentionLayer(nn.Module):
         self.norm1 = nn.LayerNorm(embed_dim)
         self.norm2 = nn.LayerNorm(embed_dim)
         self.ffn = nn.Sequential(
-            nn.Linear(embed_dim, 4 * embed_dim), nn.ReLU(), nn.Linear(4 * embed_dim, embed_dim)
+            nn.Linear(embed_dim, 4 * embed_dim),
+            nn.ReLU(),
+            nn.Linear(4 * embed_dim, embed_dim),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -221,7 +225,10 @@ class AuroraModel(nn.Module):
                     nn.init.zeros_(m.bias)
 
     def forward(
-        self, points: torch.Tensor, features: torch.Tensor, mask: Optional[torch.Tensor] = None
+        self,
+        points: torch.Tensor,
+        features: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         if points.shape[1] > self.max_points:
             raise ValueError(

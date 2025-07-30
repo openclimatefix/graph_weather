@@ -7,7 +7,11 @@ The processor:
 
 import torch
 
-from graph_weather.models.gencast.layers.modules import MLP, CondTransformerBlock, FourierEmbedding
+from graph_weather.models.gencast.layers.modules import (
+    MLP,
+    CondTransformerBlock,
+    FourierEmbedding,
+)
 
 try:
     from graph_weather.models.gencast.layers.experimental import SparseTransformer
@@ -71,7 +75,9 @@ class Processor(torch.nn.Module):
 
         # Embedders
         self.fourier_embedder = FourierEmbedding(
-            output_dim=noise_emb_dim, num_frequencies=num_frequencies, base_period=base_period
+            output_dim=noise_emb_dim,
+            num_frequencies=num_frequencies,
+            base_period=base_period,
         )
 
         self.edges_dim = edges_dim

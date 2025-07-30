@@ -32,6 +32,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         norm_type: str = "LayerNorm",
         use_checkpointing: bool = False,
         constraint_type: str = "none",
+        use_thermalizer: bool = False,
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -42,26 +43,31 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 odd ones have octogons and heptagons as well
             feature_dim: Input feature size
             aux_dim: Number of non-NWP features (i.e. landsea mask, lat/lon, etc)
-            output_dim: Optional, output feature size, useful if want only subset of variables in
-            output
+            output_dim: Optional, output feature size, useful if want only subset
+                of variables in output
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
             num_blocks: Number of message passing blocks in the Processor
             hidden_dim_processor_node: Hidden dimension of the node processors
             hidden_dim_processor_edge: Hidden dimension of the edge processors
-            hidden_layers_processor_node: Number of hidden layers in the node processors
-            hidden_layers_processor_edge: Number of hidden layers in the edge processors
+            hidden_layers_processor_node: Number of hidden layers in the node
+                processors
+            hidden_layers_processor_edge: Number of hidden layers in the edge
+                processors
             hidden_dim_decoder:Number of hidden dimensions in the decoder
             hidden_layers_decoder: Number of layers in the decoder
             norm_type: Type of norm for the MLPs
-                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+                one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm',
+                'MessageNorm', or None
             use_checkpointing: Use gradient checkpointing to reduce model memory
             constraint_type: Type of constraint to apply for physical constraints
                 one of 'additive', 'multiplicative', 'softmax', or 'none'
+            use_thermalizer: Whether to use the thermalizer layer
         """
         super().__init__()
         self.feature_dim = feature_dim
         self.constraint_type = constraint_type
+        self.use_thermalizer = use_thermalizer
         if output_dim is None:
             output_dim = self.feature_dim
         self.output_dim = output_dim
@@ -97,6 +103,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
+            use_thermalizer=use_thermalizer,
         )
         self.decoder = Decoder(
             lat_lons=lat_lons,
@@ -159,18 +166,20 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             graph[..., node_idx, :] = grid_tensor[..., row, col]
         return graph
 
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor, t: int = 0) -> torch.Tensor:
         """
         Compute the new state of the forecast
 
         Args:
-            features: The input features, aligned with the order of lat_lons_heights
+            features: The input features, aligned with the order of
+                lat_lons_heights
+            t: Timestep for the thermalizer
 
         Returns:
             The next state in the forecast
         """
         x, edge_idx, edge_attr = self.encoder(features)
-        x = self.processor(x, edge_idx, edge_attr)
+        x = self.processor(x, edge_idx, edge_attr, t)
         x = self.decoder(x, features[..., : self.feature_dim])
 
         # Here, assume decoder output x is a 4D tensor,
@@ -182,8 +191,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             # Extract the low-res reference from the input.
             # (Original features has shape [B, num_nodes, feature_dim])
-            lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
-            # Convert from node format to grid format using the grid_shape computed in __init__
+            lr = features[..., : self.feature_dim]  # [B, num_nodes, feature_dim]
+            # Convert from node format to grid format using the grid_shape
+            # computed in __init__
             # From [B, num_nodes, feature_dim] to [B, feature_dim, H, W]
             lr = rearrange(lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             if lr.size(1) != x.size(1):

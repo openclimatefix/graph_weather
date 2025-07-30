@@ -37,7 +37,13 @@ class IFSAnalisysDataset(Dataset):
             end_year: ending year. Defaults to 2022.
     """
 
-    def __init__(self, filepath: str, features: list, start_year: int = 2016, end_year: int = 2022):
+    def __init__(
+        self,
+        filepath: str,
+        features: list,
+        start_year: int = 2016,
+        end_year: int = 2022,
+    ):
         """
         Initialize the dataset object.
         """

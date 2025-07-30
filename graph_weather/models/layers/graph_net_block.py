@@ -109,11 +109,20 @@ class EdgeProcessor(nn.Module):
 
         super(EdgeProcessor, self).__init__()
         self.edge_mlp = MLP(
-            2 * in_dim_node + in_dim_edge, in_dim_edge, hidden_dim, hidden_layers, norm_type
+            2 * in_dim_node + in_dim_edge,
+            in_dim_edge,
+            hidden_dim,
+            hidden_layers,
+            norm_type,
         )
 
     def forward(
-        self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+        self,
+        src: torch.Tensor,
+        dest: torch.Tensor,
+        edge_attr: torch.Tensor,
+        u=None,
+        batch=None,
     ) -> torch.Tensor:
         """
         Compute the edge part of the message passing
@@ -166,7 +175,12 @@ class NodeProcessor(nn.Module):
         )
 
     def forward(
-        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor, u=None, batch=None
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
+        u=None,
+        batch=None,
     ) -> torch.Tensor:
         """
         Compute the node feature updates in message passing

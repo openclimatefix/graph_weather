@@ -112,7 +112,9 @@ class AnalysisDataset(Dataset):
             np.array([extraterrestrial_irrad(end_date, lat, lon) for lat, lon in lat_lons])
         ]
         for when in pd.date_range(
-            end_date - pd.Timedelta("12 hours"), end_date + pd.Timedelta("12 hours"), freq="1H"
+            end_date - pd.Timedelta("12 hours"),
+            end_date + pd.Timedelta("12 hours"),
+            freq="1H",
         ):
             end_solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])
@@ -174,7 +176,8 @@ class AnalysisDataset(Dataset):
 
 
 obs_data = xr.open_zarr(
-    "/home/jacob/Development/prepbufr.gdas.20160101.t00z.nr.48h.raw.zarr", consolidated=True
+    "/home/jacob/Development/prepbufr.gdas.20160101.t00z.nr.48h.raw.zarr",
+    consolidated=True,
 )
 
 # TODO Embedding? These should stay consistent across all of the inputs, so can just load the values

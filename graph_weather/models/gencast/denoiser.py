@@ -126,8 +126,18 @@ class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
 
     def _check_shapes(self, corrupted_targets, prev_inputs, noise_levels):
         batch_size = prev_inputs.shape[0]
-        exp_inputs_shape = (batch_size, self.num_lon, self.num_lat, 2 * self.input_features_dim)
-        exp_targets_shape = (batch_size, self.num_lon, self.num_lat, self.output_features_dim)
+        exp_inputs_shape = (
+            batch_size,
+            self.num_lon,
+            self.num_lat,
+            2 * self.input_features_dim,
+        )
+        exp_targets_shape = (
+            batch_size,
+            self.num_lon,
+            self.num_lat,
+            self.output_features_dim,
+        )
         exp_noise_shape = (batch_size, 1)
 
         if not all(
@@ -248,7 +258,10 @@ class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
         return output_grid_nodes
 
     def forward(
-        self, corrupted_targets: torch.Tensor, prev_inputs: torch.Tensor, noise_levels: torch.Tensor
+        self,
+        corrupted_targets: torch.Tensor,
+        prev_inputs: torch.Tensor,
+        noise_levels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute the denoiser output.
 
@@ -323,10 +336,14 @@ class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
 
         self.register_buffer("khop_mesh_nodes", self.graphs.khop_mesh_graph.x, persistent=False)
         self.register_buffer(
-            "khop_mesh_edge_attr", self.graphs.khop_mesh_graph.edge_attr, persistent=False
+            "khop_mesh_edge_attr",
+            self.graphs.khop_mesh_graph.edge_attr,
+            persistent=False,
         )
         self.register_buffer(
-            "khop_mesh_edge_index", self.graphs.khop_mesh_graph.edge_index, persistent=False
+            "khop_mesh_edge_index",
+            self.graphs.khop_mesh_graph.edge_index,
+            persistent=False,
         )
 
         self.register_buffer(

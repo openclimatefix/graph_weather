@@ -102,7 +102,12 @@ class AssimilatorDecoder(torch.nn.Module):
         self.graph = Data(edge_index=edge_index, edge_attr=self.h3_to_lat_distances)
 
         self.edge_encoder = MLP(
-            2, output_edge_dim, hidden_dim_processor_edge, 2, mlp_norm_type, self.use_checkpointing
+            2,
+            output_edge_dim,
+            hidden_dim_processor_edge,
+            2,
+            mlp_norm_type,
+            self.use_checkpointing,
         )
         self.graph_processor = GraphProcessor(
             mp_iterations=1,
@@ -150,7 +155,8 @@ class AssimilatorDecoder(torch.nn.Module):
         self.latlon_nodes = self.latlon_nodes.to(processor_features.device)
         features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
         features = torch.cat(
-            [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
+            [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)],
+            dim=1,
         )
         features = einops.rearrange(features, "b n f -> (b n) f")
 

@@ -190,7 +190,10 @@ def process_data(data):
         if "next" in key and "time" not in key
     }
     lat_lons = np.array(
-        np.meshgrid(np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten())
+        np.meshgrid(
+            np.asarray(data["latitude"]).flatten(),
+            np.asarray(data["longitude"]).flatten(),
+        )
     ).T.reshape((-1, 2))
     sin_lat_lons = np.sin(lat_lons * np.pi / 180.0)
     cos_lat_lons = np.cos(lat_lons * np.pi / 180.0)
@@ -271,7 +274,9 @@ class GraphDataModule(pl.LightningDataModule):
         super().__init__()
         self.batch_size = batch_size
         self.dataset = datasets.load_dataset(
-            "openclimatefix/gfs-surface-pressure-2deg", split="train+validation", streaming=False
+            "openclimatefix/gfs-surface-pressure-2deg",
+            split="train+validation",
+            streaming=False,
         )
         features = datasets.Features(
             {

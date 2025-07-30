@@ -244,10 +244,14 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
 
         self.register_buffer("khop_mesh_nodes", self.graphs.khop_mesh_graph.x, persistent=False)
         self.register_buffer(
-            "khop_mesh_edge_attr", self.graphs.khop_mesh_graph.edge_attr, persistent=False
+            "khop_mesh_edge_attr",
+            self.graphs.khop_mesh_graph.edge_attr,
+            persistent=False,
         )
         self.register_buffer(
-            "khop_mesh_edge_index", self.graphs.khop_mesh_graph.edge_index, persistent=False
+            "khop_mesh_edge_index",
+            self.graphs.khop_mesh_graph.edge_index,
+            persistent=False,
         )
 
         self.register_buffer(
