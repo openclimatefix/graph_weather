@@ -11,7 +11,11 @@ def pair(t):
 
 
 def knn_interpolate(
-    x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor, k: int = 4, num_workers: int = 1
+    x: torch.Tensor,
+    pos_x: torch.Tensor,
+    pos_y: torch.Tensor,
+    k: int = 4,
+    num_workers: int = 1,
 ):
     with torch.no_grad():
         assign_index = knn(pos_x, pos_y, k, num_workers=num_workers)
@@ -90,7 +94,15 @@ class Attention(nn.Module):
 
 class Transformer(nn.Module):
     def __init__(
-        self, dim, depth, heads, dim_head, mlp_dim, res=False, image_size=None, scale_factor=None
+        self,
+        dim,
+        depth,
+        heads,
+        dim_head,
+        mlp_dim,
+        res=False,
+        image_size=None,
+        scale_factor=None,
     ):
         super().__init__()
         self.depth = depth
@@ -101,7 +113,10 @@ class Transformer(nn.Module):
         for _ in range(self.depth):
             self.layers.append(
                 nn.ModuleList(
-                    [Attention(dim, heads=heads, dim_head=dim_head), FeedForward(dim, mlp_dim)]
+                    [
+                        Attention(dim, heads=heads, dim_head=dim_head),
+                        FeedForward(dim, mlp_dim),
+                    ]
                 )
             )
             if self.res:

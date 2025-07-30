@@ -16,7 +16,10 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 from graph_weather.data import const
-from graph_weather.models.gencast.utils.noise import generate_isotropic_noise, sample_noise_level
+from graph_weather.models.gencast.utils.noise import (
+    generate_isotropic_noise,
+    sample_noise_level,
+)
 
 
 class GenCastDataset(Dataset):
@@ -134,7 +137,13 @@ class GenCastDataset(Dataset):
 
         # Stack clock features
         clock_input_data = np.stack(
-            [sin_day_of_year, cos_day_of_year, sin_local_mean_time, cos_local_mean_time], axis=-1
+            [
+                sin_day_of_year,
+                cos_day_of_year,
+                sin_local_mean_time,
+                cos_local_mean_time,
+            ],
+            axis=-1,
         ).astype(np.float32)
 
         return clock_input_data
@@ -352,7 +361,13 @@ class BatchedGenCastDataset(Dataset):
         cos_local_mean_time = np.cos(2 * np.pi * local_mean_time / 24.0)
 
         clock_input_data = np.stack(
-            [sin_day_of_year, cos_day_of_year, sin_local_mean_time, cos_local_mean_time], axis=-1
+            [
+                sin_day_of_year,
+                cos_day_of_year,
+                sin_local_mean_time,
+                cos_local_mean_time,
+            ],
+            axis=-1,
         ).astype(np.float32)
         return clock_input_data
 

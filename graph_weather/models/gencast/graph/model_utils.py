@@ -355,7 +355,8 @@ def get_rotation_matrices_to_local_coordinates(
         polar_rotation = -reference_theta + np.pi / 2
 
         return transform.Rotation.from_euler(
-            "zyz", np.stack([azimuthal_rotation, polar_rotation, -azimuthal_rotation], axis=1)
+            "zyz",
+            np.stack([azimuthal_rotation, polar_rotation, -azimuthal_rotation], axis=1),
         ).as_matrix()
     else:
         raise ValueError("At least one of longitude and latitude should be rotated.")

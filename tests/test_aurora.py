@@ -291,7 +291,8 @@ def test_full_pipeline_integration(processor_config):
 
     # Initialize components with matching dimensions
     encoder = Swin3DEncoder(
-        in_channels=channels, embed_dim=processor_config.input_dim  # Match processor's input_dim
+        in_channels=channels,
+        embed_dim=processor_config.input_dim,  # Match processor's input_dim
     )
 
     processor = PerceiverProcessor(processor_config)
@@ -354,7 +355,11 @@ def test_aurora_model_with_3d(sample_3d_data, model_config):
         )
 
     output = model(points, features)
-    expected_output_shape = (batch_size, points.shape[1], model_config["output_features"])
+    expected_output_shape = (
+        batch_size,
+        points.shape[1],
+        model_config["output_features"],
+    )
     assert output.shape == expected_output_shape
     assert not torch.isnan(output).any()
 

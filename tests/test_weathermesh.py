@@ -1,7 +1,13 @@
 import torch
 
-from graph_weather.models.weathermesh.decoder import WeatherMeshDecoder, WeatherMeshDecoderConfig
-from graph_weather.models.weathermesh.encoder import WeatherMeshEncoder, WeatherMeshEncoderConfig
+from graph_weather.models.weathermesh.decoder import (
+    WeatherMeshDecoder,
+    WeatherMeshDecoderConfig,
+)
+from graph_weather.models.weathermesh.encoder import (
+    WeatherMeshEncoder,
+    WeatherMeshEncoderConfig,
+)
 from graph_weather.models.weathermesh.processor import (
     WeatherMeshProcessor,
     WeatherMeshProcessorConfig,

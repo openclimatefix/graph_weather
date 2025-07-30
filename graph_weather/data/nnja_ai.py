@@ -21,7 +21,12 @@ class SensorDataset(Dataset):
     """A custom PyTorch Dataset for handling various sensor data."""
 
     def __init__(
-        self, dataset_name, time, primary_descriptors, additional_variables, sensor_type="AMSU"
+        self,
+        dataset_name,
+        time,
+        primary_descriptors,
+        additional_variables,
+        sensor_type="AMSU",
     ):
         """Initialize the dataset loader for various sensors.
 

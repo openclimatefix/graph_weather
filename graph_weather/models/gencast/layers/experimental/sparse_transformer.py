@@ -100,7 +100,9 @@ class SparseTransformer(nn.Module):
         # initialize mlp
         self.activation = activation_layer()
         self.mlp = nn.Sequential(
-            nn.Linear(output_dim, output_dim), self.activation, nn.Linear(output_dim, output_dim)
+            nn.Linear(output_dim, output_dim),
+            self.activation,
+            nn.Linear(output_dim, output_dim),
         )
 
         # initialize conditional layer normalization
@@ -136,11 +138,13 @@ class SparseTransformer(nn.Module):
         if self.norm_first:
             x1 = self.cond_norm_1(x, cond_param)
             x = x + self.sparse_attention(
-                x=x1, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
+                x=x1,
+                adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0])),
             )
         else:
             x = x + self.sparse_attention(
-                x=x, adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0]))
+                x=x,
+                adj=dglsp.spmatrix(indices=edge_index, shape=(x.shape[0], x.shape[0])),
             )
             x = self.cond_norm_1(x, cond_param)
 

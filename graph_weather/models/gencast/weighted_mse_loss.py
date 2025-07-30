@@ -49,7 +49,11 @@ class WeightedMSELoss(torch.nn.Module):
         ):
             pressure_weights = pressure_levels / torch.sum(pressure_levels)
             features_weights = torch.cat(
-                (pressure_weights.repeat(num_atmospheric_features), single_features_weights), dim=-1
+                (
+                    pressure_weights.repeat(num_atmospheric_features),
+                    single_features_weights,
+                ),
+                dim=-1,
             )
         elif (
             pressure_levels is not None

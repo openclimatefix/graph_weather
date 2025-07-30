@@ -28,7 +28,12 @@ def test_anemoi_dataset():
     """Test the AnemoiDataset class with synthetic data"""
     dataset_config = {
         "dataset_name": "synthetic",
-        "features": ["temperature", "geopotential", "u_component_of_wind", "v_component_of_wind"],
+        "features": [
+            "temperature",
+            "geopotential",
+            "u_component_of_wind",
+            "v_component_of_wind",
+        ],
         "time_range": ("2020-01-01", "2020-01-03"),
         "time_step": 1,
         "max_samples": 2,

@@ -15,7 +15,11 @@ import torch
 from torch_geometric.data import Data, HeteroData
 
 # from torch_geometric.transforms import TwoHop
-from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
+from graph_weather.models.gencast.graph import (
+    grid_mesh_connectivity,
+    icosahedral_mesh,
+    model_utils,
+)
 
 # Some configs from graphcast:
 _spatial_features_kwargs = dict(
@@ -153,7 +157,9 @@ class GraphBuilder:
         """Inits static properties that have to do with mesh nodes."""
         self._num_mesh_nodes = self._mesh.vertices.shape[0]
         mesh_phi, mesh_theta = model_utils.cartesian_to_spherical(
-            self._mesh.vertices[:, 0], self._mesh.vertices[:, 1], self._mesh.vertices[:, 2]
+            self._mesh.vertices[:, 0],
+            self._mesh.vertices[:, 1],
+            self._mesh.vertices[:, 2],
         )
         (
             mesh_nodes_lat,

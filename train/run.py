@@ -413,7 +413,8 @@ class XrDataset(IterableDataset):
 
             lat_lons = np.array(
                 np.meshgrid(
-                    np.asarray(data["latitude"]).flatten(), np.asarray(data["longitude"]).flatten()
+                    np.asarray(data["latitude"]).flatten(),
+                    np.asarray(data["longitude"]).flatten(),
                 )
             ).T.reshape((-1, 2))
             sin_lat_lons = np.sin(lat_lons)
@@ -424,20 +425,26 @@ class XrDataset(IterableDataset):
                 np.array(
                     [
                         extraterrestrial_irrad(
-                            when=date.to_pydatetime(), latitude_deg=lat, longitude_deg=lon
+                            when=date.to_pydatetime(),
+                            latitude_deg=lat,
+                            longitude_deg=lon,
                         )
                         for lat, lon in lat_lons
                     ]
                 )
             ]
             for when in pd.date_range(
-                date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
+                date - pd.Timedelta("12 hours"),
+                date + pd.Timedelta("12 hours"),
+                freq="1H",
             ):
                 solar_times.append(
                     np.array(
                         [
                             extraterrestrial_irrad(
-                                when=when.to_pydatetime(), latitude_deg=lat, longitude_deg=lon
+                                when=when.to_pydatetime(),
+                                latitude_deg=lat,
+                                longitude_deg=lon,
                             )
                             for lat, lon in lat_lons
                         ]

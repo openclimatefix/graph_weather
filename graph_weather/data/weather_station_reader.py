@@ -581,7 +581,10 @@ class WeatherStationReader:
                     if "lon" not in data_vars:
                         data_vars["lon"] = (["station"], [lon for _ in stations])
                     if "elevation" not in data_vars:
-                        data_vars["elevation"] = (["station"], [elevation for _ in stations])
+                        data_vars["elevation"] = (
+                            ["station"],
+                            [elevation for _ in stations],
+                        )
 
                     # Process observation variables
                     if "OBSERVATIONS" in station_info:
@@ -593,7 +596,10 @@ class WeatherStationReader:
                                 # Initialize if needed
                                 if var_name not in data_vars:
                                     var_array = np.full((len(times), len(stations)), np.nan)
-                                    data_vars[var_name] = (["time", "station"], var_array)
+                                    data_vars[var_name] = (
+                                        ["time", "station"],
+                                        var_array,
+                                    )
 
                                 # Fill data
                                 for i, dt in enumerate(obs["date_time"]):
@@ -613,7 +619,9 @@ class WeatherStationReader:
             raise e
 
     def validate_observations(
-        self, observations: xr.Dataset, qc_rules: Optional[Dict[str, Dict[str, float]]] = None
+        self,
+        observations: xr.Dataset,
+        qc_rules: Optional[Dict[str, Dict[str, float]]] = None,
     ) -> xr.Dataset:
         """
         Apply quality control checks to observation data.
@@ -630,10 +638,19 @@ class WeatherStationReader:
         # and National Weather Service Observing Handbook No. 8
         if qc_rules is None:
             qc_rules = {
-                "temperature": {"min": -80.0, "max": 60.0},  # °C, extreme Earth temperatures
-                "pressure": {"min": 800.0, "max": 1100.0},  # hPa, standard range at sea level
+                "temperature": {
+                    "min": -80.0,
+                    "max": 60.0,
+                },  # °C, extreme Earth temperatures
+                "pressure": {
+                    "min": 800.0,
+                    "max": 1100.0,
+                },  # hPa, standard range at sea level
                 "humidity": {"min": 0.0, "max": 100.0},  # %, physical limits
-                "wind_speed": {"min": 0.0, "max": 105.0},  # m/s, hurricane-force threshold
+                "wind_speed": {
+                    "min": 0.0,
+                    "max": 105.0,
+                },  # m/s, hurricane-force threshold
             }
 
         # Create quality flags
@@ -646,7 +663,8 @@ class WeatherStationReader:
                 # Create QC flag variable
                 var_data = observations[var_name].values
                 qc_mask = np.logical_or(
-                    np.logical_or(var_data < min_val, var_data > max_val), np.isnan(var_data)
+                    np.logical_or(var_data < min_val, var_data > max_val),
+                    np.isnan(var_data),
                 )
                 observations[f"{var_name}_qc"] = (observations[var_name].dims, qc_mask)
 
@@ -681,7 +699,10 @@ class WeatherStationReader:
         return interpolated
 
     def resample_observations(
-        self, observations: Optional[xr.Dataset], freq: str = "1H", aggregation: str = "mean"
+        self,
+        observations: Optional[xr.Dataset],
+        freq: str = "1H",
+        aggregation: str = "mean",
     ) -> Optional[xr.Dataset]:
         """
         Resample observations to a different time frequency.

@@ -31,7 +31,12 @@ class PhysicalConstraintLayer(nn.Module):
     """
 
     def __init__(
-        self, model, grid_shape, upsampling_factor, constraint_type="none", exp_factor=1.0
+        self,
+        model,
+        grid_shape,
+        upsampling_factor,
+        constraint_type="none",
+        exp_factor=1.0,
     ):
         """Initialize the PhysicalConstraintLayer.
 

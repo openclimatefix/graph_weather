@@ -11,12 +11,20 @@ import lightning as L  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
-from lightning.pytorch.callbacks import Callback, LearningRateMonitor, ModelCheckpoint  # noqa: E402
+from lightning.pytorch.callbacks import (
+    Callback,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)  # noqa: E402
 from lightning.pytorch.loggers import WandbLogger  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 
 from graph_weather.data.gencast_dataloader import GenCastDataset  # noqa: E402
-from graph_weather.models.gencast import Denoiser, Sampler, WeightedMSELoss  # noqa: E402
+from graph_weather.models.gencast import (
+    Denoiser,
+    Sampler,
+    WeightedMSELoss,
+)  # noqa: E402
 
 torch.set_float32_matmul_precision("high")
 
@@ -172,7 +180,10 @@ class LitModel(L.LightningModule):
     def configure_optimizers(self):
         """Initialize the optimizer"""
         opt = torch.optim.AdamW(
-            self.parameters(), lr=self.learning_rate, weight_decay=0.1, betas=(0.9, 0.95)
+            self.parameters(),
+            lr=self.learning_rate,
+            weight_decay=0.1,
+            betas=(0.9, 0.95),
         )
         # sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.cosine_t_max)
         sch = CosineWarmupScheduler(opt, warmup=self.warmup, max_iters=self.cosine_t_max)
@@ -231,10 +242,13 @@ class SamplingCallback(Callback):
         """Sample and log predictions"""
         print("Epoch is starting")
         fig1, fig2 = pl_module.plot_sample(
-            self.prev_inputs.to(pl_module.device), self.target_residuals.to(pl_module.device)
+            self.prev_inputs.to(pl_module.device),
+            self.target_residuals.to(pl_module.device),
         )
         trainer.logger.log_image(
-            key="samples", images=[fig1, fig2], caption=["2m_temperature", "geopotential"]
+            key="samples",
+            images=[fig1, fig2],
+            caption=["2m_temperature", "geopotential"],
         )
         print("Uploaded samples")
 

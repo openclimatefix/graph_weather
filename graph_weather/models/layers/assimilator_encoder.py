@@ -135,7 +135,8 @@ class AssimilatorEncoder(torch.nn.Module):
         graph = self.create_input_graph(features=features, lat_lons_heights=lat_lon_heights)
         batch_size = features.shape[0]
         features = torch.cat(
-            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
+            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)],
+            dim=1,
         )
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
@@ -163,7 +164,11 @@ class AssimilatorEncoder(torch.nn.Module):
                 dim=1,
             ),
             self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+                einops.repeat(
+                    self.latent_graph.edge_attr,
+                    "e f -> (repeat e) f",
+                    repeat=batch_size,
+                )
             ),
         )  # New graph
 

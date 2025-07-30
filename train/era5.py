@@ -152,7 +152,9 @@ if __name__ == "__main__":
 
     reanalysis = reanalysis.sel(time=slice("2020-01-01", "2021-01-01"))
     reanalysis = reanalysis.isel(
-        time=slice(100, 107), longitude=slice(0, 1440, grid_step), latitude=slice(0, 721, grid_step)
+        time=slice(100, 107),
+        longitude=slice(0, 1440, grid_step),
+        latitude=slice(0, 721, grid_step),
     )
 
     reanalysis = reanalysis[variables]
