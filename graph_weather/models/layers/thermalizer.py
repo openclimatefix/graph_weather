@@ -1,3 +1,5 @@
+# thermalizer.py - Fixed version with proper formatting
+
 """Thermalizer layer implementation for inference-time denoising."""
 
 import math
@@ -77,10 +79,7 @@ class AdaptiveUNet(nn.Module):
         # Ensure upconv3 matches conv2 size for concatenation
         if upconv3.shape[-2:] != conv2.shape[-2:]:
             upconv3 = F.interpolate(
-                upconv3,
-                size=conv2.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
+                upconv3, size=conv2.shape[-2:], mode="bilinear", align_corners=False
             )
 
         upconv2 = self.upconv2(torch.cat([upconv3, conv2], 1))
@@ -88,10 +87,7 @@ class AdaptiveUNet(nn.Module):
         # Ensure upconv2 matches conv1 size for concatenation
         if upconv2.shape[-2:] != conv1.shape[-2:]:
             upconv2 = F.interpolate(
-                upconv2,
-                size=conv1.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
+                upconv2, size=conv1.shape[-2:], mode="bilinear", align_corners=False
             )
 
         upconv1 = self.upconv1(torch.cat([upconv2, conv1], 1))
@@ -132,12 +128,7 @@ class AdaptiveUNet(nn.Module):
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
             nn.ConvTranspose2d(
-                out_channels,
-                out_channels,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-                output_padding=1,
+                out_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1
             ),
         )
         return expand
