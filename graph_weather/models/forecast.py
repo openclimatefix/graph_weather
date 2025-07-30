@@ -10,9 +10,6 @@ from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
 
 
-from graph_weather.models.layers.thermalizer import ThermalizerLayer
-
-
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     """Main weather prediction model from the paper with physical constraints"""
 
