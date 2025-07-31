@@ -1,9 +1,12 @@
+"""Unit tests for the ThermalizerLayer module."""
+
 import torch
+
 from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
 
 def test_thermalizer_forward_shape():
-    # Test explicit height, width, batch dims
+    """Test forward pass shape with explicit height, width, and batch."""
     batch_size = 2
     height, width = 12, 12
     nodes = height * width
@@ -15,14 +18,13 @@ def test_thermalizer_forward_shape():
 
     out = layer(x, t, height=height, width=width, batch=batch_size)
 
-    # Ensure output shape and numerical stability
     assert out.shape == x.shape
     assert not torch.isnan(out).any()
     assert torch.isfinite(out).all()
 
 
 def test_thermalizer_auto_inference():
-    # Test shape auto-inference (no height, width, batch)
+    """Test forward pass with auto-inferred dimensions (no height, width, batch)."""
     batch_size = 1
     height, width = 12, 12
     nodes = height * width
@@ -40,7 +42,7 @@ def test_thermalizer_auto_inference():
 
 
 def test_thermalizer_different_sizes():
-    # Test multiple grid sizes and batch counts
+    """Test multiple input grid sizes and batch counts."""
     test_cases = [
         (1, 4, 2, 2),
         (1, 9, 3, 3),
@@ -56,12 +58,10 @@ def test_thermalizer_different_sizes():
         x = torch.randn(batch_size * nodes, features)
         t = torch.randint(0, 1000, (1,)).item()
 
-        # Test with explicit dims
         out = layer(x, t, height=height, width=width, batch=batch_size)
         assert out.shape == x.shape
         assert not torch.isnan(out).any()
 
-        # Test auto-inference only for batch=1
         if batch_size == 1:
             out_auto = layer(x, t)
             assert out_auto.shape == x.shape
@@ -69,7 +69,7 @@ def test_thermalizer_different_sizes():
 
 
 def test_grid_reconstruction():
-    # Test reshaping back from flat → grid format
+    """Test reshaping from flat to grid format after forward pass."""
     batch_size = 1
     height, width = 6, 8
     nodes = height * width
@@ -84,7 +84,6 @@ def test_grid_reconstruction():
     out_flat = layer(x_flat, t, height=height, width=width, batch=batch_size)
     out_grid = out_flat.reshape(batch_size, height, width, features).permute(0, 3, 1, 2)
 
-    # Check reconstruction consistency
     assert out_flat.shape == x_flat.shape
     assert out_grid.shape == x_grid.shape
     assert not torch.isnan(out_grid).any()

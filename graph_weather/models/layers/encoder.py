@@ -71,7 +71,9 @@ class Encoder(torch.nn.Module):
         self.use_checkpointing = use_checkpointing
         self.output_dim = output_dim
         self.num_latlons = len(lat_lons)
-        self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
+        self.base_h3_grid = sorted(
+            list(h3.uncompact(h3.get_res0_indexes(), resolution))
+        )
         self.base_h3_map = {h_i: i for i, h_i in enumerate(self.base_h3_grid)}
         self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_mapping = {}
@@ -147,7 +149,9 @@ class Encoder(torch.nn.Module):
             mlp_norm_type,
         )
 
-    def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, features: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Adds features to the encoding graph
 
@@ -162,12 +166,15 @@ class Encoder(torch.nn.Module):
         self.graph = self.graph.to(features.device)
         self.latent_graph = self.latent_graph.to(features.device)
         features = torch.cat(
-            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)], dim=1
+            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)],
+            dim=1,
         )
         # Cat with the h3 nodes to have correct amount of nodes, and in right order
         features = einops.rearrange(features, "b n f -> (b n) f")
         out = self.node_encoder(features)  # Encode to 256 from 78
-        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+        edge_attr = self.edge_encoder(
+            self.graph.edge_attr
+        )  # Update attributes based on distance
         # Copy attributes batch times
         edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
         # Expand edge index correct number of times while adding the proper number to the edge index
@@ -187,13 +194,19 @@ class Encoder(torch.nn.Module):
             out,
             torch.cat(
                 [
-                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                    self.latent_graph.edge_index
+                    + i * torch.max(self.latent_graph.edge_index)
+                    + i
                     for i in range(batch_size)
                 ],
                 dim=1,
             ),
             self.latent_edge_encoder(
-                einops.repeat(self.latent_graph.edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+                einops.repeat(
+                    self.latent_graph.edge_attr,
+                    "e f -> (repeat e) f",
+                    repeat=batch_size,
+                )
             ),
         )  # New graph
 
@@ -211,7 +224,9 @@ class Encoder(torch.nn.Module):
         for h3_index in self.base_h3_grid:
             h_points = h3.k_ring(h3_index, 1)
             for h in h_points:  # Already includes itself
-                distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
+                distance = h3.point_dist(
+                    h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads"
+                )
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.base_h3_map[h3_index])
                 edge_targets.append(self.base_h3_map[h])

@@ -145,8 +145,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
     def graph_to_grid(self, graph_tensor):
         """
+        Convert graph tensor to grid.
 
-        Convert graph tensor to grid using spatial mapping:
+        Uses spatial mapping:
         [B, N, C] -> [B, C, H, W]
         """
         batch_size, num_nodes, features = graph_tensor.shape
@@ -184,13 +185,17 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
         # Apply physical constraints to decoder output
         if self.constraint_type != "none":
-            x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
+            x = rearrange(
+                x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1]
+            )
             # Extract the low-res reference from the input.
             # (Original features has shape [B, num_nodes, feature_dim])
             lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
             # Convert from node format to grid format using the grid_shape computed in __init__
             # From [B, num_nodes, feature_dim] to [B, feature_dim, H, W]
-            lr = rearrange(lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
+            lr = rearrange(
+                lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1]
+            )
             if lr.size(1) != x.size(1):
                 repeat_factor = x.size(1) // lr.size(1)
                 lr = repeat(lr, "b c h w -> b (r c) h w", r=repeat_factor)

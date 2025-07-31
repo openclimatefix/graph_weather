@@ -1,5 +1,7 @@
 """Thermalizer layer implementation for inference-time denoising."""
+
 import math
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -9,6 +11,9 @@ class AdaptiveUNet(nn.Module):
     """UNet that adapts its architecture based on input size."""
 
     def __init__(self, in_channels: int, out_channels: int) -> None:
+        """
+        Initialize ThermalizerLayer
+        """
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -35,6 +40,9 @@ class AdaptiveUNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the UNet-based denoising layer.
+        """
         original_size = x.shape[-2:]
 
         if min(original_size) <= 4:
@@ -51,24 +59,34 @@ class AdaptiveUNet(nn.Module):
 
         upconv3 = self.upconv3(conv3)
         if upconv3.shape[-2:] != conv2.shape[-2:]:
-            upconv3 = F.interpolate(upconv3, size=conv2.shape[-2:], mode="bilinear", align_corners=False)
+            upconv3 = F.interpolate(
+                upconv3, size=conv2.shape[-2:], mode="bilinear", align_corners=False
+            )
 
         upconv2 = self.upconv2(torch.cat([upconv3, conv2], 1))
         if upconv2.shape[-2:] != conv1.shape[-2:]:
-            upconv2 = F.interpolate(upconv2, size=conv1.shape[-2:], mode="bilinear", align_corners=False)
+            upconv2 = F.interpolate(
+                upconv2, size=conv1.shape[-2:], mode="bilinear", align_corners=False
+            )
 
         upconv1 = self.upconv1(torch.cat([upconv2, conv1], 1))
         if upconv1.shape[-2:] != original_size:
-            upconv1 = F.interpolate(upconv1, size=original_size, mode="bilinear", align_corners=False)
+            upconv1 = F.interpolate(
+                upconv1, size=original_size, mode="bilinear", align_corners=False
+            )
 
         return upconv1
 
     def _contract_block(self, in_channels, out_channels, kernel_size, padding):
         return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+            nn.Conv2d(
+                in_channels, out_channels, kernel_size=kernel_size, padding=padding
+            ),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
-            nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
+            nn.Conv2d(
+                out_channels, out_channels, kernel_size=kernel_size, padding=padding
+            ),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
@@ -82,7 +100,14 @@ class AdaptiveUNet(nn.Module):
             nn.Conv2d(out_channels, out_channels, kernel_size, padding=padding),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
-            nn.ConvTranspose2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ConvTranspose2d(
+                out_channels,
+                out_channels,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                output_padding=1,
+            ),
         )
 
 
@@ -91,12 +116,16 @@ class ThermalizerLayer(nn.Module):
 
     def __init__(self, input_dim: int = 256, timesteps: int = 1000) -> None:
         """
+        Initialize the Thermalizer model.
+
         Args:
-            input_dim: Dimension of input features
-            timesteps: Number of diffusion timesteps
+        input_dim: Dimension of input features
+        timesteps: Number of diffusion timesteps
         """
         super().__init__()
-        self.score_model = AdaptiveUNet(input_dim + 2, input_dim)  # +2 for (x, y) positional encoding
+        self.score_model = AdaptiveUNet(
+            input_dim + 2, input_dim
+        )  # +2 for (x, y) positional encoding
         self.timesteps = timesteps
         self.betas = self._cosine_beta_schedule(timesteps)
         self.alphas = 1.0 - self.betas
@@ -181,11 +210,12 @@ class ThermalizerLayer(nn.Module):
         """
         steps = timesteps + 1
         x = torch.linspace(0, timesteps, steps, dtype=torch.float64)
-        alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
+        alphas_cumprod = (
+            torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
+        )
         alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
         return torch.clip(betas, 0, 0.999)
-
 
     # Heuristically infer (H, W) shape from total node count.
     def _infer_grid_dimensions(self, total_nodes: int) -> tuple[int, int]:

@@ -1,10 +1,13 @@
+"""Integration tests for GraphWeatherForecaster using the ThermalizerLayer."""
+
 import torch
+
 from graph_weather.models.forecast import GraphWeatherForecaster
 from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
 
 def test_gencast_thermal_integration():
-    # End-to-end test: GraphWeatherForecaster with thermalizer
+    """End-to-end test: GraphWeatherForecaster with ThermalizerLayer on a 3x3 grid."""
     lat_lons = [(i // 3, i % 3) for i in range(9)]  # 3x3 grid
 
     model = GraphWeatherForecaster(
@@ -20,7 +23,6 @@ def test_gencast_thermal_integration():
     t = torch.randint(0, 1000, (1,)).item()
     pred = model(features, t=t)
 
-    # Output shape should match (grid or node layout)
     assert not torch.isnan(pred).any()
     assert torch.isfinite(pred).all()
 
@@ -32,7 +34,7 @@ def test_gencast_thermal_integration():
 
 
 def test_thermalizer_small_grids():
-    # Test thermalizer layer with different small grids
+    """Test ThermalizerLayer on various small grid sizes."""
     layer = ThermalizerLayer(input_dim=256)
     t = torch.randint(0, 1000, (1,)).item()
 
@@ -44,7 +46,7 @@ def test_thermalizer_small_grids():
 
 
 def test_small_grid_integration():
-    # 2x2 integration test (GraphWeatherForecaster + Thermalizer)
+    """Test GraphWeatherForecaster + ThermalizerLayer on a 2x2 grid."""
     lat_lons = [(i // 2, i % 2) for i in range(4)]  # 2x2 grid
 
     model = GraphWeatherForecaster(
@@ -64,7 +66,7 @@ def test_small_grid_integration():
 
 
 def test_additional_thermalizer():
-    # Simple sanity test for thermalizer alone
+    """Basic sanity test for ThermalizerLayer with small input."""
     layer = ThermalizerLayer(input_dim=256)
     x = torch.randn(4, 256)
     t = torch.randint(0, 1000, (1,)).item()

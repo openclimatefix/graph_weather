@@ -13,6 +13,7 @@ import torch
 from graph_weather.models.layers.graph_net_block import GraphProcessor
 from graph_weather.models.layers.thermalizer import ThermalizerLayer
 
+
 class Processor(torch.nn.Module):
     """Processor for latent graphD"""
 
@@ -62,7 +63,9 @@ class Processor(torch.nn.Module):
         if self.use_thermalizer:
             self.thermalizer = ThermalizerLayer(input_dim)
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr, t: int = 0) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, edge_index, edge_attr, t: int = 0
+    ) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
