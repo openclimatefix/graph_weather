@@ -63,9 +63,7 @@ class Processor(torch.nn.Module):
         if self.use_thermalizer:
             self.thermalizer = ThermalizerLayer(input_dim)
 
-    def forward(
-        self, x: torch.Tensor, edge_index, edge_attr, t: int = 0
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edge_index, edge_attr, t: int = 0) -> torch.Tensor:
         """
         Adds features to the encoding graph
 

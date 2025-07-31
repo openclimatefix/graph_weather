@@ -79,14 +79,10 @@ class AdaptiveUNet(nn.Module):
 
     def _contract_block(self, in_channels, out_channels, kernel_size, padding):
         return nn.Sequential(
-            nn.Conv2d(
-                in_channels, out_channels, kernel_size=kernel_size, padding=padding
-            ),
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
-            nn.Conv2d(
-                out_channels, out_channels, kernel_size=kernel_size, padding=padding
-            ),
+            nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
             nn.GroupNorm(min(8, out_channels), out_channels),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
@@ -210,9 +206,7 @@ class ThermalizerLayer(nn.Module):
         """
         steps = timesteps + 1
         x = torch.linspace(0, timesteps, steps, dtype=torch.float64)
-        alphas_cumprod = (
-            torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
-        )
+        alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
         alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
         return torch.clip(betas, 0, 0.999)
