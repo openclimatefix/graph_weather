@@ -74,7 +74,7 @@ class Decoder(AssimilatorDecoder):
         )
 
     def forward(
-        self, processor_features: torch.Tensor, start_features: torch.Tensor
+        self, processor_features: torch.Tensor, start_features: torch.Tensor, t: int = 0
     ) -> torch.Tensor:
         """
         Adds features to the encoding graph
@@ -82,7 +82,7 @@ class Decoder(AssimilatorDecoder):
         Args:
             processor_features: Processed features in shape [B*Nodes, Features]
             start_features: Original input features to the encoder, with shape [B, Nodes, Features]
-
+            t: Timestep for the thermalizer, not used, but there for API consistency
         Returns:
             Updated features for model
         """
