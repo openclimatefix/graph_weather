@@ -1,6 +1,16 @@
-"""Thermalizer layer implementation for inference-time denoising."""
+"""
+Denoising layer for graph data using a UNet-inspired diffusion model.
+
+Assumes input features are arranged on a regular 2D grid, and infers
+(height, width) from node count. This works best for uniform spatial layouts.
+
+Note: Irregular graphs or varying spatial densities (e.g., high-res + low-res mix)
+      may not be correctly handled yet. Can be extended in future to support
+      explicit grid shapes or learned graph layouts.
+"""
 
 import math
+import warnings
 
 import torch
 import torch.nn.functional as F
@@ -160,6 +170,12 @@ class ThermalizerLayer(nn.Module):
             nodes = total_nodes // batch
 
         if height is None or width is None:
+            warnings.warn(
+                """ThermalizerLayer assumes nodes are on a regular 2D grid when
+                   inferring shape from node count.
+                   For irregular graphs or non-uniform layouts, pass (height, width) explicitly.""",
+                UserWarning,
+            )
             height, width = self._infer_grid_dimensions(nodes)
 
         nodes = height * width
