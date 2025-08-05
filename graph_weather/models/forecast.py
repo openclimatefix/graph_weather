@@ -32,6 +32,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         norm_type: str = "LayerNorm",
         use_checkpointing: bool = False,
         constraint_type: str = "none",
+        use_thermalizer: bool = False,
     ):
         """
         Graph Weather Model based off https://arxiv.org/pdf/2202.07575.pdf
@@ -58,10 +59,12 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             use_checkpointing: Use gradient checkpointing to reduce model memory
             constraint_type: Type of constraint to apply for physical constraints
                 one of 'additive', 'multiplicative', 'softmax', or 'none'
+            use_thermalizer: Whether to use the thermalizer layer
         """
         super().__init__()
         self.feature_dim = feature_dim
         self.constraint_type = constraint_type
+        self.use_thermalizer = use_thermalizer
         if output_dim is None:
             output_dim = self.feature_dim
         self.output_dim = output_dim
@@ -97,6 +100,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_processor_node=hidden_dim_processor_node,
             hidden_layers_processor_edge=hidden_layers_processor_edge,
             mlp_norm_type=norm_type,
+            use_thermalizer=use_thermalizer,
         )
         self.decoder = Decoder(
             lat_lons=lat_lons,
@@ -141,8 +145,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
 
     def graph_to_grid(self, graph_tensor):
         """
+        Convert graph tensor to grid.
 
-        Convert graph tensor to grid using spatial mapping:
+        Uses spatial mapping:
         [B, N, C] -> [B, C, H, W]
         """
         batch_size, num_nodes, features = graph_tensor.shape
@@ -159,18 +164,19 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             graph[..., node_idx, :] = grid_tensor[..., row, col]
         return graph
 
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor, t: int = 0) -> torch.Tensor:
         """
         Compute the new state of the forecast
 
         Args:
             features: The input features, aligned with the order of lat_lons_heights
+            t: Timestep for the thermalizer
 
         Returns:
             The next state in the forecast
         """
         x, edge_idx, edge_attr = self.encoder(features)
-        x = self.processor(x, edge_idx, edge_attr)
+        x = self.processor(x, edge_idx, edge_attr, t)
         x = self.decoder(x, features[..., : self.feature_dim])
 
         # Here, assume decoder output x is a 4D tensor,
