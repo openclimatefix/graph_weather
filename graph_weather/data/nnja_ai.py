@@ -163,9 +163,7 @@ class SensorDataset(Dataset):
     def __getitem__(self, idx):
         """Direct xarray access without DataFrame conversion."""
         time_point = self.time_index[idx]
-        return {
-            var: self.xrds[var].sel(time=time_point).item() for var in self.variables
-        }
+        return {var: self.xrds[var].sel(time=time_point).item() for var in self.variables}
 
 
 class NNJAXarrayAsTorchDataset(Dataset):

@@ -71,9 +71,7 @@ def mock_datacatalog():
         mock_dataset.variables = valid_variables
 
         def mock_load_dataset(backend="pandas", engine="pyarrow"):
-            time_points = pd.date_range(
-                start=datetime(2021, 1, 1), periods=100, freq="h"
-            )
+            time_points = pd.date_range(start=datetime(2021, 1, 1), periods=100, freq="h")
 
             data = {
                 "time": time_points,
