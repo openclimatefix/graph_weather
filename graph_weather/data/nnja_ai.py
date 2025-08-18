@@ -18,8 +18,7 @@ try:
     from nnja import DataCatalog
 except ImportError:
     raise ImportError(
-        "NNJA-AI library not installed. Install with: "
-        "`pip install git+https://github.com/brightbandtech/nnja-ai.git`"
+        "NNJA-AI library not installed. Install with: " "`pip install nnja-ai`"
     )
 
 
@@ -94,6 +93,9 @@ def load_nnja_dataset(
 
     # Standardize coordinate names
     rename_map = {"OBS_TIMESTAMP": "time", "LAT": "latitude", "LON": "longitude"}
+    for coord_var in rename_map:
+        if coord_var in vars_dict and coord_var not in vars_to_load:
+            vars_to_load.append(coord_var)
     xrds = xrds.rename({k: v for k, v in rename_map.items() if k in xrds})
 
     # Ensure 'time' coordinate exists
@@ -113,7 +115,8 @@ def load_nnja_dataset(
     if "time" in xrds and "time" not in xrds.coords:
         xrds = xrds.set_coords("time")
 
-    # Flatten extra dimensions into time
+    # Flatten extra dimensions into time as may encounter an extra "index" dimension
+    # Ensures output is always 1D along "time"
     extra_dims = [d for d in xrds.dims if d != "time"]
     if extra_dims:
         time_values = xrds.time.values if "time" in xrds else None
