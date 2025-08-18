@@ -17,9 +17,7 @@ from torch.utils.data import Dataset
 try:
     from nnja import DataCatalog
 except ImportError:
-    raise ImportError(
-        "NNJA-AI library not installed. Install with: " "`pip install nnja-ai`"
-    )
+    raise ImportError("NNJA-AI library not installed. Install with: " "`pip install nnja-ai`")
 
 
 def _classify_variable(nnja_var) -> str:
