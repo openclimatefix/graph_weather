@@ -76,7 +76,13 @@ def load_nnja_dataset(
         primary = [
             name
             for name, v in vars_dict.items()
-            if _classify_variable(v) in ("primary_descriptor", "primary_data")
+            if _classify_variable(v)
+            in (
+                "primary_descriptor",
+                "primary_data",
+                "primary descriptor",
+                "primary data",
+            )
         ]
         vars_to_load = primary
 
@@ -164,10 +170,12 @@ class SensorDataset(Dataset):
     def __getitem__(self, idx):
         """Direct xarray access without DataFrame conversion."""
         time_point = self.time_index[idx]
-        return {var: self.xrds[var].sel(time=time_point).item() for var in self.variables}
+        return {
+            var: self.xrds[var].sel(time=time_point).item() for var in self.variables
+        }
 
 
-class NNJAXarrayAsTorchDataset(Dataset):
+class NNJATorchDataset(Dataset):
     """Adapter for torch Dataset directly from xarray."""
 
     def __init__(self, xrds):

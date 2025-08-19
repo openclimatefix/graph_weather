@@ -3,10 +3,6 @@
 Tests cover variable classification, dataset loading, and PyTorch integration.
 """
 
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -17,7 +13,7 @@ import pytest
 import xarray as xr
 
 from graph_weather.data.nnja_ai import (
-    NNJAXarrayAsTorchDataset,
+    NNJATorchDataset,
     SensorDataset,
     _classify_variable,
     load_nnja_dataset,
@@ -71,7 +67,9 @@ def mock_datacatalog():
         mock_dataset.variables = valid_variables
 
         def mock_load_dataset(backend="pandas", engine="pyarrow"):
-            time_points = pd.date_range(start=datetime(2021, 1, 1), periods=100, freq="h")
+            time_points = pd.date_range(
+                start=datetime(2021, 1, 1), periods=100, freq="h"
+            )
 
             data = {
                 "time": time_points,
@@ -126,7 +124,7 @@ def test_sensor_dataset(mock_datacatalog):
 def test_nnja_xarray_torch_dataset(mock_datacatalog):
     """Test the xarray to torch Dataset adapter."""
     xrds = load_nnja_dataset("test-dataset")
-    torch_ds = NNJAXarrayAsTorchDataset(xrds)
+    torch_ds = NNJATorchDataset(xrds)
 
     assert len(torch_ds) == len(xrds.time)
     sample = torch_ds[0]
