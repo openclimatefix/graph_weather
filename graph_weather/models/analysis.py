@@ -1,9 +1,33 @@
 """Model for forecasting weather from NWP states"""
 
+from dataclasses import dataclass
+
+import dacite
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
+
+
+@dataclass
+class GraphWeatherAssimilatorConfig:
+    """Configuration for GraphWeatherAssimilator model."""
+
+    output_lat_lons: list
+    resolution: int = 2
+    observation_dim: int = 2
+    analysis_dim: int = 78
+    node_dim: int = 256
+    edge_dim: int = 256
+    num_blocks: int = 9
+    hidden_dim_processor_node: int = 256
+    hidden_dim_processor_edge: int = 256
+    hidden_layers_processor_node: int = 2
+    hidden_layers_processor_edge: int = 2
+    hidden_dim_decoder: int = 128
+    hidden_layers_decoder: int = 2
+    norm_type: str = "LayerNorm"
+    use_checkpointing: bool = False
 
 
 class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
@@ -88,6 +112,28 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dim_decoder=hidden_dim_decoder,
             hidden_layers_decoder=hidden_layers_decoder,
             use_checkpointing=use_checkpointing,
+        )
+
+    @classmethod
+    def from_config(cls, config_dict: dict):
+        """Create GraphWeatherAssimilator from configuration dictionary using dacite."""
+        config = dacite.from_dict(data_class=GraphWeatherAssimilatorConfig, data=config_dict)
+        return cls(
+            output_lat_lons=config.output_lat_lons,
+            resolution=config.resolution,
+            observation_dim=config.observation_dim,
+            analysis_dim=config.analysis_dim,
+            node_dim=config.node_dim,
+            edge_dim=config.edge_dim,
+            num_blocks=config.num_blocks,
+            hidden_dim_processor_node=config.hidden_dim_processor_node,
+            hidden_dim_processor_edge=config.hidden_dim_processor_edge,
+            hidden_layers_processor_node=config.hidden_layers_processor_node,
+            hidden_layers_processor_edge=config.hidden_layers_processor_edge,
+            hidden_dim_decoder=config.hidden_dim_decoder,
+            hidden_layers_decoder=config.hidden_layers_decoder,
+            norm_type=config.norm_type,
+            use_checkpointing=config.use_checkpointing,
         )
 
     def forward(self, features: torch.Tensor, obs_lat_lon_heights: torch.Tensor) -> torch.Tensor:

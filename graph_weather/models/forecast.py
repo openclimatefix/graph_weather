@@ -1,13 +1,39 @@
 """Model for forecasting weather from NWP states"""
 
+from dataclasses import dataclass
 from typing import Optional
 
+import dacite
 import torch
 from einops import rearrange, repeat
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
+
+
+@dataclass
+class GraphWeatherForecasterConfig:
+    """Configuration for GraphWeatherForecaster model."""
+
+    lat_lons: list
+    resolution: int = 2
+    feature_dim: int = 78
+    aux_dim: int = 24
+    output_dim: Optional[int] = None
+    node_dim: int = 256
+    edge_dim: int = 256
+    num_blocks: int = 9
+    hidden_dim_processor_node: int = 256
+    hidden_dim_processor_edge: int = 256
+    hidden_layers_processor_node: int = 2
+    hidden_layers_processor_edge: int = 2
+    hidden_dim_decoder: int = 128
+    hidden_layers_decoder: int = 2
+    norm_type: str = "LayerNorm"
+    use_checkpointing: bool = False
+    constraint_type: str = "none"
+    use_thermalizer: bool = False
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
@@ -126,6 +152,31 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 constraint_type=constraint_type,
                 upsampling_factor=1,
             )
+
+    @classmethod
+    def from_config(cls, config_dict: dict):
+        """Create GraphWeatherForecaster from configuration dictionary using dacite."""
+        config = dacite.from_dict(data_class=GraphWeatherForecasterConfig, data=config_dict)
+        return cls(
+            lat_lons=config.lat_lons,
+            resolution=config.resolution,
+            feature_dim=config.feature_dim,
+            aux_dim=config.aux_dim,
+            output_dim=config.output_dim,
+            node_dim=config.node_dim,
+            edge_dim=config.edge_dim,
+            num_blocks=config.num_blocks,
+            hidden_dim_processor_node=config.hidden_dim_processor_node,
+            hidden_dim_processor_edge=config.hidden_dim_processor_edge,
+            hidden_layers_processor_node=config.hidden_layers_processor_node,
+            hidden_layers_processor_edge=config.hidden_layers_processor_edge,
+            hidden_dim_decoder=config.hidden_dim_decoder,
+            hidden_layers_decoder=config.hidden_layers_decoder,
+            norm_type=config.norm_type,
+            use_checkpointing=config.use_checkpointing,
+            constraint_type=config.constraint_type,
+            use_thermalizer=config.use_thermalizer,
+        )
 
     def _create_grid_mapping(self, unique_lats, unique_lons):
         """Create (row,col) mapping for original node order"""

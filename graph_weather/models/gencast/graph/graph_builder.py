@@ -9,7 +9,9 @@ The following code is a port of several components from GraphCast's original gra
 """
 
 import gc
+from dataclasses import dataclass
 
+import dacite
 import numpy as np
 import torch
 from torch_geometric.data import Data, HeteroData
@@ -17,14 +19,31 @@ from torch_geometric.data import Data, HeteroData
 # from torch_geometric.transforms import TwoHop
 from graph_weather.models.gencast.graph import grid_mesh_connectivity, icosahedral_mesh, model_utils
 
+
+@dataclass
+class SpatialFeaturesConfig:
+    """Configuration for spatial features in graph building."""
+
+    add_node_positions: bool = False
+    add_node_latitude: bool = True
+    add_node_longitude: bool = True
+    add_relative_positions: bool = True
+    relative_longitude_local_coordinates: bool = True
+    relative_latitude_local_coordinates: bool = True
+
+
 # Some configs from graphcast:
-_spatial_features_kwargs = dict(
+_spatial_features_config_dict = dict(
     add_node_positions=False,
     add_node_latitude=True,
     add_node_longitude=True,
     add_relative_positions=True,
     relative_longitude_local_coordinates=True,
     relative_latitude_local_coordinates=True,
+)
+
+_spatial_features_kwargs = dacite.from_dict(
+    data_class=SpatialFeaturesConfig, data=_spatial_features_config_dict
 )
 
 # radius_query_fraction_edge_length: Scalar that will be multiplied by the
@@ -93,7 +112,7 @@ class GraphBuilder:
                 graph. Defaults to False.
         """
 
-        self._spatial_features_kwargs = _spatial_features_kwargs
+        self._spatial_features_config = _spatial_features_kwargs
         self.add_edge_features_to_khop = add_edge_features_to_khop
         self.device = device
         self.khop_device = khop_device
@@ -115,27 +134,24 @@ class GraphBuilder:
         self.g2m_edges_dim = None
         self.m2g_edges_dim = None
 
-        # A "_init_mesh_properties":
-        # This one could be initialized at init but we delay it for consistency too.
-        self._num_mesh_nodes = None  # num_mesh_nodes
-        self._mesh_nodes_lat = None  # [num_mesh_nodes]
-        self._mesh_nodes_lon = None  # [num_mesh_nodes]
-
-        # A "_init_grid_properties":
-        self._grid_lat = None  # [num_lat_points]
-        self._grid_lon = None  # [num_lon_points]
-        self._num_grid_nodes = None  # num_lat_points * num_lon_points
-        self._grid_nodes_lat = None  # [num_grid_nodes]
-        self._grid_nodes_lon = None  # [num_grid_nodes]
-
+        # Initialize grid and mesh properties
         self._init_grid_properties(grid_lat, grid_lon)
         self._init_mesh_properties()
+
+        # Build the graphs.
         self.g2m_graph = self._init_grid2mesh_graph()
         self.mesh_graph = self._init_mesh_graph()
         self.m2g_graph = self._init_mesh2grid_graph()
 
         self.num_hops = num_hops
-        self.khop_mesh_graph = self._init_khop_mesh_graph()
+        if num_hops > 0:
+            self.khop_mesh_graph = self._init_khop_mesh_graph()
+
+    def _get_spatial_features_kwargs(self) -> dict:
+        """Convert spatial features config dataclass to kwargs dict."""
+        from dataclasses import asdict
+
+        return asdict(self._spatial_features_config)
 
     def _init_grid_properties(self, grid_lat: np.ndarray, grid_lon: np.ndarray):
         """Inits static properties that have to do with grid nodes."""
@@ -191,7 +207,7 @@ class GraphBuilder:
                 senders=senders,
                 receivers=receivers,
                 edge_normalization_factor=None,
-                **self._spatial_features_kwargs,
+                **self._get_spatial_features_kwargs(),
             )
         )
 
@@ -229,7 +245,7 @@ class GraphBuilder:
             node_lon=self._mesh_nodes_lon,
             senders=senders,
             receivers=receivers,
-            **self._spatial_features_kwargs,
+            **self._get_spatial_features_kwargs(),
         )
 
         self.mesh_edges_dim = edge_features.shape[1]
@@ -268,7 +284,7 @@ class GraphBuilder:
                 senders=senders,
                 receivers=receivers,
                 edge_normalization_factor=self._mesh2grid_edge_normalization_factor,
-                **self._spatial_features_kwargs,
+                **self._get_spatial_features_kwargs(),
             )
         )
 
@@ -309,9 +325,7 @@ class GraphBuilder:
             edge_index,
             values=torch.ones_like(edge_index[0], dtype=torch.float32),
             size=(self._num_mesh_nodes, self._num_mesh_nodes),
-        ).to(
-            self.khop_device
-        )  # cpu is more memory-efficient, why?
+        ).to(self.khop_device)  # cpu is more memory-efficient, why?
 
         adj_k = adj.coalesce()
         for _ in range(self.num_hops - 1):
@@ -348,7 +362,7 @@ class GraphBuilder:
                 node_lon=self._mesh_nodes_lon,
                 senders=senders,
                 receivers=receivers,
-                **self._spatial_features_kwargs,
+                **self._get_spatial_features_kwargs(),
             )
             khop_mesh_graph.edge_attr = torch.tensor(
                 edge_features, dtype=torch.float32, device=self.device

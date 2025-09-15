@@ -7,6 +7,9 @@ noise level, and outputs the denoised predictions. It performs the following tas
 3. Preconditions f_theta on the noise levels using the parametrization from Karras et al. (2022).
 """
 
+from dataclasses import dataclass
+
+import dacite
 import einops
 import numpy as np
 import torch
@@ -18,6 +21,29 @@ from graph_weather.models.gencast.layers.encoder import Encoder
 from graph_weather.models.gencast.layers.processor import Processor
 from graph_weather.models.gencast.utils.batching import batch, hetero_batch
 from graph_weather.models.gencast.utils.noise import Preconditioner
+
+
+@dataclass
+class DenoiserConfig:
+    """Configuration for Denoiser model."""
+
+    grid_lon: np.ndarray
+    grid_lat: np.ndarray
+    input_features_dim: int
+    output_features_dim: int
+    hidden_dims: list = None
+    num_blocks: int = 16
+    num_heads: int = 4
+    splits: int = 6
+    num_hops: int = 6
+    device: torch.device = torch.device("cpu")
+    sparse: bool = False
+    use_edges_features: bool = True
+    scale_factor: float = 1.0
+
+    def __post_init__(self):
+        if self.hidden_dims is None:
+            self.hidden_dims = [512, 512]
 
 
 class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
@@ -123,6 +149,26 @@ class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
 
         # Initialize preconditioning functions
         self.precs = Preconditioner(sigma_data=1.0)
+
+    @classmethod
+    def from_config(cls, config_dict: dict):
+        """Create Denoiser from configuration dictionary using dacite."""
+        config = dacite.from_dict(data_class=DenoiserConfig, data=config_dict)
+        return cls(
+            grid_lon=config.grid_lon,
+            grid_lat=config.grid_lat,
+            input_features_dim=config.input_features_dim,
+            output_features_dim=config.output_features_dim,
+            hidden_dims=config.hidden_dims,
+            num_blocks=config.num_blocks,
+            num_heads=config.num_heads,
+            splits=config.splits,
+            num_hops=config.num_hops,
+            device=config.device,
+            sparse=config.sparse,
+            use_edges_features=config.use_edges_features,
+            scale_factor=config.scale_factor,
+        )
 
     def _check_shapes(self, corrupted_targets, prev_inputs, noise_levels):
         batch_size = prev_inputs.shape[0]

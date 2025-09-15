@@ -1,3 +1,8 @@
+"""FGN model module."""
+
+from dataclasses import dataclass
+
+import dacite
 import einops
 import numpy as np
 import torch
@@ -8,6 +13,30 @@ from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
 from graph_weather.models.gencast.utils.batching import batch, hetero_batch
+
+
+@dataclass
+class FunctionalGenerativeNetworkConfig:
+    """Configuration for FunctionalGenerativeNetwork model."""
+
+    grid_lon: np.ndarray
+    grid_lat: np.ndarray
+    input_features_dim: int
+    output_features_dim: int
+    noise_dimension: int
+    hidden_dims: list = None
+    num_blocks: int = 24
+    num_heads: int = 4
+    splits: int = 6
+    num_hops: int = 6
+    device: torch.device = torch.device("cpu")
+    sparse: bool = False
+    use_edges_features: bool = True
+    scale_factor: float = 1.0
+
+    def __post_init__(self):
+        if self.hidden_dims is None:
+            self.hidden_dims = [768, 768]
 
 
 class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
@@ -114,6 +143,27 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dims=hidden_dims,
             activation_layer=torch.nn.SiLU,
             use_layer_norm=True,
+        )
+
+    @classmethod
+    def from_config(cls, config_dict: dict):
+        """Create FunctionalGenerativeNetwork from configuration dictionary using dacite."""
+        config = dacite.from_dict(data_class=FunctionalGenerativeNetworkConfig, data=config_dict)
+        return cls(
+            grid_lon=config.grid_lon,
+            grid_lat=config.grid_lat,
+            input_features_dim=config.input_features_dim,
+            output_features_dim=config.output_features_dim,
+            noise_dimension=config.noise_dimension,
+            hidden_dims=config.hidden_dims,
+            num_blocks=config.num_blocks,
+            num_heads=config.num_heads,
+            splits=config.splits,
+            num_hops=config.num_hops,
+            device=config.device,
+            sparse=config.sparse,
+            use_edges_features=config.use_edges_features,
+            scale_factor=config.scale_factor,
         )
 
     def _run_encoder(self, grid_features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -279,7 +329,8 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             num_ensemble: number of ensemble predictions to make, default is 2
 
         Returns:
-            torch.Tensor: The predicted future weather state, shape (batch_size, num_ensemble, num_channels, height, width).
+            torch.Tensor: The predicted future weather state, shape
+                (batch_size, num_ensemble, num_channels, height, width).
         """
 
         previous_weather_state = einops.rearrange(
