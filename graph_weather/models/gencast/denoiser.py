@@ -9,7 +9,6 @@ noise level, and outputs the denoised predictions. It performs the following tas
 
 from dataclasses import dataclass
 
-import dacite
 import einops
 import numpy as np
 import torch
@@ -44,6 +43,24 @@ class DenoiserConfig:
     def __post_init__(self):
         if self.hidden_dims is None:
             self.hidden_dims = [512, 512]
+
+    def build(self) -> "Denoiser":
+        """Build Denoiser from this configuration."""
+        return Denoiser(
+            grid_lon=self.grid_lon,
+            grid_lat=self.grid_lat,
+            input_features_dim=self.input_features_dim,
+            output_features_dim=self.output_features_dim,
+            hidden_dims=self.hidden_dims,
+            num_blocks=self.num_blocks,
+            num_heads=self.num_heads,
+            splits=self.splits,
+            num_hops=self.num_hops,
+            device=self.device,
+            sparse=self.sparse,
+            use_edges_features=self.use_edges_features,
+            scale_factor=self.scale_factor,
+        )
 
 
 class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
@@ -149,26 +166,6 @@ class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
 
         # Initialize preconditioning functions
         self.precs = Preconditioner(sigma_data=1.0)
-
-    @classmethod
-    def from_config(cls, config_dict: dict):
-        """Create Denoiser from configuration dictionary using dacite."""
-        config = dacite.from_dict(data_class=DenoiserConfig, data=config_dict)
-        return cls(
-            grid_lon=config.grid_lon,
-            grid_lat=config.grid_lat,
-            input_features_dim=config.input_features_dim,
-            output_features_dim=config.output_features_dim,
-            hidden_dims=config.hidden_dims,
-            num_blocks=config.num_blocks,
-            num_heads=config.num_heads,
-            splits=config.splits,
-            num_hops=config.num_hops,
-            device=config.device,
-            sparse=config.sparse,
-            use_edges_features=config.use_edges_features,
-            scale_factor=config.scale_factor,
-        )
 
     def _check_shapes(self, corrupted_targets, prev_inputs, noise_levels):
         batch_size = prev_inputs.shape[0]

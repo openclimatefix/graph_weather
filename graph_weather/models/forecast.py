@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-import dacite
 import torch
 from einops import rearrange, repeat
 from huggingface_hub import PyTorchModelHubMixin
@@ -34,6 +33,29 @@ class GraphWeatherForecasterConfig:
     use_checkpointing: bool = False
     constraint_type: str = "none"
     use_thermalizer: bool = False
+
+    def build(self) -> "GraphWeatherForecaster":
+        """Build GraphWeatherForecaster from this configuration."""
+        return GraphWeatherForecaster(
+            lat_lons=self.lat_lons,
+            resolution=self.resolution,
+            feature_dim=self.feature_dim,
+            aux_dim=self.aux_dim,
+            output_dim=self.output_dim,
+            node_dim=self.node_dim,
+            edge_dim=self.edge_dim,
+            num_blocks=self.num_blocks,
+            hidden_dim_processor_node=self.hidden_dim_processor_node,
+            hidden_dim_processor_edge=self.hidden_dim_processor_edge,
+            hidden_layers_processor_node=self.hidden_layers_processor_node,
+            hidden_layers_processor_edge=self.hidden_layers_processor_edge,
+            hidden_dim_decoder=self.hidden_dim_decoder,
+            hidden_layers_decoder=self.hidden_layers_decoder,
+            norm_type=self.norm_type,
+            use_checkpointing=self.use_checkpointing,
+            constraint_type=self.constraint_type,
+            use_thermalizer=self.use_thermalizer,
+        )
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
@@ -152,31 +174,6 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
                 constraint_type=constraint_type,
                 upsampling_factor=1,
             )
-
-    @classmethod
-    def from_config(cls, config_dict: dict):
-        """Create GraphWeatherForecaster from configuration dictionary using dacite."""
-        config = dacite.from_dict(data_class=GraphWeatherForecasterConfig, data=config_dict)
-        return cls(
-            lat_lons=config.lat_lons,
-            resolution=config.resolution,
-            feature_dim=config.feature_dim,
-            aux_dim=config.aux_dim,
-            output_dim=config.output_dim,
-            node_dim=config.node_dim,
-            edge_dim=config.edge_dim,
-            num_blocks=config.num_blocks,
-            hidden_dim_processor_node=config.hidden_dim_processor_node,
-            hidden_dim_processor_edge=config.hidden_dim_processor_edge,
-            hidden_layers_processor_node=config.hidden_layers_processor_node,
-            hidden_layers_processor_edge=config.hidden_layers_processor_edge,
-            hidden_dim_decoder=config.hidden_dim_decoder,
-            hidden_layers_decoder=config.hidden_layers_decoder,
-            norm_type=config.norm_type,
-            use_checkpointing=config.use_checkpointing,
-            constraint_type=config.constraint_type,
-            use_thermalizer=config.use_thermalizer,
-        )
 
     def _create_grid_mapping(self, unique_lats, unique_lons):
         """Create (row,col) mapping for original node order"""

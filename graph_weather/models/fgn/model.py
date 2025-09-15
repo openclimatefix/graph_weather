@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-import dacite
 import einops
 import numpy as np
 import torch
@@ -37,6 +36,25 @@ class FunctionalGenerativeNetworkConfig:
     def __post_init__(self):
         if self.hidden_dims is None:
             self.hidden_dims = [768, 768]
+
+    def build(self) -> "FunctionalGenerativeNetwork":
+        """Build FunctionalGenerativeNetwork from this configuration."""
+        return FunctionalGenerativeNetwork(
+            grid_lon=self.grid_lon,
+            grid_lat=self.grid_lat,
+            input_features_dim=self.input_features_dim,
+            output_features_dim=self.output_features_dim,
+            noise_dimension=self.noise_dimension,
+            hidden_dims=self.hidden_dims,
+            num_blocks=self.num_blocks,
+            num_heads=self.num_heads,
+            splits=self.splits,
+            num_hops=self.num_hops,
+            device=self.device,
+            sparse=self.sparse,
+            use_edges_features=self.use_edges_features,
+            scale_factor=self.scale_factor,
+        )
 
 
 class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
@@ -143,27 +161,6 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             hidden_dims=hidden_dims,
             activation_layer=torch.nn.SiLU,
             use_layer_norm=True,
-        )
-
-    @classmethod
-    def from_config(cls, config_dict: dict):
-        """Create FunctionalGenerativeNetwork from configuration dictionary using dacite."""
-        config = dacite.from_dict(data_class=FunctionalGenerativeNetworkConfig, data=config_dict)
-        return cls(
-            grid_lon=config.grid_lon,
-            grid_lat=config.grid_lat,
-            input_features_dim=config.input_features_dim,
-            output_features_dim=config.output_features_dim,
-            noise_dimension=config.noise_dimension,
-            hidden_dims=config.hidden_dims,
-            num_blocks=config.num_blocks,
-            num_heads=config.num_heads,
-            splits=config.splits,
-            num_hops=config.num_hops,
-            device=config.device,
-            sparse=config.sparse,
-            use_edges_features=config.use_edges_features,
-            scale_factor=config.scale_factor,
         )
 
     def _run_encoder(self, grid_features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
