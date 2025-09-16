@@ -1,9 +1,52 @@
 """Model for forecasting weather from NWP states"""
 
+from dataclasses import dataclass
+
 import torch
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
+
+
+@dataclass
+class GraphWeatherAssimilatorConfig:
+    """Configuration for GraphWeatherAssimilator model."""
+
+    output_lat_lons: list
+    resolution: int = 2
+    observation_dim: int = 2
+    analysis_dim: int = 78
+    node_dim: int = 256
+    edge_dim: int = 256
+    num_blocks: int = 9
+    hidden_dim_processor_node: int = 256
+    hidden_dim_processor_edge: int = 256
+    hidden_layers_processor_node: int = 2
+    hidden_layers_processor_edge: int = 2
+    hidden_dim_decoder: int = 128
+    hidden_layers_decoder: int = 2
+    norm_type: str = "LayerNorm"
+    use_checkpointing: bool = False
+
+    def build(self) -> "GraphWeatherAssimilator":
+        """Build GraphWeatherAssimilator from this configuration."""
+        return GraphWeatherAssimilator(
+            output_lat_lons=self.output_lat_lons,
+            resolution=self.resolution,
+            observation_dim=self.observation_dim,
+            analysis_dim=self.analysis_dim,
+            node_dim=self.node_dim,
+            edge_dim=self.edge_dim,
+            num_blocks=self.num_blocks,
+            hidden_dim_processor_node=self.hidden_dim_processor_node,
+            hidden_dim_processor_edge=self.hidden_dim_processor_edge,
+            hidden_layers_processor_node=self.hidden_layers_processor_node,
+            hidden_layers_processor_edge=self.hidden_layers_processor_edge,
+            hidden_dim_decoder=self.hidden_dim_decoder,
+            hidden_layers_decoder=self.hidden_layers_decoder,
+            norm_type=self.norm_type,
+            use_checkpointing=self.use_checkpointing,
+        )
 
 
 class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):

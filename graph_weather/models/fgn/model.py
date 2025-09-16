@@ -1,3 +1,7 @@
+"""FGN model module."""
+
+from dataclasses import dataclass
+
 import einops
 import numpy as np
 import torch
@@ -8,6 +12,49 @@ from graph_weather.models.gencast.graph.graph_builder import GraphBuilder
 from graph_weather.models.gencast.layers.decoder import Decoder
 from graph_weather.models.gencast.layers.encoder import Encoder
 from graph_weather.models.gencast.utils.batching import batch, hetero_batch
+
+
+@dataclass
+class FunctionalGenerativeNetworkConfig:
+    """Configuration for FunctionalGenerativeNetwork model."""
+
+    grid_lon: np.ndarray
+    grid_lat: np.ndarray
+    input_features_dim: int
+    output_features_dim: int
+    noise_dimension: int
+    hidden_dims: list = None
+    num_blocks: int = 24
+    num_heads: int = 4
+    splits: int = 6
+    num_hops: int = 6
+    device: torch.device = torch.device("cpu")
+    sparse: bool = False
+    use_edges_features: bool = True
+    scale_factor: float = 1.0
+
+    def __post_init__(self):
+        if self.hidden_dims is None:
+            self.hidden_dims = [768, 768]
+
+    def build(self) -> "FunctionalGenerativeNetwork":
+        """Build FunctionalGenerativeNetwork from this configuration."""
+        return FunctionalGenerativeNetwork(
+            grid_lon=self.grid_lon,
+            grid_lat=self.grid_lat,
+            input_features_dim=self.input_features_dim,
+            output_features_dim=self.output_features_dim,
+            noise_dimension=self.noise_dimension,
+            hidden_dims=self.hidden_dims,
+            num_blocks=self.num_blocks,
+            num_heads=self.num_heads,
+            splits=self.splits,
+            num_hops=self.num_hops,
+            device=self.device,
+            sparse=self.sparse,
+            use_edges_features=self.use_edges_features,
+            scale_factor=self.scale_factor,
+        )
 
 
 class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
@@ -279,7 +326,8 @@ class FunctionalGenerativeNetwork(torch.nn.Module, PyTorchModelHubMixin):
             num_ensemble: number of ensemble predictions to make, default is 2
 
         Returns:
-            torch.Tensor: The predicted future weather state, shape (batch_size, num_ensemble, num_channels, height, width).
+            torch.Tensor: The predicted future weather state, shape
+                (batch_size, num_ensemble, num_channels, height, width).
         """
 
         previous_weather_state = einops.rearrange(

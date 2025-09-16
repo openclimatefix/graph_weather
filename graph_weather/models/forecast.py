@@ -1,5 +1,6 @@
 """Model for forecasting weather from NWP states"""
 
+from dataclasses import dataclass
 from typing import Optional
 
 import torch
@@ -8,6 +9,53 @@ from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
+
+
+@dataclass
+class GraphWeatherForecasterConfig:
+    """Configuration for GraphWeatherForecaster model."""
+
+    lat_lons: list
+    resolution: int = 2
+    feature_dim: int = 78
+    aux_dim: int = 24
+    output_dim: Optional[int] = None
+    node_dim: int = 256
+    edge_dim: int = 256
+    num_blocks: int = 9
+    hidden_dim_processor_node: int = 256
+    hidden_dim_processor_edge: int = 256
+    hidden_layers_processor_node: int = 2
+    hidden_layers_processor_edge: int = 2
+    hidden_dim_decoder: int = 128
+    hidden_layers_decoder: int = 2
+    norm_type: str = "LayerNorm"
+    use_checkpointing: bool = False
+    constraint_type: str = "none"
+    use_thermalizer: bool = False
+
+    def build(self) -> "GraphWeatherForecaster":
+        """Build GraphWeatherForecaster from this configuration."""
+        return GraphWeatherForecaster(
+            lat_lons=self.lat_lons,
+            resolution=self.resolution,
+            feature_dim=self.feature_dim,
+            aux_dim=self.aux_dim,
+            output_dim=self.output_dim,
+            node_dim=self.node_dim,
+            edge_dim=self.edge_dim,
+            num_blocks=self.num_blocks,
+            hidden_dim_processor_node=self.hidden_dim_processor_node,
+            hidden_dim_processor_edge=self.hidden_dim_processor_edge,
+            hidden_layers_processor_node=self.hidden_layers_processor_node,
+            hidden_layers_processor_edge=self.hidden_layers_processor_edge,
+            hidden_dim_decoder=self.hidden_dim_decoder,
+            hidden_layers_decoder=self.hidden_layers_decoder,
+            norm_type=self.norm_type,
+            use_checkpointing=self.use_checkpointing,
+            constraint_type=self.constraint_type,
+            use_thermalizer=self.use_thermalizer,
+        )
 
 
 class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):

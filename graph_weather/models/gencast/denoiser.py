@@ -7,6 +7,8 @@ noise level, and outputs the denoised predictions. It performs the following tas
 3. Preconditions f_theta on the noise levels using the parametrization from Karras et al. (2022).
 """
 
+from dataclasses import dataclass
+
 import einops
 import numpy as np
 import torch
@@ -18,6 +20,47 @@ from graph_weather.models.gencast.layers.encoder import Encoder
 from graph_weather.models.gencast.layers.processor import Processor
 from graph_weather.models.gencast.utils.batching import batch, hetero_batch
 from graph_weather.models.gencast.utils.noise import Preconditioner
+
+
+@dataclass
+class DenoiserConfig:
+    """Configuration for Denoiser model."""
+
+    grid_lon: np.ndarray
+    grid_lat: np.ndarray
+    input_features_dim: int
+    output_features_dim: int
+    hidden_dims: list = None
+    num_blocks: int = 16
+    num_heads: int = 4
+    splits: int = 6
+    num_hops: int = 6
+    device: torch.device = torch.device("cpu")
+    sparse: bool = False
+    use_edges_features: bool = True
+    scale_factor: float = 1.0
+
+    def __post_init__(self):
+        if self.hidden_dims is None:
+            self.hidden_dims = [512, 512]
+
+    def build(self) -> "Denoiser":
+        """Build Denoiser from this configuration."""
+        return Denoiser(
+            grid_lon=self.grid_lon,
+            grid_lat=self.grid_lat,
+            input_features_dim=self.input_features_dim,
+            output_features_dim=self.output_features_dim,
+            hidden_dims=self.hidden_dims,
+            num_blocks=self.num_blocks,
+            num_heads=self.num_heads,
+            splits=self.splits,
+            num_hops=self.num_hops,
+            device=self.device,
+            sparse=self.sparse,
+            use_edges_features=self.use_edges_features,
+            scale_factor=self.scale_factor,
+        )
 
 
 class Denoiser(torch.nn.Module, PyTorchModelHubMixin):
