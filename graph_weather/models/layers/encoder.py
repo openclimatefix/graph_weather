@@ -216,7 +216,9 @@ class Encoder(torch.nn.Module):
         for h3_index in self.base_h3_grid:
             h_points = h3.grid_disk(h3_index, 1)
             for h in h_points:  # Already includes itself
-                distance = h3.great_circle_distance(h3.cell_to_latlng(h3_index), h3.cell_to_latlng(h), unit="rads")
+                distance = h3.great_circle_distance(
+                    h3.cell_to_latlng(h3_index), h3.cell_to_latlng(h), unit="rads"
+                )
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.base_h3_map[h3_index])
                 edge_targets.append(self.base_h3_map[h])

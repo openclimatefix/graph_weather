@@ -91,7 +91,9 @@ class AssimilatorDecoder(torch.nn.Module):
             # Get h3 index
             h_points = h3.grid_disk(self.h3_mapping[node_index + self.num_h3], 1)
             for h in h_points:
-                distance = h3.great_circle_distance(lat_lons[node_index], h3.cell_to_latlng(h), unit="rads")
+                distance = h3.great_circle_distance(
+                    lat_lons[node_index], h3.cell_to_latlng(h), unit="rads"
+                )
                 self.h3_to_lat_distances.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.h3_to_index[h])
                 edge_targets.append(node_index + self.num_h3)
