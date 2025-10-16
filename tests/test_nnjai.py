@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from graph_weather.data.nnja_ai import (
+from graph_weather.data.nnjaai import (
     NNJATorchDataset,
     SensorDataset,
     _classify_variable,
