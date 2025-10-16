@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Callable, Any , List, Dict
 import numpy as np
 import logging 
+import pandas as pd 
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -155,17 +156,105 @@ class DataSourceSchema:
         """Get list of NNJA variables this source provides."""
         return list(set(m.output_name for m in self.field_mappings.values()))
 
-class _BUFRIterableDataset(IterableDataset):
-    """Internal IterableDataset wrapper for PyTorch DataLoader."""
+class ADPUPA_schema(DataSourceSchema):
+    """ADPUPA (upper-air radiosonde) BUFR schema mapping to NNJA-AI."""
+
+    source_name = "ADPUPA"
+    def _build_mappings(self):
+        self.field_mappings= {
+            'latitude' : FieldMapping(
+                source_name='latitude',
+                output_name='LAT',
+                dtype=float,
+                description='Station latitude'
+            ),
+            'longitude' : FieldMapping(
+                source_name='longitude',
+                output_name='LON',
+                dtype=float,
+                description='Station longitude'
+            ),
+            'obsTime' : FieldMapping(
+                source_name='obsTime',
+                output_name='OBS_TIME', 
+                description='datetime64[ns]',
+                transform_fn=lambda x: pd.Timestamp(x).value if isinstance(x, str) else x,
+                description='Observation timestamp'
+            ), 
+            'airTemperature'  : FieldMapping(
+                source_name='airTemperature',
+                output_name='temperature',
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x, 
+                description='Temperature in Celsius'
+            ),
+            'pressure' : FieldMapping(
+                source_name='pressure',
+                output_name='pressure',
+                dtype=float,
+                description='Pressure in Pa'
+            ),
+            'height' : FieldMapping(
+                source_name='height',
+                output_name='height',
+                dtype=float,
+                description='Height above sealevel in m'
+            ),
+            'dewpointTemperature' : FieldMapping(
+                source_name='dewpointTemperature',
+                output_name='dew_point',
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                description='Dew point in Celsius'
+            ),
+            'windU' : FieldMapping(
+                source_name='windU',
+                output_name='u_wind',
+                dtype=float,
+                description='U-component wind (m/s)'
+            ),
+            'windV': FieldMapping(
+                source_name='windV',
+                output_name='v_wind',
+                dtype=float,
+                description='V-component wind (m/s)'
+            )
+        }
+
+class CRIS_Schema(DataSourceSchema):
+    """CrIS (satellite hyperspectral) BUFR schema mapping to NNJA-AI."""
     
-    def __init__(self, bufr_loader: BUFRDataLoader):
-        self.bufr_loader = bufr_loader
-    
-    def __iter__(self):
-        return iter(self.bufr_loader)
-
-
-
+    source_name = "CrIS"
+    def _build_mappings(self):
+        self.field_mappings = {
+            'latitude' : FieldMapping(
+                source_name='lat',
+                output_name='LAT',
+                dtype=float
+            ),
+            'longitude' : FieldMapping(
+                source_name='lon',
+                output_name='LON',
+                dtype=float
+            ),
+            'obsTime' : FieldMapping(
+                source_name='obsTime',
+                output_name='OBS_TIMESTAMP',
+                dtype='datetime64[ns]',
+                transform_fn=lambda x: pd.Timestamp(x).value,
+            ),
+            'retrievedTemperature': FieldMapping(
+                source_name='retrievedTemperature',
+                output_name='temperature',
+                dtype=float,
+                transform_fn=lambda x: x - 273.15,
+            ),
+            'retrievedPressure': FieldMapping(
+                source_name='retrievedPressure',
+                output_name='pressure',
+                dtype=float,
+            ),
+        }
 class BUFR_dataloader:
     def __init__(self,dataset,batch_size):
         """
@@ -182,3 +271,12 @@ class BUFR_dataloader:
         pass
     
     
+class _BUFRIterableDataset(IterableDataset):
+    """Internal IterableDataset wrapper for PyTorch DataLoader."""
+    
+    def __init__(self, bufr_loader: BUFR_dataLoader):
+        self.bufr_loader = bufr_loader
+    
+    def __iter__(self):
+        return iter(self.bufr_loader)
+
