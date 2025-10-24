@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Callable, Any , List, Dict
+from typing import Optional, Callable, Any , List, Dict, Iterator
 import numpy as np
 import logging 
 import pandas as pd 
@@ -451,39 +451,58 @@ class BUFR_dataloader:
     SCHEMA_REGISTRY={
         'ADPUPA': ADPUPA_schema,
         'CrIS': CRIS_schema,
-    }
-    def __init__(self,dataset:str,batch_size:int=32,schema_name: Optional[str] = None):
+    }    
+    def __init__(self, filepath: str, schema_name: Optional[str] = None):
         """
-            Args:
-                -> dataset : str (path)
-                -> batch_size : int
-                -> schema_name : Data source name ('ADPUPA', 'CrIS', etc.)
-                    If None, attempts to infer from filename
+        Args:
+            filepath: Path to BUFR file or directory
+            schema_name: Data source name ('ADPUPA', 'CrIS', etc.)
         """
-        self.dataset = dataset
-        self.batch_size = batch_size
+        self.filepath = Path(filepath)
+        self.schema_name = schema_name or self._infer_schema_from_path()
         
-        if schema_name is None:
-            schema_name = self._infer_schema_from_path(dataset)
-        
-        if schema_name not in self.SCHEMA_REGISTRY:
+        if self.schema_name not in self.SCHEMA_REGISTRY:
             raise ValueError(
-                f'Unknown schema "{schema_name}"\nAvailable : {list(self.SCHEMA_REGISTRY)}'
+                f'Unknown schema "{self.schema_name}". Available: {list(self.SCHEMA_REGISTRY.keys())}'
             )
         
-    def decoder(self):
-        pass 
-    def map_to_nnjai_schema(self):
-        pass
-    def to_dataframe(self):
-        pass 
-    def to_parquet(self):
-        pass 
-    def __iter__(self):
-        pass
-    def get_dataloader(self):
-        pass
+        self.schema = self.SCHEMA_REGISTRY[self.schema_name]()
+        self.processor = BUFR_processsor(self.schema)
+    def _infer_schema_from_path(self) -> str:
+        """Infer schema from filename or path patterns."""
+        filename = self.filepath.name.lower()
+        
+        if 'adpupa' in filename or 'raob' in filename or 'sound' in filename:
+            return 'ADPUPA'
+        elif 'cris' in filename:
+            return 'CrIS'
+        elif 'iasi' in filename:
+            return 'IASI'
+        elif 'atms' in filename:
+            return 'ATMS'
+        else:
+            # Default to ADPUPA for now
+            logger.warning(f"Could not infer schema from {filename}, defaulting to ADPUPA")
+            return 'ADPUPA'
     
+    def to_dataframe(self) -> pd.DataFrame:
+        """Process BUFR file to DataFrame."""
+        return self.processor.process_file_to_dataframe(str(self.filepath))
+    
+    def to_xarray(self) -> xr.Dataset:
+        """Process BUFR file to xarray Dataset."""
+        return self.processor.process_file_to_xarray(str(self.filepath))
+    
+    def to_parquet(self, output_path: str) -> None:
+        """Process BUFR file to Parquet format."""
+        self.processor.process_file_to_parquet(str(self.filepath), output_path)
+    
+    def __iter__(self) -> Iterator[Dict[str, Any]]:
+        """Iterate over observations in the BUFR file."""
+        messages = self.processor.decode_bufr_file(str(self.filepath))
+        for msg in messages:
+            yield self.schema.map_observation(msg)
+
 class _BUFRIterableDataset(IterableDataset):
     """Internal IterableDataset wrapper for PyTorch DataLoader."""
     
