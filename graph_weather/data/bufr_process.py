@@ -511,4 +511,3 @@ class _BUFRIterableDataset(IterableDataset):
     
     def __iter__(self):
         return iter(self.bufr_loader)
-
