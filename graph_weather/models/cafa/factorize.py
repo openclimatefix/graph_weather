@@ -107,10 +107,10 @@ class FactorizedTransformerBlock(nn.Module):
     Standalone transformer block using Factorized attention
     """
 
-    def __init__(self, dim, heads, dim_head=64, ff_mult=4, dropout=0.0):
+    def __init__(self, dim, heads, dim_head=64, feedforward_multiplier=4, dropout=0.0):
         super().__init__()
         self.attn = FactorizedAttention(dim, heads, dim_head, dropout)
-        self.ffn = FeedFoward(dim, ff_mult, dropout)
+        self.ffn = FeedFoward(dim, feedforward_multiplier, dropout)
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
 

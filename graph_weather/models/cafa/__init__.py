@@ -10,5 +10,3 @@ from .encoder import CaFAEncoder
 from .factorize import AxialAttention, FactorizedAttention, FactorizedTransformerBlock
 from .model import CaFAForecaster
 from .processor import CaFAProcessor
-
-__version__ = "0.1.0"

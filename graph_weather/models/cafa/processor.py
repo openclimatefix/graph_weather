@@ -18,7 +18,7 @@ class CaFAProcessor(nn.Module):
         depth: int,
         heads: int,
         dim_head: int = 64,
-        ff_mult: int = 4,
+        feedforward_multiplier: int = 4,
         dropout: float = 0.0,
     ):
         """
@@ -27,13 +27,13 @@ class CaFAProcessor(nn.Module):
             depth: No. of FactorizedTransformerBlocks to stack
             heads: No. of attention heads in each block
             dim_head: Dimension of each attention head
-            ff_mult: Multiplier for the feedforward network dimension
+            feedforward_multiplier: Multiplier for the feedforward network dimension
             dropout: Dropout rate
         """
         super().__init__()
         self.blocks = nn.ModuleList(
             [
-                FactorizedTransformerBlock(dim, heads, dim_head, ff_mult, dropout)
+                FactorizedTransformerBlock(dim, heads, dim_head, feedforward_multiplier, dropout)
                 for _ in range(depth)
             ]
         )

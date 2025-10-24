@@ -22,7 +22,7 @@ class CaFAForecaster(nn.Module):
         processor_depth: int = 6,
         num_heads: int = 8,
         dim_head: int = 64,
-        ff_mult: int = 4,
+        feedforward_multiplier: int = 4,
         dropout: float = 0.0,
     ):
         """
@@ -34,7 +34,7 @@ class CaFAForecaster(nn.Module):
             processor_depth: No. of transformer blocks in the processor
             num_heads: No. of attention heads in each block
             dim_head: Dimension of each attention head
-            ff_mult: Multiplier for the feedforward network's inner dimension
+            feedforward_multiplier: Multiplier for the feedforward network's inner dimension
             dropout: Dropout rate
         """
         super().__init__()
@@ -52,7 +52,7 @@ class CaFAForecaster(nn.Module):
             depth=processor_depth,
             heads=num_heads,
             dim_head=dim_head,
-            ff_mult=ff_mult,
+            feedforward_multiplier=feedforward_multiplier,
             dropout=dropout,
         )
 
