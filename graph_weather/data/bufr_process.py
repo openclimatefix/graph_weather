@@ -127,15 +127,10 @@ class DataSourceSchema:
     def map_observation(self, bufr_message: Dict[str, Any]) -> Dict[str, Any]:
         """
         Transform raw BUFR message to NNJA-AI format.
-        
-        Args:
-            bufr_message: Decoded BUFR message (dict of field → values)
-        
-        Returns:
-            Observation in NNJA format (dict matching NNJASchema)
+        Always include all mapped output fields, even if missing from the BUFR message.
         """
         mapped = {}
-        
+
         for field_map in self.field_mappings.values():
             if field_map.source_name in bufr_message:
                 raw_value = bufr_message[field_map.source_name]
@@ -143,69 +138,66 @@ class DataSourceSchema:
                     value = field_map.apply(raw_value)
                     mapped[field_map.output_name] = value
                 except Exception as e:
-                    logger.warning(
-                        f"Error transforming {field_map.source_name}: {e}"
-                    )
+                    logger.warning(f"Error transforming {field_map.source_name}: {e}")
                     mapped[field_map.output_name] = None
-        
+            else:
+                # Field not present — default to None
+                mapped[field_map.output_name] = None
+
         return mapped
-    
-    def get_variable_list(self) -> List[str]:
-        """Get list of NNJA variables this source provides."""
-        return list(set(m.output_name for m in self.field_mappings.values()))
 
 class ADPUPA_schema(DataSourceSchema):
     """ADPUPA (upper-air radiosonde) BUFR schema mapping to NNJA-AI."""
 
     source_name = "ADPUPA"
     def _build_mappings(self):
-        self.field_mappings= {
-            'latitude' : FieldMapping(
+        self.field_mappings = {
+            'latitude': FieldMapping(
                 source_name='latitude',
                 output_name='LAT',
                 dtype=float,
                 description='Station latitude'
             ),
-            'longitude' : FieldMapping(
+            'longitude': FieldMapping(
                 source_name='longitude',
                 output_name='LON',
                 dtype=float,
                 description='Station longitude'
             ),
-            'obsTime' : FieldMapping(
+            'obsTime': FieldMapping(
                 source_name='obsTime',
-                output_name='OBS_TIME', 
-                description='datetime64[ns]',
-                transform_fn=lambda x: pd.Timestamp(x).value if isinstance(x, str) else x,
+                output_name='OBS_TIMESTAMP',
+                dtype=object,
+                transform_fn=self._convert_timestamp,
                 description='Observation timestamp'
-            ), 
-            'airTemperature'  : FieldMapping(
+            ),
+            'airTemperature': FieldMapping(
                 source_name='airTemperature',
                 output_name='temperature',
                 dtype=float,
-                transform_fn=lambda x: x - 273.15 if x > 100 else x, 
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
                 description='Temperature in Celsius'
             ),
-            'pressure' : FieldMapping(
+            'pressure': FieldMapping(
                 source_name='pressure',
                 output_name='pressure',
                 dtype=float,
                 description='Pressure in Pa'
             ),
-            'height' : FieldMapping(
+            'height': FieldMapping(
                 source_name='height',
                 output_name='height',
                 dtype=float,
                 description='Height above sealevel in m'
             ),
-            'dewpointTemperature' : FieldMapping(
+            'dewpointTemperature': FieldMapping(
                 source_name='dewpointTemperature',
                 output_name='dew_point',
                 dtype=float,
                 transform_fn=lambda x: x - 273.15 if x > 100 else x,
                 description='Dew point in Celsius'
             ),
-            'windU' : FieldMapping(
+            'windU': FieldMapping(
                 source_name='windU',
                 output_name='u_wind',
                 dtype=float,
@@ -225,7 +217,8 @@ class ADPUPA_schema(DataSourceSchema):
                 description='Station identifier'
             )
         }
-    
+
+        
     def _convert_timestamp(self, value: Any) -> pd.Timestamp:
         """Convert BUFR timestamp to pandas Timestamp."""
         if isinstance(value, (int, float)):
@@ -242,41 +235,46 @@ class CRIS_schema(DataSourceSchema):
     source_name = "CrIS"
     def _build_mappings(self):
         self.field_mappings = {
-            'latitude' : FieldMapping(
-                source_name='lat',
+            'latitude': FieldMapping(
+                source_name='latitude',
                 output_name='LAT',
-                dtype=float
+                dtype=float,
+                description='Satellite latitude'
             ),
-            'longitude' : FieldMapping(
-                source_name='lon',
+            'longitude': FieldMapping(
+                source_name='longitude',
                 output_name='LON',
-                dtype=float
+                dtype=float,
+                description='Satellite longitude'
             ),
-            'obsTime' : FieldMapping(
+            'obsTime': FieldMapping(
                 source_name='obsTime',
                 output_name='OBS_TIMESTAMP',
-                dtype='datetime64[ns]',
-                transform_fn=lambda x: pd.Timestamp(x).value,
+                dtype=object,
+                transform_fn=self._convert_timestamp,
+                description='Observation timestamp'
             ),
             'retrievedTemperature': FieldMapping(
                 source_name='retrievedTemperature',
                 output_name='temperature',
                 dtype=float,
-                transform_fn=lambda x: x - 273.15,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                description='Retrieved temperature in Celsius'
             ),
             'retrievedPressure': FieldMapping(
                 source_name='retrievedPressure',
                 output_name='pressure',
                 dtype=float,
+                description='Retrieved pressure in Pa'
             ),
-            'sourceZenithAngle': FieldMapping(
+            'sensorZenithAngle': FieldMapping(
                 source_name='sensorZenithAngle',
                 output_name='sensor_zenith_angle',
                 dtype=float,
                 required=False,
                 description='Sensor zenith angle'
             ),
-            'qualityFlags' : FieldMapping(
+            'qualityFlags': FieldMapping(
                 source_name='qualityFlags',
                 output_name='qc_flag',
                 dtype=int,
@@ -292,7 +290,7 @@ class CRIS_schema(DataSourceSchema):
         else:
             return pd.Timestamp(value)
 
-class BUFR_processsor:
+class BUFR_processor:
     """
     Low-level BUFR file decoder.
     Handles binary BUFR format decoding using eccodes library.
@@ -307,50 +305,44 @@ class BUFR_processsor:
         
         self.schema = schema 
     
-    def decoder_bufr_files(self, filepath) -> List[Dict[str,any]]:
-        """
-            Decode all messages from BUFR file.
-            
-            Args:
-                -> filepath: Path to BUFR file
-        """
+    def decoder_bufr_files(self, filepath) -> List[Dict[str, any]]:
+        """Decode all messages from BUFR file."""
         msgs = []
         filepath = Path(filepath)
-        
+
         if not filepath.exists():
             raise FileNotFoundError(f"BUFR file not found: {filepath}")
-        
-        try: 
-            with open(filepath, 'rb') as f: 
+
+        try:
+            with open(filepath, "rb") as f:
                 while True:
-                    bufr_id = eccodes.bufr_new_from_file(f)
+                    bufr_id = eccodes.codes_bufr_new_from_file(f)
                     if bufr_id is None:
-                        break 
-                    
+                        break
+
                     try:
-                        eccodes.codes_set(bufr_id, 'unpack', 1)
+                        eccodes.codes_set(bufr_id, "unpack", 1)
                         msg = {}
-                        iterator = eccodes.bufr_keys_iterator(bufr_id)
-                        while eccodes.bufr_keys_iterator_next(iterator):    
-                            key = eccodes.bufr_keys_iterator_get_name(iterator)
+                        iterator = eccodes.codes_bufr_keys_iterator_new(bufr_id)
+                        while eccodes.codes_bufr_keys_iterator_next(iterator):
+                            key = eccodes.codes_bufr_keys_iterator_get_name(iterator)
                             try:
                                 value = eccodes.codes_get_string(bufr_id, key)
                                 msg[key] = value
-                            except (eccodes.KeyValueNotFoundError, eccodes.CodesInternalError):
+                            except Exception:
                                 try:
                                     value = eccodes.codes_get_double(bufr_id, key)
                                     msg[key] = value
-                                except (eccodes.KeyValueNotFoundError, eccodes.CodesInternalError):
+                                except Exception:
                                     pass
-                            eccodes.codes_bufr_keys_iterator_delete(iterator)
-                            msgs.append(msg)
-                    finally: 
+                        eccodes.codes_bufr_keys_iterator_delete(iterator)
+                        msgs.append(msg)
+                    finally:
                         eccodes.codes_release(bufr_id)
-
         except Exception as e:
             logger.error(f"Error decoding BUFR file {filepath}: {e}")
             raise
-        
+
         logger.info(f"Decoded {len(msgs)} messages from {filepath}")
         return msgs
 
@@ -370,7 +362,7 @@ class BUFR_processsor:
         transformed = []
         
         for msg in raw_msgs:
-            mapped = self.schema.map_observations(msg)
+            mapped = self.schema.map_observation(msg)
             if mapped:
                 transformed.append(mapped)
         
@@ -418,7 +410,7 @@ class BUFR_processsor:
             data_vars=data_vars,
             coords={
                 'obs' : df.index ,
-                'time' :  ('obs', df['obs'].values),
+                'time' :  ('obs', df['OBS_TIMESTAMP'].values),
                 'lat' : ('obs', df['LAT'].values),
                 'lon' : ('obs', df['LON'].values),
             }
@@ -437,7 +429,7 @@ class BUFR_processsor:
             -> filepath: Path to BUFR file
             -> output_path: Path for output Parquet file
         """
-        df = self.process_file_to_dataframe(filepath=filepath)
+        df = self.process_files_to_dataframe(filepath=filepath)
         
         if not df.empty:
             df.to_parquet(output_path, index=False)
@@ -467,7 +459,7 @@ class BUFR_dataloader:
             )
         
         self.schema = self.SCHEMA_REGISTRY[self.schema_name]()
-        self.processor = BUFR_processsor(self.schema)
+        self.processor = BUFR_processor(self.schema)
     def _infer_schema_from_path(self) -> str:
         """Infer schema from filename or path patterns."""
         filename = self.filepath.name.lower()
@@ -487,19 +479,19 @@ class BUFR_dataloader:
     
     def to_dataframe(self) -> pd.DataFrame:
         """Process BUFR file to DataFrame."""
-        return self.processor.process_file_to_dataframe(str(self.filepath))
+        return self.processor.process_files_to_dataframe(str(self.filepath))
     
     def to_xarray(self) -> xr.Dataset:
         """Process BUFR file to xarray Dataset."""
-        return self.processor.process_file_to_xarray(str(self.filepath))
+        return self.processor.process_files_to_xarray(str(self.filepath))
     
     def to_parquet(self, output_path: str) -> None:
         """Process BUFR file to Parquet format."""
-        self.processor.process_file_to_parquet(str(self.filepath), output_path)
+        self.processor.process_files_to_parquet(str(self.filepath), output_path)
     
     def __iter__(self) -> Iterator[Dict[str, Any]]:
         """Iterate over observations in the BUFR file."""
-        messages = self.processor.decode_bufr_file(str(self.filepath))
+        messages = self.processor.decoder_bufr_files(str(self.filepath))
         for msg in messages:
             yield self.schema.map_observation(msg)
 
