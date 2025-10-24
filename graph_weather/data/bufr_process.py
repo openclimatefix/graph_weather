@@ -3,6 +3,8 @@ from typing import Optional, Callable, Any , List, Dict
 import numpy as np
 import logging 
 import pandas as pd 
+import xarray as xr
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -82,10 +84,6 @@ class NNJA_Schema:
         """Check if data has required NNJA coordinates."""
         required_coords = ['OBS_TIMESTAMP', 'LAT', 'LON']
         return all(coord in data for coord in required_coords)
-
-
-    def __init__(self):
-        pass
 
 class DataSourceSchema:
     """
@@ -218,10 +216,27 @@ class ADPUPA_schema(DataSourceSchema):
                 output_name='v_wind',
                 dtype=float,
                 description='V-component wind (m/s)'
+            ),
+            'stationId': FieldMapping(
+                source_name='stationId',
+                output_name='station_id',
+                dtype=str,
+                required=False,
+                description='Station identifier'
             )
         }
+    
+    def _convert_timestamp(self, value: Any) -> pd.Timestamp:
+        """Convert BUFR timestamp to pandas Timestamp."""
+        if isinstance(value, (int, float)):
+            return pd.Timestamp(value, unit='s')
+        elif isinstance(value, str):
+            return pd.Timestamp(value)
+        else:
+            return pd.Timestamp(value)
 
-class CRIS_Schema(DataSourceSchema):
+
+class CRIS_schema(DataSourceSchema):
     """CrIS (satellite hyperspectral) BUFR schema mapping to NNJA-AI."""
     
     source_name = "CrIS"
@@ -254,27 +269,225 @@ class CRIS_Schema(DataSourceSchema):
                 output_name='pressure',
                 dtype=float,
             ),
+            'sourceZenithAngle': FieldMapping(
+                source_name='sensorZenithAngle',
+                output_name='sensor_zenith_angle',
+                dtype=float,
+                required=False,
+                description='Sensor zenith angle'
+            ),
+            'qualityFlags' : FieldMapping(
+                source_name='qualityFlags',
+                output_name='qc_flag',
+                dtype=int,
+                description='Quality control flags'
+            )
         }
-class BUFR_dataloader:
-    def __init__(self,dataset,batch_size):
+    def _convert_timestamp(self, value: Any) -> pd.Timestamp:
+        """Convert BUFR timestamp to pandas Timestamp."""
+        if isinstance(value, (int, float)):
+            return pd.Timestamp(value, unit='s')
+        elif isinstance(value, str):
+            return pd.Timestamp(value)
+        else:
+            return pd.Timestamp(value)
+
+class BUFR_processsor:
+    """
+    Low-level BUFR file decoder.
+    Handles binary BUFR format decoding using eccodes library.
+    """
+    def __init__(self , schema : DataSourceSchema):
+        """
+            Args:
+                -> schema : DataSourceSchema instance
+        """
+        if not isinstance(schema,DataSourceSchema):
+            raise TypeError('schema must be of DataSourceSchema instance')
+        
+        self.schema = schema 
+    
+    def decoder_bufr_files(self, filepath) -> List[Dict[str,any]]:
+        """
+            Decode all messages from BUFR file.
+            
+            Args:
+                -> filepath: Path to BUFR file
+        """
+        msgs = []
+        filepath = Path(filepath)
+        
+        if not filepath.exists():
+            raise FileNotFoundError(f"BUFR file not found: {filepath}")
+        
+        try: 
+            with open(filepath, 'rb') as f: 
+                while True:
+                    bufr_id = eccodes.bufr_new_from_file(f)
+                    if bufr_id is None:
+                        break 
+                    
+                    try:
+                        eccodes.codes_set(bufr_id, 'unpack', 1)
+                        msg = {}
+                        iterator = eccodes.bufr_keys_iterator(bufr_id)
+                        while eccodes.bufr_keys_iterator_next(iterator):    
+                            key = eccodes.bufr_keys_iterator_get_name(iterator)
+                            try:
+                                value = eccodes.codes_get_string(bufr_id, key)
+                                msg[key] = value
+                            except (eccodes.KeyValueNotFoundError, eccodes.CodesInternalError):
+                                try:
+                                    value = eccodes.codes_get_double(bufr_id, key)
+                                    msg[key] = value
+                                except (eccodes.KeyValueNotFoundError, eccodes.CodesInternalError):
+                                    pass
+                            eccodes.codes_bufr_keys_iterator_delete(iterator)
+                            msgs.append(msg)
+                    finally: 
+                        eccodes.codes_release(bufr_id)
+
+        except Exception as e:
+            logger.error(f"Error decoding BUFR file {filepath}: {e}")
+            raise
+        
+        logger.info(f"Decoded {len(msgs)} messages from {filepath}")
+        return msgs
+
+    def process_files_to_dataframe(self, filepath : str)-> pd.DataFrame:
+        """
+        Decode BUFR file and map to NNJA schema, return as DataFrame.
+        
+        Args:
+            -> filepath: Path to BUFR file
+        
+        Returns:
+            -> pandas DataFrame in NNJA-AI format
+        """
+
+        raw_msgs = self.decoder_bufr_files(filepath=filepath)
+        
+        transformed = []
+        
+        for msg in raw_msgs:
+            mapped = self.schema.map_observations(msg)
+            if mapped:
+                transformed.append(mapped)
+        
+        if not transformed:
+            logger.warning(f"No valid observations found in {filepath}")
+            return pd.DataFrame()
+
+        
+        df = pd.DataFrame(transformed)
+        
+        for col in df.columns:
+            if col in NNJA_Schema.COORDINATES:
+                dtype = NNJA_Schema.COORDINATES[col]
+                if 'datetime' in dtype:
+                    df[col] = pd.to_datetime(df[col])
+                else:
+                    df[col] = df[col].astype(dtype.split('[')[0] if '[' in dtype else dtype)
+        if not NNJA_Schema.validate_data(df.to_dict(orient='list')):
+            logger.warning(f"DataFrame missing required NNJA coordinates from {filepath}")
+        
+        return df
+
+    def process_files_to_xarray(self, filepath : str) -> xr.Dataset:
+        """
+        Process BUFR file to xarray Dataset in NNJA-AI format.
+        
+        Args:
+            -> filepath: Path to BUFR file
+            
+        Returns:
+            -> xarray Dataset in NNJA-AI format
+        """
+        df = self.process_files_to_dataframe(filepath=filepath)
+        
+        if df.empty:
+            logger.warning(f"No data to convert to xarray from {filepath}")
+            return xr.Dataset()
+        
+        data_vars = {}
+        for col in df.columns:
+            if col not in ['OBS_TIMESTAMP', 'LAT', 'LON']:
+                data_vars[col] = (['observation'], df[col].values)
+        
+        ds = xr.Dataset(
+            data_vars=data_vars,
+            coords={
+                'obs' : df.index ,
+                'time' :  ('obs', df['obs'].values),
+                'lat' : ('obs', df['LAT'].values),
+                'lon' : ('obs', df['LON'].values),
+            }
+        )
+        ds.attrs['source'] = self.schema.source_name
+        ds.attrs['processing_timestamp'] = pd.Timestamp.now().isoformat()
+        ds.attrs['num_observations'] = len(df)
+        
+        return ds
+      
+    def process_files_to_parquet(self, filepath: str, output_path: str)->None:
+        """
+        Process BUFR file and save as Parquet in NNJA-AI format.
+        
+        Args:
+            -> filepath: Path to BUFR file
+            -> output_path: Path for output Parquet file
+        """
+        df = self.process_file_to_dataframe(filepath=filepath)
+        
+        if not df.empty:
+            df.to_parquet(output_path, index=False)
+            logger.info(f"Saved {len(df)} observations to {output_path}")
+        else:
+            logger.warning(f"No data to save for {filepath}")
+
+      
+class BUFR_dataloader:  
+    
+    SCHEMA_REGISTRY={
+        'ADPUPA': ADPUPA_schema,
+        'CrIS': CRIS_schema,
+    }
+    def __init__(self,dataset:str,batch_size:int=32,schema_name: Optional[str] = None):
         """
             Args:
                 -> dataset : str (path)
                 -> batch_size : int
+                -> schema_name : Data source name ('ADPUPA', 'CrIS', etc.)
+                    If None, attempts to infer from filename
         """
         self.dataset = dataset
         self.batch_size = batch_size
+        
+        if schema_name is None:
+            schema_name = self._infer_schema_from_path(dataset)
+        
+        if schema_name not in self.SCHEMA_REGISTRY:
+            raise ValueError(
+                f'Unknown schema "{schema_name}"\nAvailable : {list(self.SCHEMA_REGISTRY)}'
+            )
         
     def decoder(self):
         pass 
     def map_to_nnjai_schema(self):
         pass
-    
+    def to_dataframe(self):
+        pass 
+    def to_parquet(self):
+        pass 
+    def __iter__(self):
+        pass
+    def get_dataloader(self):
+        pass
     
 class _BUFRIterableDataset(IterableDataset):
     """Internal IterableDataset wrapper for PyTorch DataLoader."""
     
-    def __init__(self, bufr_loader: BUFR_dataLoader):
+    def __init__(self, bufr_loader: BUFR_dataloader):
         self.bufr_loader = bufr_loader
     
     def __iter__(self):
