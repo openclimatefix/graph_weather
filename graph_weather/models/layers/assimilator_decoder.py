@@ -64,9 +64,9 @@ class AssimilatorDecoder(torch.nn.Module):
         super().__init__()
         self.use_checkpointing = use_checkpointing
         self.num_latlons = len(lat_lons)
-        self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
+        self.base_h3_grid = sorted(list(h3.uncompact_cells(h3.get_res0_cells(), resolution)))
         self.num_h3 = len(self.base_h3_grid)
-        self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
+        self.h3_grid = [h3.latlng_to_cell(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_to_index = {}
         h_index = len(self.base_h3_grid)
         for h in self.base_h3_grid:
@@ -89,9 +89,11 @@ class AssimilatorDecoder(torch.nn.Module):
         self.h3_to_lat_distances = []
         for node_index, h_node in enumerate(self.h3_grid):
             # Get h3 index
-            h_points = h3.k_ring(self.h3_mapping[node_index + self.num_h3], 1)
+            h_points = h3.grid_disk(self.h3_mapping[node_index + self.num_h3], 1)
             for h in h_points:
-                distance = h3.point_dist(lat_lons[node_index], h3.h3_to_geo(h), unit="rads")
+                distance = h3.great_circle_distance(
+                    lat_lons[node_index], h3.cell_to_latlng(h), unit="rads"
+                )
                 self.h3_to_lat_distances.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.h3_to_index[h])
                 edge_targets.append(node_index + self.num_h3)
