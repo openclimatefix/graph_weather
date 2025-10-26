@@ -1,7 +1,6 @@
 """Model for forecasting weather from NWP states"""
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 from einops import rearrange, repeat
@@ -16,10 +15,9 @@ class GraphWeatherForecasterConfig:
     """Configuration for GraphWeatherForecaster model."""
 
     lat_lons: list
+    input_features: int  # Total number of input features i.e. 102
     resolution: int = 2
-    feature_dim: int = 78
-    aux_dim: int = 24
-    output_dim: Optional[int] = None
+    output_features: int = 78  # Number of features to predict i.e. 78
     node_dim: int = 256
     edge_dim: int = 256
     num_blocks: int = 9
@@ -38,10 +36,9 @@ class GraphWeatherForecasterConfig:
         """Build GraphWeatherForecaster from this configuration."""
         return GraphWeatherForecaster(
             lat_lons=self.lat_lons,
+            input_features=self.input_features,
             resolution=self.resolution,
-            feature_dim=self.feature_dim,
-            aux_dim=self.aux_dim,
-            output_dim=self.output_dim,
+            output_features=self.output_features,
             node_dim=self.node_dim,
             edge_dim=self.edge_dim,
             num_blocks=self.num_blocks,
@@ -64,10 +61,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     def __init__(
         self,
         lat_lons: list,
+        input_features: int,
+        output_features: int,
         resolution: int = 2,
-        feature_dim: int = 78,
-        aux_dim: int = 24,
-        output_dim: Optional[int] = None,
         node_dim: int = 256,
         edge_dim: int = 256,
         num_blocks: int = 9,
@@ -89,9 +85,8 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             lat_lons: List of latitude and longitudes for the grid
             resolution: Resolution of the H3 grid, prefer even resolutions, as
                 odd ones have octogons and heptagons as well
-            feature_dim: Input feature size
-            aux_dim: Number of non-NWP features (i.e. landsea mask, lat/lon, etc)
-            output_dim: Optional, output feature size, useful if want only subset of variables in
+            input_features: Input feature size including non-NWP features (i.e. landsea mask, lat/lon, etc)
+            output_features: Optional, output feature size, useful if want only subset of variables in
             output
             node_dim: Node hidden dimension
             edge_dim: Edge hidden dimension
@@ -110,12 +105,10 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             use_thermalizer: Whether to use the thermalizer layer
         """
         super().__init__()
-        self.feature_dim = feature_dim
         self.constraint_type = constraint_type
         self.use_thermalizer = use_thermalizer
-        if output_dim is None:
-            output_dim = self.feature_dim
-        self.output_dim = output_dim
+        self.input_features = input_features
+        self.output_features = output_features
 
         # Compute the geographical grid shape from lat_lons.
         unique_lats = sorted(set(lat for lat, _ in lat_lons))
@@ -129,7 +122,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         self.encoder = Encoder(
             lat_lons=lat_lons,
             resolution=resolution,
-            input_dim=feature_dim + aux_dim,
+            input_dim=input_features,
             output_dim=node_dim,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
@@ -154,7 +147,7 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
             lat_lons=lat_lons,
             resolution=resolution,
             input_dim=node_dim,
-            output_dim=output_dim,
+            output_dim=output_features,
             output_edge_dim=edge_dim,
             hidden_dim_processor_edge=hidden_dim_processor_edge,
             hidden_layers_processor_node=hidden_layers_processor_node,
@@ -225,20 +218,20 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         """
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr, t)
-        x = self.decoder(x, features[..., : self.feature_dim])
+        x = self.decoder(x, features[..., : self.output_features])
 
         # Here, assume decoder output x is a 4D tensor,
-        # e.g. [B, output_dim, H, W] where H and W are grid dimensions.
+        # e.g. [B, output_features, H, W] where H and W are grid dimensions.
         # Convert graph output to grid format
 
         # Apply physical constraints to decoder output
         if self.constraint_type != "none":
             x = rearrange(x, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             # Extract the low-res reference from the input.
-            # (Original features has shape [B, num_nodes, feature_dim])
-            lr = features[..., : self.feature_dim]  # shape: [B, num_nodes, feature_dim]
+            # (Original features has shape [B, num_nodes, input_features])
+            lr = features[..., : self.input_features]  # shape: [B, num_nodes, input_features]
             # Convert from node format to grid format using the grid_shape computed in __init__
-            # From [B, num_nodes, feature_dim] to [B, feature_dim, H, W]
+            # From [B, num_nodes, input_features] to [B, input_features, H, W]
             lr = rearrange(lr, "b (h w) c -> b c h w", h=self.grid_shape[0], w=self.grid_shape[1])
             if lr.size(1) != x.size(1):
                 repeat_factor = x.size(1) // lr.size(1)
