@@ -15,7 +15,7 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 try:
-    from nnja import DataCatalog
+    from nnja_ai.catalog import DataCatalog
 except ImportError:
     raise ImportError("NNJA-AI library not installed. Install with: " "`pip install nnja-ai`")
 

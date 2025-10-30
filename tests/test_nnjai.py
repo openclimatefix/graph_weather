@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from graph_weather.data.nnja_ai import (
+from graph_weather.data.nnjaai import (
     NNJATorchDataset,
     SensorDataset,
     _classify_variable,
@@ -22,7 +22,7 @@ from graph_weather.data.nnja_ai import (
 @pytest.fixture
 def mock_datacatalog():
     """Fixture to mock the DataCatalog with properly configured variables."""
-    with patch("graph_weather.data.nnja_ai.DataCatalog") as mock:
+    with patch("graph_weather.data.nnjaai.DataCatalog") as mock:
         mock_catalog = MagicMock()
         mock_dataset = MagicMock()
         mock_dataset.load_manifest = MagicMock()
