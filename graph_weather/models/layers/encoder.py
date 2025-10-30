@@ -71,9 +71,9 @@ class Encoder(torch.nn.Module):
         self.use_checkpointing = use_checkpointing
         self.output_dim = output_dim
         self.num_latlons = len(lat_lons)
-        self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
+        self.base_h3_grid = sorted(list(h3.uncompact_cells(h3.get_res0_cells(), resolution)))
         self.base_h3_map = {h_i: i for i, h_i in enumerate(self.base_h3_grid)}
-        self.h3_grid = [h3.geo_to_h3(lat, lon, resolution) for lat, lon in lat_lons]
+        self.h3_grid = [h3.latlng_to_cell(lat, lon, resolution) for lat, lon in lat_lons]
         self.h3_mapping = {}
         h_index = len(self.base_h3_grid)
         for h in self.base_h3_grid:
@@ -85,14 +85,14 @@ class Encoder(torch.nn.Module):
         self.h3_distances = []
         for idx, h3_point in enumerate(self.h3_grid):
             lat_lon = lat_lons[idx]
-            distance = h3.point_dist(lat_lon, h3.h3_to_geo(h3_point), unit="rads")
+            distance = h3.great_circle_distance(lat_lon, h3.cell_to_latlng(h3_point), unit="rads")
             self.h3_distances.append([np.sin(distance), np.cos(distance)])
         self.h3_distances = torch.tensor(self.h3_distances, dtype=torch.float)
         # Compress to between 0 and 1
 
         # Build the default graph
         # lat_nodes = torch.zeros((len(lat_lons_heights), input_dim), dtype=torch.float)
-        # h3_nodes = torch.zeros((h3.num_hexagons(resolution), output_dim), dtype=torch.float)
+        # h3_nodes = torch.zeros((h3.get_num_cells(resolution), output_dim), dtype=torch.float)
         # Get connections between lat nodes and h3 nodes
         edge_sources = []
         edge_targets = []
@@ -108,7 +108,7 @@ class Encoder(torch.nn.Module):
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
         self.h3_nodes = torch.nn.Parameter(
-            torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+            torch.zeros((h3.get_num_cells(resolution), input_dim), dtype=torch.float)
         )
         # Output graph
 
@@ -214,9 +214,11 @@ class Encoder(torch.nn.Module):
         edge_targets = []
         edge_attrs = []
         for h3_index in self.base_h3_grid:
-            h_points = h3.k_ring(h3_index, 1)
+            h_points = h3.grid_disk(h3_index, 1)
             for h in h_points:  # Already includes itself
-                distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
+                distance = h3.great_circle_distance(
+                    h3.cell_to_latlng(h3_index), h3.cell_to_latlng(h), unit="rads"
+                )
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.base_h3_map[h3_index])
                 edge_targets.append(self.base_h3_map[h])
