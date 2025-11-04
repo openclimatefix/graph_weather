@@ -151,9 +151,15 @@ class DataSourceSchema:
 
 
 class ADPUPA_schema(DataSourceSchema):
-    """ADPUPA (upper-air radiosonde) BUFR schema mapping to NNJA-AI."""
+    """ADPUPA (upper-air radiosonde) BUFR schema mapping to NNJA-AI.
+    
+    Includes mandatory pressure levels: 1000, 925, 850, 700, 500, 300, 200, 100 hPa
+    """
 
     source_name = "ADPUPA"
+    
+    # Standard mandatory pressure levels in Pa
+    MANDATORY_LEVELS = [100, 200, 300, 500, 700, 850, 925, 1000]
 
     def _build_mappings(self):
         self.field_mappings = {
@@ -176,43 +182,42 @@ class ADPUPA_schema(DataSourceSchema):
                 transform_fn=self._convert_timestamp,
                 description="Observation timestamp",
             ),
-            "airTemperature": FieldMapping(
-                source_name="airTemperature",
-                output_name="temperature",
-                dtype=float,
-                transform_fn=lambda x: x - 273.15 if x > 100 else x,
-                description="Temperature in Celsius",
+            
+            # ===== STATION METADATA =====
+            "WMOB": FieldMapping(
+                source_name="WMOB",
+                output_name="wmo_block_number",
+                dtype=str,
+                required=False,
+                description="WMO block number",
             ),
-            "pressure": FieldMapping(
-                source_name="pressure",
-                output_name="pressure",
-                dtype=float,
-                description="Pressure in Pa",
+            "WMOS": FieldMapping(
+                source_name="WMOS",
+                output_name="wmo_station_number",
+                dtype=str,
+                required=False,
+                description="WMO station number",
             ),
-            "height": FieldMapping(
-                source_name="height",
-                output_name="height",
-                dtype=float,
-                description="Height above sealevel in m",
+            "WMOR": FieldMapping(
+                source_name="WMOR",
+                output_name="wmo_region",
+                dtype=int,
+                required=False,
+                description="WMO Region number/geographical area",
             ),
-            "dewpointTemperature": FieldMapping(
-                source_name="dewpointTemperature",
-                output_name="dew_point",
-                dtype=float,
-                transform_fn=lambda x: x - 273.15 if x > 100 else x,
-                description="Dew point in Celsius",
+            "UASID.RPID": FieldMapping(
+                source_name="UASID.RPID",
+                output_name="report_id",
+                dtype=str,
+                required=False,
+                description="Report identifier",
             ),
-            "windU": FieldMapping(
-                source_name="windU",
-                output_name="u_wind",
+            "UASID.SELV": FieldMapping(
+                source_name="UASID.SELV",
+                output_name="station_elevation",
                 dtype=float,
-                description="U-component wind (m/s)",
-            ),
-            "windV": FieldMapping(
-                source_name="windV",
-                output_name="v_wind",
-                dtype=float,
-                description="V-component wind (m/s)",
+                required=False,
+                description="Height of station (m)",
             ),
             "stationId": FieldMapping(
                 source_name="stationId",
@@ -221,7 +226,228 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description="Station identifier",
             ),
+            
+            # ===== SURFACE/SINGLE LEVEL DATA =====
+            "airTemperature": FieldMapping(
+                source_name="airTemperature",
+                output_name="temperature",
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                required=False,
+                description="Surface temperature in Celsius",
+            ),
+            "pressure": FieldMapping(
+                source_name="pressure",
+                output_name="pressure",
+                dtype=float,
+                required=False,
+                description="Surface pressure in Pa",
+            ),
+            "height": FieldMapping(
+                source_name="height",
+                output_name="height",
+                dtype=float,
+                required=False,
+                description="Height above sea level in m",
+            ),
+            "dewpointTemperature": FieldMapping(
+                source_name="dewpointTemperature",
+                output_name="dew_point",
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                required=False,
+                description="Surface dew point in Celsius",
+            ),
+            "windU": FieldMapping(
+                source_name="windU",
+                output_name="u_wind",
+                dtype=float,
+                required=False,
+                description="Surface U-component wind (m/s)",
+            ),
+            "windV": FieldMapping(
+                source_name="windV",
+                output_name="v_wind",
+                dtype=float,
+                required=False,
+                description="Surface V-component wind (m/s)",
+            ),
+            
+            # ===== ADDITIONAL METEOROLOGICAL DATA =====
+            "UASDG.SST1": FieldMapping(
+                source_name="UASDG.SST1",
+                output_name="sea_surface_temp",
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                required=False,
+                description="Sea/water temperature in Celsius",
+            ),
+            "UAADF.STBS5": FieldMapping(
+                source_name="UAADF.STBS5",
+                output_name="showalter_index",
+                dtype=float,
+                required=False,
+                description="Modified Showalter stability index",
+            ),
+            "UAADF.MWDL": FieldMapping(
+                source_name="UAADF.MWDL",
+                output_name="mean_wind_dir_low",
+                dtype=float,
+                required=False,
+                description="Mean wind direction for surface - 1500m (degrees)",
+            ),
+            "UAADF.MWSL": FieldMapping(
+                source_name="UAADF.MWSL",
+                output_name="mean_wind_speed_low",
+                dtype=float,
+                required=False,
+                description="Mean wind speed for surface - 1500m (m/s)",
+            ),
+            "UAADF.MWDH": FieldMapping(
+                source_name="UAADF.MWDH",
+                output_name="mean_wind_dir_high",
+                dtype=float,
+                required=False,
+                description="Mean wind direction for 1500-3000m (degrees)",
+            ),
+            "UAADF.MWSH": FieldMapping(
+                source_name="UAADF.MWSH",
+                output_name="mean_wind_speed_high",
+                dtype=float,
+                required=False,
+                description="Mean wind speed for 1500-3000m (m/s)",
+            ),
+            
+            "MSG_TYPE": FieldMapping(
+                source_name="MSG_TYPE",
+                output_name="message_type",
+                dtype=str,
+                required=False,
+                description="Source message type",
+            ),
+            "MSG_DATE": FieldMapping(
+                source_name="MSG_DATE",
+                output_name="message_date",
+                dtype=object,
+                transform_fn=self._convert_timestamp,
+                required=False,
+                description="Message valid timestamp",
+            ),
+            "OBS_DATE": FieldMapping(
+                source_name="OBS_DATE",
+                output_name="obs_date",
+                dtype=object,
+                transform_fn=self._convert_timestamp,
+                required=False,
+                description="Date of the observation",
+            ),
+            "SRC_FILENAME": FieldMapping(
+                source_name="SRC_FILENAME",
+                output_name="source_filename",
+                dtype=str,
+                required=False,
+                description="Source filename",
+            ),
         }
+        
+        for level_hpa in self.MANDATORY_LEVELS:
+            level_pa = level_hpa * 100  # Convert hPa to Pa for BUFR field names
+            
+            self.field_mappings[f"TMDB_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"TMDB_PRLC{level_pa}",
+                output_name=f"temperature_{level_hpa}hPa",
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                required=False,
+                description=f"Temperature at {level_hpa} hPa in Celsius",
+            )
+            
+            # Dewpoint at pressure level
+            self.field_mappings[f"TMDP_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"TMDP_PRLC{level_pa}",
+                output_name=f"dew_point_{level_hpa}hPa",
+                dtype=float,
+                transform_fn=lambda x: x - 273.15 if x > 100 else x,
+                required=False,
+                description=f"Dewpoint temperature at {level_hpa} hPa in Celsius",
+            )
+            
+            # Wind speed at pressure level
+            self.field_mappings[f"WSPD_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"WSPD_PRLC{level_pa}",
+                output_name=f"wind_speed_{level_hpa}hPa",
+                dtype=float,
+                required=False,
+                description=f"Wind speed at {level_hpa} hPa (m/s)",
+            )
+            
+            # Wind direction at pressure level
+            self.field_mappings[f"WDIR_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"WDIR_PRLC{level_pa}",
+                output_name=f"wind_direction_{level_hpa}hPa",
+                dtype=float,
+                required=False,
+                description=f"Wind direction at {level_hpa} hPa (degrees)",
+            )
+            
+            # Geopotential at pressure level
+            self.field_mappings[f"GP10_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"GP10_PRLC{level_pa}",
+                output_name=f"geopotential_{level_hpa}hPa",
+                dtype=float,
+                required=False,
+                description=f"Geopotential at {level_hpa} hPa (m²/s²)",
+            )
+            
+            # ===== QUALITY CONTROL FLAGS =====
+            self.field_mappings[f"QMAT_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"QMAT_PRLC{level_pa}",
+                output_name=f"qc_temperature_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"QC flag for temperature at {level_hpa} hPa",
+            )
+            
+            self.field_mappings[f"QMDD_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"QMDD_PRLC{level_pa}",
+                output_name=f"qc_moisture_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"QC flag for moisture at {level_hpa} hPa",
+            )
+            
+            self.field_mappings[f"QMWN_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"QMWN_PRLC{level_pa}",
+                output_name=f"qc_wind_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"QC flag for wind at {level_hpa} hPa",
+            )
+            
+            self.field_mappings[f"QMGP_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"QMGP_PRLC{level_pa}",
+                output_name=f"qc_geopotential_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"QC flag for geopotential at {level_hpa} hPa",
+            )
+            
+            self.field_mappings[f"QMPR_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"QMPR_PRLC{level_pa}",
+                output_name=f"qc_pressure_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"QC flag for pressure at {level_hpa} hPa",
+            )
+            
+            # Vertical sounding significance
+            self.field_mappings[f"VSIG_PRLC{level_pa}"] = FieldMapping(
+                source_name=f"VSIG_PRLC{level_pa}",
+                output_name=f"sounding_significance_{level_hpa}hPa",
+                dtype=int,
+                required=False,
+                description=f"Vertical sounding significance at {level_hpa} hPa",
+            )
 
     def _convert_timestamp(self, value: Any) -> pd.Timestamp:
         """Convert BUFR timestamp to pandas Timestamp."""
