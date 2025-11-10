@@ -152,12 +152,12 @@ class DataSourceSchema:
 
 class ADPUPA_schema(DataSourceSchema):
     """ADPUPA (upper-air radiosonde) BUFR schema mapping to NNJA-AI.
-    
+
     Includes mandatory pressure levels: 1000, 925, 850, 700, 500, 300, 200, 100 hPa
     """
 
     source_name = "ADPUPA"
-    
+
     # Standard mandatory pressure levels in Pa
     MANDATORY_LEVELS = [100, 200, 300, 500, 700, 850, 925, 1000]
 
@@ -182,7 +182,6 @@ class ADPUPA_schema(DataSourceSchema):
                 transform_fn=self._convert_timestamp,
                 description="Observation timestamp",
             ),
-            
             # ===== STATION METADATA =====
             "WMOB": FieldMapping(
                 source_name="WMOB",
@@ -226,7 +225,6 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description="Station identifier",
             ),
-            
             # ===== SURFACE/SINGLE LEVEL DATA =====
             "airTemperature": FieldMapping(
                 source_name="airTemperature",
@@ -272,7 +270,6 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description="Surface V-component wind (m/s)",
             ),
-            
             # ===== ADDITIONAL METEOROLOGICAL DATA =====
             "UASDG.SST1": FieldMapping(
                 source_name="UASDG.SST1",
@@ -317,7 +314,6 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description="Mean wind speed for 1500-3000m (m/s)",
             ),
-            
             "MSG_TYPE": FieldMapping(
                 source_name="MSG_TYPE",
                 output_name="message_type",
@@ -349,10 +345,10 @@ class ADPUPA_schema(DataSourceSchema):
                 description="Source filename",
             ),
         }
-        
+
         for level_hpa in self.MANDATORY_LEVELS:
             level_pa = level_hpa * 100  # Convert hPa to Pa for BUFR field names
-            
+
             self.field_mappings[f"TMDB_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"TMDB_PRLC{level_pa}",
                 output_name=f"temperature_{level_hpa}hPa",
@@ -361,7 +357,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"Temperature at {level_hpa} hPa in Celsius",
             )
-            
+
             # Dewpoint at pressure level
             self.field_mappings[f"TMDP_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"TMDP_PRLC{level_pa}",
@@ -371,7 +367,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"Dewpoint temperature at {level_hpa} hPa in Celsius",
             )
-            
+
             # Wind speed at pressure level
             self.field_mappings[f"WSPD_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"WSPD_PRLC{level_pa}",
@@ -380,7 +376,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"Wind speed at {level_hpa} hPa (m/s)",
             )
-            
+
             # Wind direction at pressure level
             self.field_mappings[f"WDIR_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"WDIR_PRLC{level_pa}",
@@ -389,7 +385,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"Wind direction at {level_hpa} hPa (degrees)",
             )
-            
+
             # Geopotential at pressure level
             self.field_mappings[f"GP10_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"GP10_PRLC{level_pa}",
@@ -398,7 +394,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"Geopotential at {level_hpa} hPa (m²/s²)",
             )
-            
+
             # ===== QUALITY CONTROL FLAGS =====
             self.field_mappings[f"QMAT_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"QMAT_PRLC{level_pa}",
@@ -407,7 +403,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"QC flag for temperature at {level_hpa} hPa",
             )
-            
+
             self.field_mappings[f"QMDD_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"QMDD_PRLC{level_pa}",
                 output_name=f"qc_moisture_{level_hpa}hPa",
@@ -415,7 +411,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"QC flag for moisture at {level_hpa} hPa",
             )
-            
+
             self.field_mappings[f"QMWN_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"QMWN_PRLC{level_pa}",
                 output_name=f"qc_wind_{level_hpa}hPa",
@@ -423,7 +419,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"QC flag for wind at {level_hpa} hPa",
             )
-            
+
             self.field_mappings[f"QMGP_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"QMGP_PRLC{level_pa}",
                 output_name=f"qc_geopotential_{level_hpa}hPa",
@@ -431,7 +427,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"QC flag for geopotential at {level_hpa} hPa",
             )
-            
+
             self.field_mappings[f"QMPR_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"QMPR_PRLC{level_pa}",
                 output_name=f"qc_pressure_{level_hpa}hPa",
@@ -439,7 +435,7 @@ class ADPUPA_schema(DataSourceSchema):
                 required=False,
                 description=f"QC flag for pressure at {level_hpa} hPa",
             )
-            
+
             # Vertical sounding significance
             self.field_mappings[f"VSIG_PRLC{level_pa}"] = FieldMapping(
                 source_name=f"VSIG_PRLC{level_pa}",
@@ -457,6 +453,7 @@ class ADPUPA_schema(DataSourceSchema):
             return pd.Timestamp(value)
         else:
             return pd.Timestamp(value)
+
 
 class CRIS_schema(DataSourceSchema):
     """CrIS (satellite hyperspectral) BUFR schema mapping to NNJA-AI."""
@@ -649,13 +646,13 @@ class CRIS_schema(DataSourceSchema):
         # common channels for use case
         common_channels = {
             "radiance_ch19": "CRCHNM.SRAD01_00019",
-            "radiance_ch24": "CRCHNM.SRAD01_00024", 
+            "radiance_ch24": "CRCHNM.SRAD01_00024",
             "radiance_ch26": "CRCHNM.SRAD01_00026",
             "radiance_ch27": "CRCHNM.SRAD01_00027",
             "radiance_ch31": "CRCHNM.SRAD01_00031",
             "radiance_ch32": "CRCHNM.SRAD01_00032",
         }
-        
+
         for key, source_name in common_channels.items():
             self.field_mappings[key] = FieldMapping(
                 source_name=source_name,
@@ -673,7 +670,8 @@ class CRIS_schema(DataSourceSchema):
             return pd.Timestamp(value)
         else:
             return pd.Timestamp(value)
-        
+
+
 class BUFR_processor:
     """
     Low-level BUFR file decoder.
