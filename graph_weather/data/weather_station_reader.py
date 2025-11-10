@@ -26,6 +26,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("WeatherStationReader")
 
+
 class WeatherStationReader:
     """
     The reader for local weather station observations.
