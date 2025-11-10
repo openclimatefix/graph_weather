@@ -458,7 +458,6 @@ class ADPUPA_schema(DataSourceSchema):
         else:
             return pd.Timestamp(value)
 
-
 class CRIS_schema(DataSourceSchema):
     """CrIS (satellite hyperspectral) BUFR schema mapping to NNJA-AI."""
 
@@ -485,33 +484,186 @@ class CRIS_schema(DataSourceSchema):
                 transform_fn=self._convert_timestamp,
                 description="Observation timestamp",
             ),
-            "retrievedTemperature": FieldMapping(
-                source_name="retrievedTemperature",
-                output_name="temperature",
-                dtype=float,
-                transform_fn=lambda x: x - 273.15 if x > 100 else x,
-                description="Retrieved temperature in Celsius",
+            "obsDate": FieldMapping(
+                source_name="obsDate",
+                output_name="OBS_DATE",
+                dtype=object,
+                description="Date of the observation",
             ),
-            "retrievedPressure": FieldMapping(
-                source_name="retrievedPressure",
-                output_name="pressure",
-                dtype=float,
-                description="Retrieved pressure in Pa",
+            "satelliteId": FieldMapping(
+                source_name="satelliteId",
+                output_name="SAID",
+                dtype=int,
+                description="Satellite identifier",
             ),
             "sensorZenithAngle": FieldMapping(
                 source_name="sensorZenithAngle",
-                output_name="sensor_zenith_angle",
+                output_name="SAZA",
                 dtype=float,
                 required=False,
-                description="Sensor zenith angle",
+                description="Satellite zenith angle",
+            ),
+            "solarZenithAngle": FieldMapping(
+                source_name="solarZenithAngle",
+                output_name="SOZA",
+                dtype=float,
+                required=False,
+                description="Solar zenith angle",
+            ),
+            "solarAzimuth": FieldMapping(
+                source_name="solarAzimuth",
+                output_name="SOLAZI",
+                dtype=float,
+                required=False,
+                description="Solar azimuth angle",
+            ),
+            "bearingAzimuth": FieldMapping(
+                source_name="bearingAzimuth",
+                output_name="BEARAZ",
+                dtype=float,
+                required=False,
+                description="Bearing or azimuth",
+            ),
+            "orbitNumber": FieldMapping(
+                source_name="orbitNumber",
+                output_name="ORBN",
+                dtype=int,
+                required=False,
+                description="Orbit number",
+            ),
+            "scanLineNumber": FieldMapping(
+                source_name="scanLineNumber",
+                output_name="SLNM",
+                dtype=int,
+                required=False,
+                description="Scan line number",
+            ),
+            "fieldOfRegardNumber": FieldMapping(
+                source_name="fieldOfRegardNumber",
+                output_name="FORN",
+                dtype=int,
+                required=False,
+                description="Field of regard number",
+            ),
+            "fieldOfViewNumber": FieldMapping(
+                source_name="fieldOfViewNumber",
+                output_name="FOVN",
+                dtype=int,
+                required=False,
+                description="Field of view number",
+            ),
+            "heightAboveSurface": FieldMapping(
+                source_name="heightAboveSurface",
+                output_name="HMSL",
+                dtype=float,
+                required=False,
+                description="Height or altitude above mean sea level",
+            ),
+            "heightOfLandSurface": FieldMapping(
+                source_name="heightOfLandSurface",
+                output_name="HOLS",
+                dtype=float,
+                required=False,
+                description="Height of land surface",
+            ),
+            "totalCloudCover": FieldMapping(
+                source_name="totalCloudCover",
+                output_name="TOCC",
+                dtype=float,
+                required=False,
+                description="Cloud cover (total)",
+            ),
+            "cloudTopHeight": FieldMapping(
+                source_name="cloudTopHeight",
+                output_name="HOCT",
+                dtype=float,
+                required=False,
+                description="Height of top of cloud",
+            ),
+            "landFraction": FieldMapping(
+                source_name="landFraction",
+                output_name="ALFR",
+                dtype=float,
+                required=False,
+                description="Land fraction",
+            ),
+            "landSeaQualifier": FieldMapping(
+                source_name="landSeaQualifier",
+                output_name="LSQL",
+                dtype=int,
+                required=False,
+                description="Land/sea qualifier",
             ),
             "qualityFlags": FieldMapping(
                 source_name="qualityFlags",
-                output_name="qc_flag",
+                output_name="NSQF",
                 dtype=int,
-                description="Quality control flags",
+                required=False,
+                description="Scan-level quality flags",
+            ),
+            "radianceTypeFlags": FieldMapping(
+                source_name="radianceTypeFlags",
+                output_name="RDTF",
+                dtype=int,
+                required=False,
+                description="Radiance type flags",
+            ),
+            "geolocationQuality": FieldMapping(
+                source_name="geolocationQuality",
+                output_name="NGQI",
+                dtype=int,
+                required=False,
+                description="Geolocation quality",
+            ),
+            "orbitQualifier": FieldMapping(
+                source_name="orbitQualifier",
+                output_name="STKO",
+                dtype=int,
+                required=False,
+                description="Ascending/descending orbit qualifier",
+            ),
+            # Channel radiance mappings - you can add specific channels as needed
+            "channelRadiances": FieldMapping(
+                source_name="channelRadiances",
+                output_name="CRCHNM_SRAD01",
+                dtype=object,
+                required=False,
+                description="CrIS channel radiances array",
+            ),
+            "guardChannelData": FieldMapping(
+                source_name="guardChannelData",
+                output_name="GCRCHN",
+                dtype=object,
+                required=False,
+                description="NPP CrIS GUARD CHANNEL DATA array",
+            ),
+            "viirsSceneData": FieldMapping(
+                source_name="viirsSceneData",
+                output_name="CRISCS",
+                dtype=object,
+                required=False,
+                description="CrIS LEVEL 1B VIIRS SINGLE SCENE SEQUENCE DATA array",
             ),
         }
+
+        # common channels for use case
+        common_channels = {
+            "radiance_ch19": "CRCHNM.SRAD01_00019",
+            "radiance_ch24": "CRCHNM.SRAD01_00024", 
+            "radiance_ch26": "CRCHNM.SRAD01_00026",
+            "radiance_ch27": "CRCHNM.SRAD01_00027",
+            "radiance_ch31": "CRCHNM.SRAD01_00031",
+            "radiance_ch32": "CRCHNM.SRAD01_00032",
+        }
+        
+        for key, source_name in common_channels.items():
+            self.field_mappings[key] = FieldMapping(
+                source_name=source_name,
+                output_name=source_name.replace(".", "_"),
+                dtype=float,
+                required=False,
+                description=f"Channel radiance for {source_name}",
+            )
 
     def _convert_timestamp(self, value: Any) -> pd.Timestamp:
         """Convert BUFR timestamp to pandas Timestamp."""
@@ -521,8 +673,7 @@ class CRIS_schema(DataSourceSchema):
             return pd.Timestamp(value)
         else:
             return pd.Timestamp(value)
-
-
+        
 class BUFR_processor:
     """
     Low-level BUFR file decoder.
