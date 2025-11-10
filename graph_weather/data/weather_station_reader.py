@@ -26,16 +26,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("WeatherStationReader")
 
-# Try importing synopticpy, but don't require it
-# try:
-#     from synoptic import Synoptic
-
-#     SYNOPTIC_AVAILABLE = True
-# except ImportError:
-#     SYNOPTIC_AVAILABLE = False
-#     logger.warning("SynopticPy package not installed, synoptic functionality won't be available")
-
-
 class WeatherStationReader:
     """
     The reader for local weather station observations.

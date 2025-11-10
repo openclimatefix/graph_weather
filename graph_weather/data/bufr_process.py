@@ -857,9 +857,12 @@ class BUFR_dataloader:
         elif "atms" in filename:
             return "ATMS"
         else:
-            # Default to ADPUPA for now
-            logger.warning(f"Could not infer schema from {filename}, defaulting to ADPUPA")
-            return "ADPUPA"
+            available_schemas = list(self.SCHEMA_REGISTRY.keys())
+            raise ValueError(
+                f"Could not infer schema from filename '{filename}'. "
+                f"Available schemas: {available_schemas}. "
+                f"Please specify schema_name explicitly."
+            )
 
     def to_dataframe(self) -> pd.DataFrame:
         """Process BUFR file to DataFrame."""

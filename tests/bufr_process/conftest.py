@@ -1,13 +1,6 @@
 import pytest
 import pandas as pd
-import numpy as np
-from unittest.mock import Mock, patch
-import tempfile
-from pathlib import Path
-import sys
-import os
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from unittest.mock import Mock
 
 from graph_weather.data.bufr_process import DataSourceSchema
 
