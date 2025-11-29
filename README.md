@@ -31,7 +31,7 @@ pip install graph-weather
 
 
 > ⚠️ **Important Note about PyPI**
-> 
+>
 > The PyPI package (`pip install graph-weather`) is currently out-of-date and may raise:
 >
 > ```
@@ -64,7 +64,7 @@ pixi install # `-e cuda` for GPU support, `-e cpu` for CPU-only
 
 ## Operating System Compatibility
 
-`graph_weather` can be installed on Linux, macOS, and Windows.  
+`graph_weather` can be installed on Linux, macOS, and Windows.
 However, most contributors and CI environments use Linux or WSL2, so installation tends to be smoother on Linux-like systems.
 
 ### Windows Users
