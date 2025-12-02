@@ -29,11 +29,54 @@ This library can be installed through
 pip install graph-weather
 ```
 
+
+> ⚠️ **Important Note about PyPI**
+>
+> The PyPI package (`pip install graph-weather`) is currently out-of-date and may raise:
+>
+> ```
+> ModuleNotFoundError: graph_weather.data.nnjai_wrapp
+> ```
+>
+> This happens because the PyPI wheel is older than the GitHub version.
+>
+> To avoid this issue, install the latest version directly from GitHub:
+>
+> ```bash
+> pip install git+https://github.com/openclimatefix/graph_weather.git
+> ```
+>
+> Alternatively, you can clone and install locally:
+>
+> ```bash
+> git clone https://github.com/openclimatefix/graph_weather.git
+> cd graph_weather
+> pip install -e .
+> ```
+
+
 Alternatively, you can install the latest version from the repository easily with `pixi`:
 
 ```bash
 pixi install # `-e cuda` for GPU support, `-e cpu` for CPU-only
 ```
+
+
+## Operating System Compatibility
+
+`graph_weather` can be installed on Linux, macOS, and Windows.
+However, most contributors and CI environments use Linux or WSL2, so installation tends to be smoother on Linux-like systems.
+
+### Windows Users
+
+Windows is supported, but some users may encounter issues with
+virtual environments, paths, or CUDA/PyTorch compatibility.
+
+If you run into difficulties with native Windows installation, you may find it
+easier to use **WSL2**, which provides a Linux-like environment used by many developers.
+Any WSL2 Linux distribution (e.g., Ubuntu) works.
+
+
 
 ## Example Usage
 
