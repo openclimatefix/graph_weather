@@ -187,10 +187,6 @@ class ThermalizerLayer(nn.Module):
 
         x_reshaped = x.reshape(batch, height, width, features).permute(0, 3, 1, 2)
 
-        if self.score_model.in_channels == features + 2:
-            pos = self._get_position_encoding(height, width, batch, x.device)
-            x_reshaped = torch.cat([x_reshaped, pos], dim=1)
-
         if isinstance(t, int):
             t = torch.tensor(t, device=x.device)
         elif isinstance(t, torch.Tensor):
@@ -205,8 +201,15 @@ class ThermalizerLayer(nn.Module):
         sqrt_one_minus_alpha = (1.0 - self.alphas_cumprod[t]).sqrt().to(x.device)
 
         noisy_x = sqrt_alpha * x_reshaped + sqrt_one_minus_alpha * noise
-        score = self.score_model(noisy_x)
-        pred_x = (noisy_x - sqrt_one_minus_alpha * score) / sqrt_alpha
+
+        if self.score_model.in_channels == features + 2:
+            pos = self._get_position_encoding(height, width, batch, x.device)
+            noisy_x_with_pos = torch.cat([noisy_x, pos], dim=1)
+        else:
+            noisy_x_with_pos = noisy_x
+
+        predicted_noise = self.score_model(noisy_x_with_pos)
+        pred_x = (noisy_x - sqrt_one_minus_alpha * predicted_noise) / sqrt_alpha
 
         return pred_x.permute(0, 2, 3, 1).reshape(total_nodes, features)
 
