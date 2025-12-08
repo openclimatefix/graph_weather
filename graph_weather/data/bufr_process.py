@@ -111,4 +111,103 @@ class BUFR_Process:
         )
 
         return obs
-    
+
+    def _decode_level_sequence(self, h, kind):
+        """
+        Extracts one of the ADPUPA sequences.
+        """
+        if kind == "mandatory":
+            key_map = {
+                "pressure": ["airPressure", "pressure"],
+                "height": ["height"],
+                "temperature": ["airTemperature"],
+                "dewpoint": ["dewpointTemperature"],
+                "wind_dir": ["windDirection"],
+                "wind_speed": ["windSpeed"],
+                "significance": ["significance"],
+            }
+        elif kind == "significantTemperature":
+            key_map = {
+                "pressure": ["airPressure", "pressure"],
+                "height": ["height"],  # often absent
+                "temperature": ["airTemperature"],
+                "dewpoint": ["dewpointTemperature"],
+                "wind_dir": [],
+                "wind_speed": [],
+                "significance": ["significance"],
+            }
+        elif kind == "significantWind":
+            key_map = {
+                "pressure": ["airPressure", "pressure"],
+                "height": [],
+                "temperature": [],
+                "dewpoint": [],
+                "wind_dir": ["windDirection"],
+                "wind_speed": ["windSpeed"],
+                "significance": ["significance"],
+            }
+        else:
+            # tropopause / maxwind have mixed keys
+            key_map = {
+                "pressure": ["airPressure", "pressure"],
+                "height": ["height"],
+                "temperature": ["airTemperature"],
+                "dewpoint": ["dewpointTemperature"],
+                "wind_dir": ["windDirection"],
+                "wind_speed": ["windSpeed"],
+                "significance": ["significance"],
+            }
+
+        # Extract arrays
+        arrays = {
+            k: self._first_present_array(h, arr_keys)
+            for k, arr_keys in key_map.items()
+        }
+
+        # Determine length
+        length = 0
+        for arr in arrays.values():
+            if isinstance(arr, list) and len(arr) > length:
+                length = len(arr)
+
+        levels = []
+        for i in range(length):
+            level = adpupa_level(
+                pressure_hPa=self._index_or_none(arrays["pressure"], i),
+                geopotential_height_m=self._index_or_none(arrays["height"], i),
+                temperature_K=self._index_or_none(arrays["temperature"], i),
+                dewpoint_K=self._index_or_none(arrays["dewpoint"], i),
+                wind_direction_deg=self._index_or_none(arrays["wind_dir"], i),
+                wind_speed_ms=self._index_or_none(arrays["wind_speed"], i),
+                significance=self._index_or_none(arrays["significance"], i),
+            )
+            levels.append(level)
+
+        return levels
+    def _safe(self, h, key: str) -> Any:
+        try:
+            return codes_get(h, key)
+        except Exception:
+            return None
+
+    def _safe_str(self, h, key: str) -> Optional[str]:
+        val = self._safe(h, key)
+        return str(val) if val is not None else None
+
+    def _safe_array(self, h, key: str) -> Optional[List[Any]]:
+        try:
+            return list(codes_get_array(h, key))
+        except Exception:
+            return None
+
+    def _first_present_array(self, h, keys: List[str]) -> Optional[List[Any]]:
+        for k in keys:
+            arr = self._safe_array(h, k)
+            if arr is not None:
+                return arr
+        return None
+
+    def _index_or_none(self, arr: Optional[List[Any]], i: int) -> Any:
+        if arr is None or i >= len(arr):
+            return None
+        return arr[i]
