@@ -2,33 +2,33 @@
 A processor aka dataloader for bufr files
 > Drafted #177 PR - focusing around ADPUPA as of now
 """
-from dataclasses import dataclass
-from typing import Any, Optional, List 
+
+from typing import List, Optional
+
 from eccodes import (
     codes_handle_new_from_file,
     codes_release,
     codes_set,
-    codes_get,
-    codes_get_array,
 )
-from .schema_for_bufr.adpupa import adpupa_level, adpupa_obs
+
+from .schema_for_bufr.adpupa import adpupa_obs
 from .schema_for_bufr.base import GeoPoint
+
 
 class BUFR_Process:
     """
-        Low level bufr file decoder
+    Low level bufr file decoder
     """
+
     def __init__(self, schema):
         """
-            schema : Majorly focusing around ADPUPA as of now
+        Schema : Majorly focusing around ADPUPA as of now
         """
         supported = {"adpupa"}
         if schema not in supported:
-            raise ValueError(
-                f"Unsupported schema '{schema}'. Supported : {supported}"
-            )
+            raise ValueError(f"Unsupported schema '{schema}'. Supported : {supported}")
         self.schema = schema
-    
+
     def decode_file(self, path: str) -> List[adpupa_obs]:
         """
         Decode an entire BUFR file into ADPUPA dataclasses.
@@ -56,13 +56,13 @@ class BUFR_Process:
 
         return observations
 
-    def _decode_adpupa(self,h,file_path:str)->Optional[adpupa_obs]:
+    def _decode_adpupa(self, h, file_path: str) -> Optional[adpupa_obs]:
         """
         Decode one BUFR message for adpupa
         returns adpupa obs or none
         """
         station_id = self._safe_str(h, "stationIdentifier")
-        
+
         year = self._safe(h, "year")
         month = self._safe(h, "month")
         day = self._safe(h, "day")
@@ -70,9 +70,8 @@ class BUFR_Process:
         minute = self._safe(h, "minute")
 
         if not all([year, month, day, hour, minute]):
-            return None  
+            return None
 
-        
         lat = self._safe(h, "latitude")
         lon = self._safe(h, "longitude")
         elev = self._safe(h, "heightOfStation")
@@ -85,7 +84,7 @@ class BUFR_Process:
         balloon_type = self._safe(h, "balloonOrSolarRadiation")
         wind_method = self._safe(h, "methodOfWindMeasurement")
 
-        #  Decode levels 
+        #  Decode levels
         mandatory = self._decode_level_sequence(h, "mandatory")
         sig_temp = self._decode_level_sequence(h, "significantTemperature")
         sig_wind = self._decode_level_sequence(h, "significantWind")

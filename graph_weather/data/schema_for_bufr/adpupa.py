@@ -1,8 +1,10 @@
-from dataclasses import dataclass 
-from typing import Optional 
+from dataclasses import dataclass
+from typing import Optional
+
 from .base import GeoPoint
 
-@dataclass 
+
+@dataclass
 class adpupa_level:
     pressure_hPa: Optional[float]
     geopotential_height_m: Optional[float]
@@ -20,7 +22,7 @@ class adpupa_level:
     qc_wind_speed: Optional[int] = None
 
 
-@dataclass 
+@dataclass
 class adpupa_obs:
     # metadata
     station_id: str
