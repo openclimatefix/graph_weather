@@ -158,10 +158,7 @@ class BUFR_Process:
             }
 
         # Extract arrays
-        arrays = {
-            k: self._first_present_array(h, arr_keys)
-            for k, arr_keys in key_map.items()
-        }
+        arrays = {k: self._first_present_array(h, arr_keys) for k, arr_keys in key_map.items()}
 
         # Determine length
         length = 0
@@ -183,6 +180,7 @@ class BUFR_Process:
             levels.append(level)
 
         return levels
+
     def _safe(self, h, key: str) -> Any:
         try:
             return codes_get(h, key)

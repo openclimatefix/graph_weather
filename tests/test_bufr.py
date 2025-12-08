@@ -4,7 +4,8 @@ from pathlib import Path
 
 from graph_weather.data.bufr_process import BUFR_Process
 from graph_weather.data.schema_for_bufr.adpupa import adpupa_obs
-from graph_weather.data.nnja_ai import load_nnja_dataset    
+from graph_weather.data.nnja_ai import load_nnja_dataset
+
 
 # @pytest.mark.skip(reason="Requires local historical BUFR + NNJA-AI parquet files.")
 def test_adpupa_bufr_vs_parquet():
@@ -19,10 +20,7 @@ def test_adpupa_bufr_vs_parquet():
 
     bufr_path = Path("gdas.t00z.1bamua.tm00.bufr")
 
-    nnja_df = load_nnja_dataset(
-        dataset_name="ADPUPA",
-        time="2025-12-08T00:00"
-    ).to_dataframe()
+    nnja_df = load_nnja_dataset(dataset_name="ADPUPA", time="2025-12-08T00:00").to_dataframe()
 
     assert bufr_path.exists(), f"Missing test BUFR: {bufr_path}"
 
@@ -40,9 +38,9 @@ def test_adpupa_bufr_vs_parquet():
 
     assert abs(obs.location.lat - nnja_df["lat"].iloc[0]) < 1e-6
     assert abs(obs.location.lon - nnja_df["lon"].iloc[0]) < 1e-6
-    
+
     # Compare pressure levels
-    
+
     expected_levels = nnja_df.sort_values("level_index")
     actual_pressures = [lvl.pressure_hPa for lvl in obs.mandatory_levels]
     expected_pressures = expected_levels["pressure_hPa"].tolist()
