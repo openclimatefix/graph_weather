@@ -40,4 +40,3 @@ class FiLMApplier(nn.Module):
             gamma = gamma.unsqueeze(-1)
             beta = beta.unsqueeze(-1)
         return x * gamma + beta
-

@@ -1,3 +1,3 @@
-from .models.film import FiLMGenerator, FiLMApplier
+from .models.film import FiLMApplier, FiLMGenerator
 
 __all__ = ["FiLMGenerator", "FiLMApplier"]
