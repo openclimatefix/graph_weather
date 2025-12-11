@@ -3,7 +3,6 @@ import torch.nn as nn
 
 
 class FiLMGenerator(nn.Module):
-
     """
     Generates FiLM parameters (gamma and beta) from a lead-time index.
 
@@ -16,7 +15,6 @@ class FiLMGenerator(nn.Module):
         feature_dim (int): Output dimensionality of gamma and beta.
     """
 
-
     def __init__(self, num_lead_times: int, hidden_dim: int, feature_dim: int):
         super().__init__()
         self.num_lead_times = num_lead_times
@@ -28,7 +26,6 @@ class FiLMGenerator(nn.Module):
         )
 
     def forward(self, batch_size: int, lead_time: int, device=None):
-
         """
         Compute FiLM gamma and beta parameters.
 
@@ -45,14 +42,13 @@ class FiLMGenerator(nn.Module):
 
         one_hot = torch.zeros(batch_size, self.num_lead_times, device=device)
         one_hot[:, lead_time] = 1.0
-        gamma_beta = self.network(one_hot)  
+        gamma_beta = self.network(one_hot)
         gamma = gamma_beta[:, : self.feature_dim]
         beta = gamma_beta[:, self.feature_dim :]
         return gamma, beta
 
 
 class FiLMApplier(nn.Module):
-
     """
     Applies FiLM modulation to an input tensor.
 
@@ -61,7 +57,6 @@ class FiLMApplier(nn.Module):
     """
 
     def forward(self, x: torch.Tensor, gamma: torch.Tensor, beta: torch.Tensor) -> torch.Tensor:
-
         """
         Apply FiLM conditioning.
 
