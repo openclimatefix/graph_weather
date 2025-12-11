@@ -1,4 +1,3 @@
-# tests/test_film.py
 import torch
 from graph_weather.models.film import FiLMGenerator, FiLMApplier
 
