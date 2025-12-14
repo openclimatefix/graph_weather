@@ -1,5 +1,5 @@
 import torch
-from graph_weather.models.film import FiLMGenerator, FiLMApplier
+from graph_weather.models.layers.film import FiLMGenerator, FiLMApplier
 
 
 def test_film_shapes():
