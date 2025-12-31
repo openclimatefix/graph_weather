@@ -253,14 +253,16 @@ def benchmark_full_model(
             / 1024,
             "edge_index_memory_batched_mb": np.mean(batched_edge_index_sizes),
             "edge_attr_memory_batched_mb": np.mean(batched_edge_attr_sizes),
-            "batching_overhead_ratio": np.mean(batched_edge_index_sizes)
-            / (
-                (encoder.graph.edge_index.element_size() * encoder.graph.edge_index.nelement())
-                / 1024
-                / 1024
-            )
-            if encoder.graph.edge_index.nelement() > 0
-            else 0,
+            "batching_overhead_ratio": (
+                np.mean(batched_edge_index_sizes)
+                / (
+                    (encoder.graph.edge_index.element_size() * encoder.graph.edge_index.nelement())
+                    / 1024
+                    / 1024
+                )
+                if encoder.graph.edge_index.nelement() > 0
+                else 0
+            ),
         }
 
         # Clean up
@@ -479,10 +481,7 @@ def run_benchmark_suite():
         print("BATCHING OVERHEAD ANALYSIS:")
         for r in successful:
             if r["edge_index_memory_original_mb"] > 0:
-                overhead_mb = (
-                    r["edge_index_memory_batched_mb"]
-                    - r["edge_index_memory_original_mb"]
-                )
+                overhead_mb = r["edge_index_memory_batched_mb"] - r["edge_index_memory_original_mb"]
                 print(
                     f"  {r['resolution_deg']:.1f}° batch={r['batch_size']}: "
                     f"+{overhead_mb:.2f} MB "
