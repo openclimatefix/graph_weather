@@ -49,6 +49,7 @@ class Encoder(torch.nn.Module):
         hidden_layers_processor_edge=2,
         mlp_norm_type="LayerNorm",
         use_checkpointing: bool = False,
+        efficient_batching: bool = False,
     ):
         """
         Encode the lat/lon data inot the isohedron graph
@@ -69,6 +70,7 @@ class Encoder(torch.nn.Module):
         """
         super().__init__()
         self.use_checkpointing = use_checkpointing
+        self.efficient_batching = efficient_batching
         self.output_dim = output_dim
         self.num_latlons = len(lat_lons)
         self.base_h3_grid = sorted(list(h3.uncompact_cells(h3.get_res0_cells(), resolution)))
@@ -161,46 +163,78 @@ class Encoder(torch.nn.Module):
         self.h3_nodes = self.h3_nodes.to(features.device)
         self.graph = self.graph.to(features.device)
         self.latent_graph = self.latent_graph.to(features.device)
-        features = torch.cat(
-            [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)],
-            dim=1,
-        )
-        # Cat with the h3 nodes to have correct amount of nodes, and in right order
-        features = einops.rearrange(features, "b n f -> (b n) f")
-        out = self.node_encoder(features)  # Encode to 256 from 78
-        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
-        # Copy attributes batch times
-        edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-        # Expand edge index correct number of times while adding the proper number to the edge index
-        edge_index = torch.cat(
-            [
-                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
-                for i in range(batch_size)
-            ],
-            dim=1,
-        )
-        out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
-        # Remove the extra nodes (lat/lon) from the output
-        out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
-        _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=1)
-        out = einops.rearrange(out, "b n f -> (b n) f")
-        return (
-            out,
-            torch.cat(
+
+        if self.efficient_batching:
+            # Efficient batching: process batches separately to avoid graph replication
+            batch_outputs = []
+            for i in range(batch_size):
+                # Process single batch item
+                feat_i = torch.cat([features[i:i+1], self.h3_nodes.unsqueeze(0)], dim=1)
+                feat_i = feat_i.squeeze(0)  # [N, F]
+
+                # Encode nodes
+                out_i = self.node_encoder(feat_i)
+
+                # Encode edges (no replication needed)
+                edge_attr_i = self.edge_encoder(self.graph.edge_attr)
+
+                # Message passing with single graph
+                out_i, _ = self.graph_processor(out_i, self.graph.edge_index, edge_attr_i)
+
+                # Extract H3 nodes only
+                out_i = out_i[self.num_latlons:]  # Keep only H3 nodes
+                batch_outputs.append(out_i)
+
+            # Stack outputs
+            out = torch.cat(batch_outputs, dim=0)  # [B*num_h3, F]
+
+            # Return with SHARED latent graph (NO replication at all!)
+            latent_edge_attr = self.latent_edge_encoder(self.latent_graph.edge_attr)
+
+            # Return the single shared graph - no batching overhead
+            return (out, self.latent_graph.edge_index, latent_edge_attr)
+        else:
+            # Original batching implementation
+            features = torch.cat(
+                [features, einops.repeat(self.h3_nodes, "n f -> b n f", b=batch_size)],
+                dim=1,
+            )
+            # Cat with the h3 nodes to have correct amount of nodes, and in right order
+            features = einops.rearrange(features, "b n f -> (b n) f")
+            out = self.node_encoder(features)  # Encode to 256 from 78
+            edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+            # Copy attributes batch times
+            edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+            # Expand edge index correct number of times while adding the proper number to the edge index
+            edge_index = torch.cat(
                 [
-                    self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                    self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
                     for i in range(batch_size)
                 ],
                 dim=1,
-            ),
-            self.latent_edge_encoder(
-                einops.repeat(
-                    self.latent_graph.edge_attr,
-                    "e f -> (repeat e) f",
-                    repeat=batch_size,
-                )
-            ),
-        )  # New graph
+            )
+            out, _ = self.graph_processor(out, edge_index, edge_attr)  # Message Passing
+            # Remove the extra nodes (lat/lon) from the output
+            out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
+            _, out = torch.split(out, [self.num_latlons, self.h3_nodes.shape[0]], dim=1)
+            out = einops.rearrange(out, "b n f -> (b n) f")
+            return (
+                out,
+                torch.cat(
+                    [
+                        self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                        for i in range(batch_size)
+                    ],
+                    dim=1,
+                ),
+                self.latent_edge_encoder(
+                    einops.repeat(
+                        self.latent_graph.edge_attr,
+                        "e f -> (repeat e) f",
+                        repeat=batch_size,
+                    )
+                ),
+            )  # New graph
 
     def create_latent_graph(self) -> Data:
         """

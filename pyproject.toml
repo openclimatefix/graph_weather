@@ -6,7 +6,15 @@ description = "Graph-based AI Weather models"
 authors = [
     {name = "Jacob Prince-Bieker", email = "jacob@bieker.tech"},
 ]
-dependencies = ["torch-harmonics", "anemoi-datasets>=0.4.5,<0.5"]
+dependencies = [
+    "torch-harmonics",
+    "anemoi-datasets>=0.4.5,<0.5",
+    "pandas>=2.3.3",
+    "xarray>=2025.12.0",
+    "einops>=0.8.1",
+    "torch-geometric>=2.7.0",
+    "h3>=4.4.1",
+]
 
 [build-system]
 build-backend = "hatchling.build"

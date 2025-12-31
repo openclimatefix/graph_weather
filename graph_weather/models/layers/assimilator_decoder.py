@@ -41,6 +41,7 @@ class AssimilatorDecoder(torch.nn.Module):
         hidden_dim_decoder: int = 128,
         hidden_layers_decoder: int = 2,
         use_checkpointing: bool = False,
+        efficient_batching: bool = False,
     ):
         """
         Decoder from latent graph to lat/lon graph for assimilation of observation
@@ -63,6 +64,7 @@ class AssimilatorDecoder(torch.nn.Module):
         """
         super().__init__()
         self.use_checkpointing = use_checkpointing
+        self.efficient_batching = efficient_batching
         self.num_latlons = len(lat_lons)
         self.base_h3_grid = sorted(list(h3.uncompact_cells(h3.get_res0_cells(), resolution)))
         self.num_h3 = len(self.base_h3_grid)
@@ -137,28 +139,55 @@ class AssimilatorDecoder(torch.nn.Module):
             Updated features for model
         """
         self.graph = self.graph.to(processor_features.device)
-        edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
-        edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-
-        edge_index = torch.cat(
-            [
-                self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
-                for i in range(batch_size)
-            ],
-            dim=1,
-        )
-
-        # Readd nodes to match graph node number
         self.latlon_nodes = self.latlon_nodes.to(processor_features.device)
-        features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
-        features = torch.cat(
-            [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
-        )
-        features = einops.rearrange(features, "b n f -> (b n) f")
 
-        out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing
-        # Remove the h3 nodes now, only want the latlon ones
-        out = self.node_decoder(out)  # Decode to 78 from 256
-        out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
-        test, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
-        return out
+        if self.efficient_batching:
+            # Efficient batching: process batches separately to avoid graph replication
+            edge_attr = self.edge_encoder(self.graph.edge_attr)  # Encode once
+
+            # Split processor features by batch
+            proc_features_batched = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
+
+            batch_outputs = []
+            for i in range(batch_size):
+                # Get features for this batch
+                feat_i = torch.cat([proc_features_batched[i], self.latlon_nodes], dim=0)  # [num_h3 + num_latlon, F]
+
+                # Message passing with single graph (no replication)
+                out_i, _ = self.graph_processor(feat_i, self.graph.edge_index, edge_attr)
+
+                # Decode and extract latlon nodes
+                out_i = self.node_decoder(out_i)
+                out_i = out_i[self.num_h3:]  # Keep only latlon nodes
+
+                batch_outputs.append(out_i)
+
+            # Stack outputs
+            out = torch.stack(batch_outputs, dim=0)  # [B, num_latlon, F]
+            return out
+        else:
+            # Original batching implementation
+            edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+            edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
+
+            edge_index = torch.cat(
+                [
+                    self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
+                    for i in range(batch_size)
+                ],
+                dim=1,
+            )
+
+            # Readd nodes to match graph node number
+            features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
+            features = torch.cat(
+                [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
+            )
+            features = einops.rearrange(features, "b n f -> (b n) f")
+
+            out, _ = self.graph_processor(features, edge_index, edge_attr)  # Message Passing
+            # Remove the h3 nodes now, only want the latlon ones
+            out = self.node_decoder(out)  # Decode to 78 from 256
+            out = einops.rearrange(out, "(b n) f -> b n f", b=batch_size)
+            test, out = torch.split(out, [self.num_h3, self.num_latlons], dim=1)
+            return out

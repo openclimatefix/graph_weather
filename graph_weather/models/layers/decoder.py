@@ -37,6 +37,7 @@ class Decoder(AssimilatorDecoder):
         hidden_dim_decoder: int = 128,
         hidden_layers_decoder: int = 2,
         use_checkpointing: bool = False,
+        efficient_batching: bool = False,
     ):
         """
         Decoder from latent graph to lat/lon graph
@@ -56,6 +57,7 @@ class Decoder(AssimilatorDecoder):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Whether to use gradient checkpointing or not
+            efficient_batching: Whether to use efficient batching (avoids graph replication)
         """
         super().__init__(
             lat_lons,
@@ -71,6 +73,7 @@ class Decoder(AssimilatorDecoder):
             hidden_dim_decoder,
             hidden_layers_decoder,
             use_checkpointing,
+            efficient_batching,
         )
 
     def forward(

@@ -11,3 +11,14 @@ checkpoints/
 lightning_logs/
 pixi.lock
 .python-version
+benchmark_results_*.json
+final_summary.md
+findings.md
+*_test*.py
+oom_test.py
+graph_cast_net.py
+graph_caching_guide.md
+docs/mixed_precision_checkpointing_guide.md
+docs/sparse_tensor_migration_guide.md
+docs/spatial_patching_guide.md
+docs/README.md
