@@ -2,7 +2,6 @@
 
 import gc
 import json
-import sys
 import time
 from datetime import datetime
 from typing import Dict, List, Tuple
@@ -64,13 +63,17 @@ def benchmark_config(
     num_nodes = len(lat_lons)
 
     try:
-        encoder = Encoder(
-            lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True
-        ).to(device).eval()
+        encoder = (
+            Encoder(lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True)
+            .to(device)
+            .eval()
+        )
         processor = Processor(256, num_blocks=9).to(device).eval()
-        decoder = Decoder(
-            lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True
-        ).to(device).eval()
+        decoder = (
+            Decoder(lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True)
+            .to(device)
+            .eval()
+        )
 
         features = torch.randn(batch_size, num_nodes, 78, device=device)
 
