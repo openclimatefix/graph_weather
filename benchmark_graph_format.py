@@ -253,16 +253,14 @@ def benchmark_full_model(
             / 1024,
             "edge_index_memory_batched_mb": np.mean(batched_edge_index_sizes),
             "edge_attr_memory_batched_mb": np.mean(batched_edge_attr_sizes),
-            "batching_overhead_ratio": (
-                np.mean(batched_edge_index_sizes)
-                / (
-                    (encoder.graph.edge_index.element_size() * encoder.graph.edge_index.nelement())
-                    / 1024
-                    / 1024
-                )
-                if encoder.graph.edge_index.nelement() > 0
-                else 0
-            ),
+            "batching_overhead_ratio": np.mean(batched_edge_index_sizes)
+            / (
+                (encoder.graph.edge_index.element_size() * encoder.graph.edge_index.nelement())
+                / 1024
+                / 1024
+            )
+            if encoder.graph.edge_index.nelement() > 0
+            else 0,
         }
 
         # Clean up
@@ -359,15 +357,18 @@ def run_benchmark_suite():
                 print()
                 print("  TIMING BREAKDOWN:")
                 print(
-                    f"    Encoder:    {result['encoder_avg_time_s']*1000:.2f} ± {result['encoder_std_time_s']*1000:.2f} ms"
+                    f"    Encoder:    {result['encoder_avg_time_s'] * 1000:.2f} ± "
+                    f"{result['encoder_std_time_s'] * 1000:.2f} ms"
                 )
                 print(
-                    f"    Processor:  {result['processor_avg_time_s']*1000:.2f} ± {result['processor_std_time_s']*1000:.2f} ms"
+                    f"    Processor:  {result['processor_avg_time_s'] * 1000:.2f} ± "
+                    f"{result['processor_std_time_s'] * 1000:.2f} ms"
                 )
                 print(
-                    f"    Decoder:    {result['decoder_avg_time_s']*1000:.2f} ± {result['decoder_std_time_s']*1000:.2f} ms"
+                    f"    Decoder:    {result['decoder_avg_time_s'] * 1000:.2f} ± "
+                    f"{result['decoder_std_time_s'] * 1000:.2f} ms"
                 )
-                print(f"    Total:      {result['total_avg_time_s']*1000:.2f} ms")
+                print(f"    Total:      {result['total_avg_time_s'] * 1000:.2f} ms")
             else:
                 print(f"  ✗ Failed: {result.get('error', 'Unknown error')}")
             print()
@@ -383,10 +384,17 @@ def run_benchmark_suite():
     print(f"{'=' * 80}\n")
 
     # Create summary table
-    print(
-        f"{'Res':<6} {'Batch':<6} {'Nodes':<8} {'Edges':<8} {'Batch OH':<10} {'Enc(ms)':<10} {'Proc(ms)':<10} {'Dec(ms)':<10} {'Peak MB':<10} {'Status':<8}"
+    header = (
+        f"{'Res':<6} {'Batch':<6} {'Nodes':<8} {'Edges':<8} "
+        f"{'Batch OH':<10} {'Enc(ms)':<10} {'Proc(ms)':<10} "
+        f"{'Dec(ms)':<10} {'Peak MB':<10} {'Status':<8}"
     )
-    print(f"{'-'*6} {'-'*6} {'-'*8} {'-'*8} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*8}")
+    separator = (
+        f"{'-' * 6} {'-' * 6} {'-' * 8} {'-' * 8} {'-' * 10} "
+        f"{'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 8}"
+    )
+    print(header)
+    print(separator)
 
     for result in all_results:
         res = f"{result['resolution_deg']:.1f}°"
@@ -396,11 +404,15 @@ def run_benchmark_suite():
         batch_oh = (
             f"{result.get('batching_overhead_ratio', 0):.2f}x" if result["success"] else "N/A"
         )
-        enc_time = f"{result.get('encoder_avg_time_s', 0)*1000:.1f}" if result["success"] else "N/A"
-        proc_time = (
-            f"{result.get('processor_avg_time_s', 0)*1000:.1f}" if result["success"] else "N/A"
+        enc_time = (
+            f"{result.get('encoder_avg_time_s', 0) * 1000:.1f}" if result["success"] else "N/A"
         )
-        dec_time = f"{result.get('decoder_avg_time_s', 0)*1000:.1f}" if result["success"] else "N/A"
+        proc_time = (
+            f"{result.get('processor_avg_time_s', 0) * 1000:.1f}" if result["success"] else "N/A"
+        )
+        dec_time = (
+            f"{result.get('decoder_avg_time_s', 0) * 1000:.1f}" if result["success"] else "N/A"
+        )
         peak_mem = (
             f"{result.get('peak_gpu_memory_mb', 0):.1f}"
             if result["success"] and device == "cuda"
@@ -408,9 +420,12 @@ def run_benchmark_suite():
         )
         status = "OK" if result["success"] else "FAIL"
 
-        print(
-            f"{res:<6} {batch:<6} {nodes:<8} {edges:<8} {batch_oh:<10} {enc_time:<10} {proc_time:<10} {dec_time:<10} {peak_mem:<10} {status:<8}"
+        row = (
+            f"{res:<6} {batch:<6} {nodes:<8} {edges:<8} {batch_oh:<10} "
+            f"{enc_time:<10} {proc_time:<10} {dec_time:<10} "
+            f"{peak_mem:<10} {status:<8}"
         )
+        print(row)
 
     print()
 
@@ -427,7 +442,8 @@ def run_benchmark_suite():
         # Show batching overhead for 1-degree
         for r in one_deg_results:
             print(
-                f"  Batch {r['batch_size']}: {r['batching_overhead_ratio']:.2f}x memory overhead from batching"
+                f"  Batch {r['batch_size']}: "
+                f"{r['batching_overhead_ratio']:.2f}x memory overhead from batching"
             )
     else:
         print("✗ 1-degree grid: No successful runs (even batch_size=1 failed!)")
@@ -442,9 +458,9 @@ def run_benchmark_suite():
         avg_dec = np.mean([r["decoder_avg_time_s"] for r in successful]) * 1000
         total = avg_enc + avg_proc + avg_dec
 
-        print(f"  Encoder:   {avg_enc:.1f} ms ({avg_enc/total*100:.1f}%)")
-        print(f"  Processor: {avg_proc:.1f} ms ({avg_proc/total*100:.1f}%)")
-        print(f"  Decoder:   {avg_dec:.1f} ms ({avg_dec/total*100:.1f}%)")
+        print(f"  Encoder:   {avg_enc:.1f} ms ({avg_enc / total * 100:.1f}%)")
+        print(f"  Processor: {avg_proc:.1f} ms ({avg_proc / total * 100:.1f}%)")
+        print(f"  Decoder:   {avg_dec:.1f} ms ({avg_dec / total * 100:.1f}%)")
 
     # Memory breakdown
     if successful and device == "cuda":
@@ -463,9 +479,14 @@ def run_benchmark_suite():
         print("BATCHING OVERHEAD ANALYSIS:")
         for r in successful:
             if r["edge_index_memory_original_mb"] > 0:
-                overhead_mb = r["edge_index_memory_batched_mb"] - r["edge_index_memory_original_mb"]
+                overhead_mb = (
+                    r["edge_index_memory_batched_mb"]
+                    - r["edge_index_memory_original_mb"]
+                )
                 print(
-                    f"  {r['resolution_deg']:.1f}° batch={r['batch_size']}: +{overhead_mb:.2f} MB ({r['batching_overhead_ratio']:.2f}x original)"
+                    f"  {r['resolution_deg']:.1f}° batch={r['batch_size']}: "
+                    f"+{overhead_mb:.2f} MB "
+                    f"({r['batching_overhead_ratio']:.2f}x original)"
                 )
 
     print()
@@ -476,7 +497,7 @@ def run_benchmark_suite():
 if __name__ == "__main__":
     # Install psutil if not available
     try:
-        import psutil
+        import psutil  # noqa: F401
     except ImportError:
         print("Installing psutil for CPU memory monitoring...")
         import subprocess
