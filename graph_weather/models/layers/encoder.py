@@ -169,7 +169,7 @@ class Encoder(torch.nn.Module):
             batch_outputs = []
             for i in range(batch_size):
                 # Process single batch item
-                feat_i = torch.cat([features[i:i+1], self.h3_nodes.unsqueeze(0)], dim=1)
+                feat_i = torch.cat([features[i : i + 1], self.h3_nodes.unsqueeze(0)], dim=1)
                 feat_i = feat_i.squeeze(0)  # [N, F]
 
                 # Encode nodes
@@ -182,7 +182,7 @@ class Encoder(torch.nn.Module):
                 out_i, _ = self.graph_processor(out_i, self.graph.edge_index, edge_attr_i)
 
                 # Extract H3 nodes only
-                out_i = out_i[self.num_latlons:]  # Keep only H3 nodes
+                out_i = out_i[self.num_latlons :]  # Keep only H3 nodes
                 batch_outputs.append(out_i)
 
             # Stack outputs
@@ -202,7 +202,9 @@ class Encoder(torch.nn.Module):
             # Cat with the h3 nodes to have correct amount of nodes, and in right order
             features = einops.rearrange(features, "b n f -> (b n) f")
             out = self.node_encoder(features)  # Encode to 256 from 78
-            edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+            edge_attr = self.edge_encoder(
+                self.graph.edge_attr
+            )  # Update attributes based on distance
             # Copy attributes batch times
             edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
             # Expand edge index correct number of times while adding the proper number to the edge index
@@ -222,7 +224,9 @@ class Encoder(torch.nn.Module):
                 out,
                 torch.cat(
                     [
-                        self.latent_graph.edge_index + i * torch.max(self.latent_graph.edge_index) + i
+                        self.latent_graph.edge_index
+                        + i * torch.max(self.latent_graph.edge_index)
+                        + i
                         for i in range(batch_size)
                     ],
                     dim=1,

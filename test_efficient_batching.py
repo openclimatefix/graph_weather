@@ -2,11 +2,11 @@
 Test script to verify that efficient batching produces the same outputs as original batching.
 """
 
-import torch
 import numpy as np
+import torch
 
-from graph_weather.models.layers.encoder import Encoder
 from graph_weather.models.layers.decoder import Decoder
+from graph_weather.models.layers.encoder import Encoder
 from graph_weather.models.layers.processor import Processor
 
 
@@ -38,7 +38,9 @@ def test_encoder_outputs(resolution_deg=5.0, batch_size=2):
 
     # Original batching
     print("Running original batching...")
-    encoder_original = Encoder(lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=False)
+    encoder_original = Encoder(
+        lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=False
+    )
     encoder_original.eval()
 
     with torch.no_grad():
@@ -50,7 +52,9 @@ def test_encoder_outputs(resolution_deg=5.0, batch_size=2):
 
     # Efficient batching
     print("\nRunning efficient batching...")
-    encoder_efficient = Encoder(lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True)
+    encoder_efficient = Encoder(
+        lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True
+    )
     encoder_efficient.load_state_dict(encoder_original.state_dict())  # Same weights
     encoder_efficient.eval()
 
@@ -67,10 +71,12 @@ def test_encoder_outputs(resolution_deg=5.0, batch_size=2):
     print(f"  Node features - Mean diff: {torch.mean(torch.abs(x_orig - x_eff)).item():.2e}")
 
     # Edge structures will differ: batched (original) vs shared (efficient)
-    print(f"\n  Edge structure comparison:")
+    print("\n  Edge structure comparison:")
     print(f"    Original (batched): {edge_idx_orig.shape[1]} edges")
     print(f"    Efficient (shared): {edge_idx_eff.shape[1]} edges")
-    print(f"    Reduction: {edge_idx_orig.shape[1] / edge_idx_eff.shape[1]:.1f}x fewer edges with shared graph!")
+    print(
+        f"    Reduction: {edge_idx_orig.shape[1] / edge_idx_eff.shape[1]:.1f}x fewer edges with shared graph!"
+    )
 
     # For deep optimization, edge structures are intentionally different
     # Original: replicated B times, Efficient: shared single copy
@@ -111,7 +117,9 @@ def test_decoder_outputs(resolution_deg=5.0, batch_size=2):
 
     # Original batching
     print("Running original batching...")
-    decoder_original = Decoder(lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=False)
+    decoder_original = Decoder(
+        lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=False
+    )
     decoder_original.eval()
 
     with torch.no_grad():
@@ -121,7 +129,9 @@ def test_decoder_outputs(resolution_deg=5.0, batch_size=2):
 
     # Efficient batching
     print("\nRunning efficient batching...")
-    decoder_efficient = Decoder(lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True)
+    decoder_efficient = Decoder(
+        lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True
+    )
     decoder_efficient.load_state_dict(decoder_original.state_dict())  # Same weights
     decoder_efficient.eval()
 
@@ -160,9 +170,13 @@ def test_full_pipeline(resolution_deg=5.0, batch_size=2):
 
     # Original pipeline
     print("Running original pipeline...")
-    encoder_orig = Encoder(lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=False)
+    encoder_orig = Encoder(
+        lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=False
+    )
     processor_orig = Processor(256, num_blocks=9)
-    decoder_orig = Decoder(lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=False)
+    decoder_orig = Decoder(
+        lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=False
+    )
 
     encoder_orig.eval()
     processor_orig.eval()
@@ -178,9 +192,13 @@ def test_full_pipeline(resolution_deg=5.0, batch_size=2):
 
     # Efficient pipeline with DEEP optimization
     print("\nRunning efficient pipeline (DEEP optimization)...")
-    encoder_eff = Encoder(lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True)
+    encoder_eff = Encoder(
+        lat_lons, resolution=2, input_dim=78, output_dim=256, efficient_batching=True
+    )
     processor_eff = Processor(256, num_blocks=9)
-    decoder_eff = Decoder(lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True)
+    decoder_eff = Decoder(
+        lat_lons, resolution=2, input_dim=256, output_dim=78, efficient_batching=True
+    )
 
     # Load same weights
     encoder_eff.load_state_dict(encoder_orig.state_dict())
@@ -194,9 +212,13 @@ def test_full_pipeline(resolution_deg=5.0, batch_size=2):
     with torch.no_grad():
         x_eff, edge_idx_eff, edge_attr_eff = encoder_eff(features)
         print(f"  Edge index shape (shared): {edge_idx_eff.shape}")
-        print(f"  → Graph replication avoided: {edge_idx.shape[1] // edge_idx_eff.shape[1]}x fewer edges!")
+        print(
+            f"  → Graph replication avoided: {edge_idx.shape[1] // edge_idx_eff.shape[1]}x fewer edges!"
+        )
 
-        x_eff = processor_eff(x_eff, edge_idx_eff, edge_attr_eff, batch_size=batch_size, efficient_batching=True)
+        x_eff = processor_eff(
+            x_eff, edge_idx_eff, edge_attr_eff, batch_size=batch_size, efficient_batching=True
+        )
         out_eff = decoder_eff(x_eff, features)
 
     print(f"  Final output shape: {out_eff.shape}")
@@ -217,9 +239,9 @@ def test_full_pipeline(resolution_deg=5.0, batch_size=2):
 
 
 if __name__ == "__main__":
-    print("="*80)
+    print("=" * 80)
     print("EFFICIENT BATCHING VALIDATION TESTS")
-    print("="*80)
+    print("=" * 80)
 
     # Test individual components
     encoder_ok = test_encoder_outputs(resolution_deg=5.0, batch_size=2)

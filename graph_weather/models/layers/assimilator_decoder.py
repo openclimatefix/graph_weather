@@ -146,19 +146,23 @@ class AssimilatorDecoder(torch.nn.Module):
             edge_attr = self.edge_encoder(self.graph.edge_attr)  # Encode once
 
             # Split processor features by batch
-            proc_features_batched = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
+            proc_features_batched = einops.rearrange(
+                processor_features, "(b n) f -> b n f", b=batch_size
+            )
 
             batch_outputs = []
             for i in range(batch_size):
                 # Get features for this batch
-                feat_i = torch.cat([proc_features_batched[i], self.latlon_nodes], dim=0)  # [num_h3 + num_latlon, F]
+                feat_i = torch.cat(
+                    [proc_features_batched[i], self.latlon_nodes], dim=0
+                )  # [num_h3 + num_latlon, F]
 
                 # Message passing with single graph (no replication)
                 out_i, _ = self.graph_processor(feat_i, self.graph.edge_index, edge_attr)
 
                 # Decode and extract latlon nodes
                 out_i = self.node_decoder(out_i)
-                out_i = out_i[self.num_h3:]  # Keep only latlon nodes
+                out_i = out_i[self.num_h3 :]  # Keep only latlon nodes
 
                 batch_outputs.append(out_i)
 
@@ -167,7 +171,9 @@ class AssimilatorDecoder(torch.nn.Module):
             return out
         else:
             # Original batching implementation
-            edge_attr = self.edge_encoder(self.graph.edge_attr)  # Update attributes based on distance
+            edge_attr = self.edge_encoder(
+                self.graph.edge_attr
+            )  # Update attributes based on distance
             edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
 
             edge_index = torch.cat(
