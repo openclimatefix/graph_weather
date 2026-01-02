@@ -63,20 +63,49 @@ class Processor(torch.nn.Module):
         if self.use_thermalizer:
             self.thermalizer = ThermalizerLayer(input_dim)
 
-    def forward(self, x: torch.Tensor, edge_index, edge_attr, t: int = 0) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index,
+        edge_attr,
+        t: int = 0,
+        batch_size: int = None,
+        efficient_batching: bool = False,
+    ) -> torch.Tensor:
         """
         Adds features to the encoding graph
 
         Args:
-            x: Torch tensor containing node features
+            x: Torch tensor containing node features [B*N, F] or [N, F]
             edge_index: Connectivity of graph, of shape [2, Num edges] in COO format
-            edge_attr: Edge attribues in [Num edges, Features] shape
+            edge_attr: Edge attributes in [Num edges, Features] shape
             t: Timestep for the thermalizer
+            batch_size: Batch size (required when efficient_batching=True)
+            efficient_batching: If True, process batches separately with shared graph
 
         Returns:
             torch Tensor containing the values of the nodes of the graph
         """
-        out, _ = self.graph_processor(x, edge_index, edge_attr)
-        if self.use_thermalizer:
-            out = self.thermalizer(out, t)
-        return out
+        if efficient_batching and batch_size is not None and batch_size > 1:
+            # Efficient batching: process each batch separately with shared graph
+            # x is [B*N, F], split into B batches of [N, F]
+            num_nodes_per_batch = x.shape[0] // batch_size
+            x_batched = x.view(batch_size, num_nodes_per_batch, -1)
+
+            batch_outputs = []
+            for i in range(batch_size):
+                # Process single batch with shared graph
+                out_i, _ = self.graph_processor(x_batched[i], edge_index, edge_attr)
+                if self.use_thermalizer:
+                    out_i = self.thermalizer(out_i, t)
+                batch_outputs.append(out_i)
+
+            # Concatenate outputs back to [B*N, F] format
+            out = torch.cat(batch_outputs, dim=0)
+            return out
+        else:
+            # Original batching: process all at once with batched graph
+            out, _ = self.graph_processor(x, edge_index, edge_attr)
+            if self.use_thermalizer:
+                out = self.thermalizer(out, t)
+            return out
