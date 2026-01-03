@@ -228,6 +228,9 @@ class AuroraModel(nn.Module):
                 f"Number of points ({points.shape[1]}) exceeds maximum ({self.max_points})"
             )
 
+        if features.dim() != 3:
+            raise ValueError(f"Expected input shape [batch, nodes, features], got {features.shape}")
+
         # Handle mask properly
         if mask is not None:
             mask = mask.float().unsqueeze(-1)

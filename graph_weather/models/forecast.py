@@ -223,6 +223,9 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         Returns:
             The next state in the forecast
         """
+        if features.dim() != 3:
+            raise ValueError(f"Expected input shape [batch, nodes, features], got {features.shape}")
+
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr, t)
         x = self.decoder(x, features[..., : self.feature_dim])

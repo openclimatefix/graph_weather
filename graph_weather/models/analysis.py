@@ -144,6 +144,9 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         Returns:
             The next state in the forecast
         """
+        if features.dim() != 3:
+            raise ValueError(f"Expected input shape [batch, nodes, features], got {features.shape}")
+
         x, edge_idx, edge_attr = self.encoder(features, obs_lat_lon_heights)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features.shape[0])
