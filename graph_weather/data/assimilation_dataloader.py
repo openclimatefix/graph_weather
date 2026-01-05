@@ -41,10 +41,10 @@ class AssimilationDataset(Dataset):
 
     def __getitem__(self, idx):
         """Get a sample from the dataset.
-        
+
         Args:
             idx: Index of the sample to retrieve.
-        
+
         Returns:
             dict: Dictionary containing background, observations, and optionally true state.
         """
@@ -234,10 +234,10 @@ class AssimilationDataModule:
         batch_size=32,
         train_ratio=0.7,
         val_ratio=0.2,
-        test_ratio=0.1
+        test_ratio=0.1,
     ):
         """Initialize the data module.
-            
+
         Args:
             num_samples: Number of samples to generate.
             grid_size: Size of spatial grid.
