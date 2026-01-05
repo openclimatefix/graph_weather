@@ -17,9 +17,8 @@ class DataAssimilationTrainer:
     """
 
     def __init__(self, model, loss_fn, optimizer=None, lr=1e-3, device="cpu", scheduler=None):
-        """
-        Initialize the trainer
-
+        """Initialize the trainer.
+        
         Args:
             model: Data assimilation model
             loss_fn: 3D-Var loss function

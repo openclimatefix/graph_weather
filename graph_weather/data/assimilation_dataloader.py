@@ -40,6 +40,14 @@ class AssimilationDataset(Dataset):
         return len(self.background_states)
 
     def __getitem__(self, idx):
+        """Get a sample from the dataset.
+        
+        Args:
+            idx: Index of the sample to retrieve.
+        
+        Returns:
+            dict: Dictionary containing background, observations, and optionally true state.
+        """
         bg = self.background_states[idx]
         obs = self.observations[idx]
 
@@ -226,8 +234,22 @@ class AssimilationDataModule:
         batch_size=32,
         train_ratio=0.7,
         val_ratio=0.2,
-        test_ratio=0.1,
+        test_ratio=0.1
     ):
+        """Initialize the data module.
+            
+        Args:
+            num_samples: Number of samples to generate.
+            grid_size: Size of spatial grid.
+            num_channels: Number of variables/channels.
+            bg_error_std: Standard deviation of background errors.
+            obs_error_std: Standard deviation of observation errors.
+            obs_fraction: Fraction of grid points that have observations.
+            batch_size: Size of batches.
+            train_ratio: Fraction of data for training.
+            val_ratio: Fraction of data for validation.
+            test_ratio: Fraction of data for testing.
+        """
         self.num_samples = num_samples
         self.grid_size = grid_size
         self.num_channels = num_channels
@@ -259,10 +281,13 @@ class AssimilationDataModule:
         )
 
     def train_dataloader(self):
+        """Return the training data loader."""
         return self.train_loader
 
     def val_dataloader(self):
+        """Return the validation data loader."""
         return self.val_loader
 
     def test_dataloader(self):
+        """Return the test data loader."""
         return self.test_loader
