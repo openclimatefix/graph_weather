@@ -36,6 +36,7 @@ class AssimilationDataset(Dataset):
             ), "True states must have same length as background states"
 
     def __len__(self):
+        """Return the length of the dataset."""
         return len(self.background_states)
 
     def __getitem__(self, idx):
