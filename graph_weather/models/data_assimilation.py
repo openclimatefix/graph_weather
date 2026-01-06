@@ -8,7 +8,6 @@ the 3D-Var cost function without using ground-truth labels.
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class ThreeDVarLoss(nn.Module):
@@ -208,81 +207,6 @@ class DataAssimilationModel(nn.Module):
 
         return analysis
 
-
-class SimpleDataAssimilationModel(nn.Module):
-    """
-    Simplified version that works with 1D/2D spatial grids
-    """
-
-    def __init__(self, grid_size, num_channels=1, hidden_dim=64, num_layers=2):
-        """Initialize a simple data assimilation model for grid data.
-
-        Args:
-            grid_size: Size of the spatial grid (height, width) or (size,)
-            num_channels: Number of channels/variables
-            hidden_dim: Hidden dimension for processing
-            num_layers: Number of processing layers
-        """
-        super(SimpleDataAssimilationModel, self).__init__()
-
-        if isinstance(grid_size, (tuple, list)):
-            self.grid_shape = grid_size
-            self.grid_size = np.prod(grid_size)
-        else:
-            self.grid_shape = (grid_size,)
-            self.grid_size = grid_size
-
-        self.num_channels = num_channels
-        self.input_features = self.grid_size * num_channels
-
-        # Simple CNN-based architecture for spatial data
-        layers = []
-        layers.append(nn.Conv1d(2 * num_channels, hidden_dim, kernel_size=3, padding=1))
-        layers.append(nn.ReLU())
-
-        for _ in range(num_layers - 1):
-            layers.append(nn.Conv1d(hidden_dim, hidden_dim, kernel_size=3, padding=1))
-            layers.append(nn.ReLU())
-
-        layers.append(nn.Conv1d(hidden_dim, num_channels, kernel_size=3, padding=1))
-
-        self.conv_layers = nn.Sequential(*layers)
-
-    def forward(self, background, observations):
-        """Forward pass for grid data.
-
-        Args:
-            background: Background state [batch, channels, ...spatial_dims]
-            observations: Observations [batch, channels, ...spatial_dims]
-
-        Returns:
-            analysis: Analysis state [batch, channels, ...spatial_dims]
-        """
-        batch_size = background.size(0)
-
-        # Reshape for 1D convolution if needed
-        if len(background.shape) > 3:  # [batch, channels, height, width]
-            bg_flat = background.view(batch_size, self.num_channels, -1)
-            obs_flat = observations.view(batch_size, self.num_channels, -1)
-        else:  # [batch, channels, length]
-            bg_flat = background
-            obs_flat = observations
-
-        # Concatenate along channel dimension
-        combined = torch.cat([bg_flat, obs_flat], dim=1)  # [batch, 2*channels, spatial]
-
-        # Process through convolutional layers
-        analysis_flat = self.conv_layers(combined)
-
-        # Reshape back to original spatial dimensions
-        if len(background.shape) > 3:
-            analysis = analysis_flat.view(batch_size, self.num_channels, *self.grid_shape)
-        else:
-            analysis = analysis_flat
-
-        return analysis
-
-
 def create_observation_operator(grid_size, obs_fraction=0.5, obs_locations=None):
     """
     Create a simple observation operator H that selects a subset of grid points
@@ -312,37 +236,3 @@ def create_observation_operator(grid_size, obs_fraction=0.5, obs_locations=None)
 
     return H
 
-
-def generate_synthetic_data(batch_size=32, grid_size=(10, 10), num_channels=1):
-    """
-    Generate synthetic background and observation data for testing
-
-    Args:
-        batch_size: Number of samples in batch
-        grid_size: Size of spatial grid
-        num_channels: Number of variables/channels
-
-    Returns:
-        background: Background state
-        observations: Observations
-        true_state: True state (for evaluation only, not used in training)
-    """
-    # Generate a true state with some spatial correlation
-    true_state = torch.randn(batch_size, num_channels, *grid_size) * 2
-    # Apply some smoothing to create spatial correlation
-    if len(grid_size) == 2:
-        # Apply a simple smoothing kernel
-        kernel = torch.ones(1, 1, 3, 3) / 9
-        for c in range(num_channels):
-            smoothed = F.conv2d(true_state[:, c : c + 1], kernel, padding=1, groups=1)
-            true_state[:, c : c + 1] = smoothed
-
-    # Create background as true state with some error
-    background_error = torch.randn_like(true_state) * 0.5
-    background = true_state + background_error
-
-    # Create observations with observation error
-    observation_error = torch.randn_like(true_state) * 0.3
-    observations = true_state + observation_error
-
-    return background, observations, true_state
