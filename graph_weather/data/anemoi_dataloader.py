@@ -1,3 +1,9 @@
+"""Anemoi dataset integration for graph_weather.
+
+This module provides integration with Anemoi datasets for use with the graph_weather
+framework. It handles loading, preprocessing, and normalization of meteorological data.
+"""
+
 import logging
 
 import numpy as np
@@ -31,6 +37,18 @@ class AnemoiDataset(Dataset):
         max_samples: int = None,
         **kwargs,
     ):
+        """Initialize the AnemoiDataset.
+        
+        Args:
+            dataset_name: Name of the Anemoi dataset (e.g., "era5-o48-2020-2021-6h-v1")
+            features: List of atmospheric variables to use
+            means: Dict of means for each feature (required)
+            stds: Dict of stddevs for each feature (required)
+            time_range: Optional tuple of (start_date, end_date)
+            time_step: Time step between input and target (default: 1)
+            max_samples: Maximum number of samples to use (for testing)
+            **kwargs: Additional arguments for dataset configuration
+        """
         super().__init__()
 
         self.features = features

@@ -1,5 +1,7 @@
-"""
-aurora/model.py - Core implementation of Aurora model for unstructured point data
+"""Core implementation of Aurora model for unstructured point data.
+
+This module contains the core Aurora model components for processing unstructured
+point data in earth system science applications.
 """
 
 from typing import Optional
@@ -9,7 +11,20 @@ import torch.nn as nn
 
 
 class PointEncoder(nn.Module):
+    """Point Encoder for processing unstructured point data.
+    
+    This encoder handles unstructured point data by combining input features
+    with coordinate information.
+    """
+    
     def __init__(self, input_features: int, embed_dim: int, max_seq_len: int = 1024):
+        """Initialize the PointEncoder.
+        
+        Args:
+            input_features (int): Number of input features per point.
+            embed_dim (int): Embedding dimension.
+            max_seq_len (int): Maximum sequence length.
+        """
         super().__init__()
         self.input_dim = input_features + 2  # Account for lat/lon coordinates
         self.max_seq_len = max_seq_len
@@ -36,6 +51,15 @@ class PointEncoder(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
 
     def forward(self, points: torch.Tensor, features: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the PointEncoder.
+        
+        Args:
+            points: Point coordinates tensor
+            features: Point features tensor
+        
+        Returns:
+            torch.Tensor: Encoded tensor
+        """
         num_points = points.shape[1]
         if num_points > self.max_seq_len:
             points = points[:, : self.max_seq_len, :]
@@ -61,18 +85,30 @@ class PointEncoder(nn.Module):
 
 
 class PointDecoder(nn.Module):
-    """Decodes latent representations back to point features."""
+    """Point Decoder for reconstructing point features from latent representations.
+
+    This decoder takes the processed latent embeddings and reconstructs the output features
+    for each point in the point cloud.
+    """
 
     def __init__(self, embed_dim: int, output_features: int):
+        """Initialize the PointDecoder.
+        
+        Args:
+            embed_dim: Embedding dimension
+            output_features: Number of output features
+        """
         super().__init__()
         self.decoder = nn.Sequential(
             nn.Linear(embed_dim, embed_dim), nn.ReLU(), nn.Linear(embed_dim, output_features)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
+        """Forward pass of the PointDecoder.
+        
         Args:
             x: (batch_size, num_points, embed_dim) tensor
+        
         Returns:
             (batch_size, num_points, output_features) tensor
         """
@@ -80,16 +116,28 @@ class PointDecoder(nn.Module):
 
 
 class PointCloudProcessor(nn.Module):
-    """Processes point cloud data using self-attention layers."""
+    """Processes point cloud data using self-attention layers.
+
+    This processor applies multiple layers of self-attention to the encoded point cloud
+    features to capture spatial and temporal relationships.
+    """
 
     def __init__(self, embed_dim: int, num_layers: int = 4):
+        """Initialize the PointCloudProcessor.
+        
+        Args:
+            embed_dim: Embedding dimension
+            num_layers: Number of layers
+        """
         super().__init__()
         self.layers = nn.ModuleList([SelfAttentionLayer(embed_dim) for _ in range(num_layers)])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
+        """Forward pass of the PointCloudProcessor.
+        
         Args:
             x: (batch_size, num_points, embed_dim) tensor
+        
         Returns:
             (batch_size, num_points, embed_dim) tensor after processing
         """
@@ -99,7 +147,18 @@ class PointCloudProcessor(nn.Module):
 
 
 class SelfAttentionLayer(nn.Module):
+    """Self-attention layer for processing point cloud features.
+
+    This layer applies multi-head self-attention followed by a feed-forward network
+    with residual connections and layer normalization.
+    """
+    
     def __init__(self, embed_dim: int):
+        """Initialize the SelfAttentionLayer.
+        
+        Args:
+            embed_dim: Embedding dimension for attention
+        """
         super().__init__()
         self.attention = nn.MultiheadAttention(embed_dim, num_heads=8)
         self.norm1 = nn.LayerNorm(embed_dim)
@@ -109,6 +168,14 @@ class SelfAttentionLayer(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the SelfAttentionLayer.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Output tensor after attention and normalization
+        """
         # First attention block with residual
         x_t = x.transpose(0, 1)
         attended, _ = self.attention(x_t, x_t, x_t)
@@ -121,7 +188,20 @@ class SelfAttentionLayer(nn.Module):
 
 
 class EarthSystemLoss(nn.Module):
+    """Combined loss function for earth system science predictions.
+
+    This loss function combines MSE loss, spatial correlation loss, and physical
+    consistency loss to guide the model toward physically meaningful predictions.
+    """
+    
     def __init__(self, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.2):
+        """Initialize the EarthSystemLoss.
+        
+        Args:
+            alpha: Weight for MSE loss
+            beta: Weight for spatial correlation loss
+            gamma: Weight for physical consistency loss
+        """
         super().__init__()
         self.alpha = alpha
         self.beta = beta
@@ -130,6 +210,16 @@ class EarthSystemLoss(nn.Module):
     def spatial_correlation_loss(
         self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor
     ) -> torch.Tensor:
+        """Compute spatial correlation loss.
+        
+        Args:
+            pred: Predicted values
+            target: Target values
+            points: Point coordinates
+        
+        Returns:
+            torch.Tensor: Spatial correlation loss value
+        """
         batch_size, num_points, _ = points.shape
         points_flat = points.view(-1, 2)
 
@@ -169,6 +259,16 @@ class EarthSystemLoss(nn.Module):
         return physical_loss
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor) -> dict:
+        """Forward pass of the EarthSystemLoss.
+        
+        Args:
+            pred: Predicted values
+            target: Target values
+            points: Point coordinates
+        
+        Returns:
+            Dictionary containing different loss components
+        """
         mse_loss = torch.nn.functional.mse_loss(pred, target)
         spatial_loss = self.spatial_correlation_loss(pred, target, points)
         physical_loss = self.physical_loss(pred, points)
@@ -185,6 +285,12 @@ class EarthSystemLoss(nn.Module):
 
 
 class AuroraModel(nn.Module):
+    """Aurora model for processing unstructured point cloud data in earth system science.
+
+    This model combines point encoding, processing with attention mechanisms, and
+    decoding to produce predictions for earth system variables at unstructured points.
+    """
+    
     def __init__(
         self,
         input_features: int,
@@ -195,6 +301,17 @@ class AuroraModel(nn.Module):
         max_seq_len: int = 1024,
         use_checkpointing: bool = False,
     ):
+        """Initialize the Aurora model.
+        
+        Args:
+            input_features: Number of input features per point
+            output_features: Number of output features per point
+            latent_dim: Dimension of the latent space
+            num_layers: Number of processing layers
+            max_points: Maximum number of points allowed
+            max_seq_len: Maximum sequence length
+            use_checkpointing: Whether to use gradient checkpointing
+        """
         super().__init__()
 
         self.max_points = max_points
@@ -223,6 +340,16 @@ class AuroraModel(nn.Module):
     def forward(
         self, points: torch.Tensor, features: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
+        """Forward pass of the Aurora model.
+        
+        Args:
+            points: Point coordinates tensor
+            features: Point feature tensor
+            mask: Optional mask for points
+        
+        Returns:
+            torch.Tensor: Model output predictions
+        """
         if points.shape[1] > self.max_points:
             raise ValueError(
                 f"Number of points ({points.shape[1]}) exceeds maximum ({self.max_points})"

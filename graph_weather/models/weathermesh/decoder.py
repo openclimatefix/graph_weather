@@ -15,6 +15,18 @@ from graph_weather.models.weathermesh.layers import ConvUpBlock
 
 @dataclass
 class WeatherMeshDecoderConfig:
+    """Configuration for WeatherMeshDecoder.
+    
+    Args:
+        latent_dim: Dimension of the latent space
+        output_channels_2d: Number of output channels for 2D surface data
+        output_channels_3d: Number of output channels for 3D pressure level data
+        n_conv_blocks: Number of convolutional blocks
+        hidden_dim: Hidden dimension for the decoder
+        kernel_size: Kernel size for the neighborhood attention
+        num_heads: Number of attention heads
+        num_transformer_layers: Number of transformer layers
+    """
     latent_dim: int
     output_channels_2d: int
     output_channels_3d: int
@@ -25,14 +37,32 @@ class WeatherMeshDecoderConfig:
     num_transformer_layers: int
 
     @staticmethod
-    def from_json(json: dict) -> "WeatherMeshDecoder":
+    def from_json(json: dict) -> "WeatherMeshDecoderConfig":
+        """Create a WeatherMeshDecoderConfig from a JSON dictionary.
+        
+        Args:
+            json: Dictionary containing configuration values
+        
+        Returns:
+            WeatherMeshDecoderConfig: Config object
+        """
         return dacite.from_dict(data_class=WeatherMeshDecoderConfig, data=json)
 
     def to_json(self) -> dict:
+        """Convert the config to a JSON dictionary.
+        
+        Returns:
+            dict: Dictionary representation of the config
+        """
         return dacite.asdict(self)
 
 
 class WeatherMeshDecoder(nn.Module):
+    """WeatherMesh decoder that transforms latent representations to 2D and 3D weather data.
+    
+    This decoder uses transformer layers followed by convolutional upsampling blocks
+    to decode latent representations to surface (2D) and pressure level (3D) weather data.
+    """
     def __init__(
         self,
         latent_dim,
@@ -44,6 +74,18 @@ class WeatherMeshDecoder(nn.Module):
         num_heads: int = 8,
         num_transformer_layers: int = 3,
     ):
+        """Initialize the WeatherMeshDecoder.
+        
+        Args:
+            latent_dim: Dimension of the latent space
+            output_channels_2d: Number of output channels for 2D surface data
+            output_channels_3d: Number of output channels for 3D pressure level data
+            n_conv_blocks: Number of convolutional blocks
+            hidden_dim: Hidden dimension for the decoder
+            kernel_size: Kernel size for the neighborhood attention
+            num_heads: Number of attention heads
+            num_transformer_layers: Number of transformer layers
+        """
         super().__init__()
 
         # Transformer layers for initial decoding
@@ -83,6 +125,16 @@ class WeatherMeshDecoder(nn.Module):
         )
 
     def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Decode latent representations to 2D and 3D weather data.
+        
+        Args:
+            latent: Latent tensor of shape (B, D, H, W, C) where B is batch size,
+                D is depth (vertical levels), H and W are height and width, and C is channels
+        
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Surface features (2D) and pressure
+                level features (3D)
+        """
         # Needs to be (B,D,H,W,C) with Batch, Depth (vertical levels), Height, Width, Channels
         # Apply transformer layers
         for transformer in self.transformer_layers:

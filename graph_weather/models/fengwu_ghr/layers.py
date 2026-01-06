@@ -1,3 +1,8 @@
+"""FengWu GHR model layers.
+
+Contains various neural network layers used in the FengWu GHR weather forecasting model.
+"""
+
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
@@ -7,12 +12,32 @@ from torch_geometric.utils import scatter
 
 
 def pair(t):
+    """Convert a value to a tuple if it's not already a tuple.
+    
+    Args:
+        t: Input value
+    
+    Returns:
+        tuple: The value as a tuple
+    """
     return t if isinstance(t, tuple) else (t, t)
 
 
 def knn_interpolate(
     x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor, k: int = 4, num_workers: int = 1
 ):
+    """Perform k-nearest neighbors interpolation.
+    
+    Args:
+        x: Input tensor
+        pos_x: Source positions
+        pos_y: Target positions
+        k: Number of nearest neighbors
+        num_workers: Number of workers for computation
+    
+    Returns:
+        torch.Tensor: Interpolated tensor
+    """
     with torch.no_grad():
         assign_index = knn(pos_x, pos_y, k, num_workers=num_workers)
         y_idx, x_idx = assign_index[0], assign_index[1]
@@ -32,6 +57,18 @@ def knn_interpolate(
 
 
 def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
+    """Generate 2D sine-cosine positional embeddings.
+    
+    Args:
+        h: Height of the grid
+        w: Width of the grid
+        dim: Dimension of the embeddings
+        temperature: Temperature parameter for the sine-cosine encoding
+        dtype: Data type of the embeddings
+    
+    Returns:
+        torch.Tensor: Positional embeddings tensor
+    """
     y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
     assert (dim % 4) == 0, "feature dimension must be multiple of 4 for sincos emb"
     omega = torch.arange(dim // 4) / (dim // 4 - 1)
@@ -47,7 +84,14 @@ def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
 
 
 class FeedForward(nn.Module):
+    """Feedforward neural network layer with LayerNorm and GELU activation."""
     def __init__(self, dim, hidden_dim):
+        """Initialize the FeedForward layer.
+        
+        Args:
+            dim: Input and output dimension
+            hidden_dim: Hidden layer dimension
+        """
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -57,11 +101,27 @@ class FeedForward(nn.Module):
         )
 
     def forward(self, x):
+        """Apply the feedforward transformation to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Transformed tensor
+        """
         return self.net(x)
 
 
 class Attention(nn.Module):
+    """Multi-head attention mechanism for transformer models."""
     def __init__(self, dim, heads=8, dim_head=64):
+        """Initialize the Attention layer.
+        
+        Args:
+            dim: Input dimension
+            heads: Number of attention heads
+            dim_head: Dimension of each attention head
+        """
         super().__init__()
         inner_dim = dim_head * heads
         self.heads = heads
@@ -74,6 +134,14 @@ class Attention(nn.Module):
         self.to_out = nn.Linear(inner_dim, dim, bias=False)
 
     def forward(self, x):
+        """Apply the attention mechanism to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Attention output
+        """
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
@@ -89,9 +157,22 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
+    """Transformer model with attention and feedforward layers."""
     def __init__(
         self, dim, depth, heads, dim_head, mlp_dim, res=False, image_size=None, scale_factor=None
     ):
+        """Initialize the Transformer model.
+        
+        Args:
+            dim: Input dimension
+            depth: Number of transformer layers
+            heads: Number of attention heads
+            dim_head: Dimension of each attention head
+            mlp_dim: Hidden dimension for feedforward layers
+            res: Whether to use residual connections
+            image_size: Size of input images
+            scale_factor: Factor for scaling operations
+        """
         super().__init__()
         self.depth = depth
         self.res = res
@@ -136,6 +217,14 @@ class Transformer(nn.Module):
                 )
 
     def forward(self, x):
+        """Apply the transformer to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Transformed tensor
+        """
         for i in range(self.depth):
             attn, ff = self.layers[i]
             x = attn(x) + x
@@ -149,6 +238,7 @@ class Transformer(nn.Module):
 
 
 class ImageMetaModel(nn.Module):
+    """Image model that uses transformer architecture for image processing."""
     def __init__(
         self,
         *,
@@ -163,6 +253,20 @@ class ImageMetaModel(nn.Module):
         scale_factor=None,
         **kwargs,
     ):
+        """Initialize the ImageMetaModel.
+        
+        Args:
+            image_size: Size of input images
+            patch_size: Size of patches to divide the image into
+            depth: Number of transformer layers
+            heads: Number of attention heads
+            mlp_dim: Hidden dimension for feedforward layers
+            channels: Number of input channels
+            dim_head: Dimension of each attention head
+            res: Whether to use residual connections
+            scale_factor: Factor for scaling operations
+            **kwargs: Additional keyword arguments
+        """
         super().__init__()
         # TODO this can probably be done better
         self.image_size = image_size
@@ -229,6 +333,14 @@ class ImageMetaModel(nn.Module):
         )
 
     def forward(self, x):
+        """Apply the image model to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Processed tensor
+        """
         assert x.shape[1] == self.channels, "Wrong number of channels"
         device = x.device
         dtype = x.dtype
@@ -243,7 +355,14 @@ class ImageMetaModel(nn.Module):
 
 
 class WrapperImageModel(nn.Module):
+    """Wrapper for ImageMetaModel with batching and debatching functionality."""
     def __init__(self, image_meta_model: ImageMetaModel, scale_factor):
+        """Initialize the WrapperImageModel.
+        
+        Args:
+            image_meta_model: ImageMetaModel instance to wrap
+            scale_factor: Factor for scaling operations
+        """
         super().__init__()
         s_h, s_w = pair(scale_factor)
         self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w", s_h=s_h, s_w=s_w)
@@ -256,6 +375,14 @@ class WrapperImageModel(nn.Module):
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)", s_h=s_h, s_w=s_w)
 
     def forward(self, x):
+        """Apply the wrapped image model to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Processed tensor
+        """
         x = self.batcher(x)
         x = self.image_meta_model(x)
         x = self.debatcher(x)
@@ -263,6 +390,7 @@ class WrapperImageModel(nn.Module):
 
 
 class MetaModel(nn.Module):
+    """Meta model that uses interpolation for spatial transformation."""
     def __init__(
         self,
         lat_lons: list,
@@ -275,6 +403,18 @@ class MetaModel(nn.Module):
         channels,
         dim_head=64,
     ):
+        """Initialize the MetaModel.
+        
+        Args:
+            lat_lons: List of latitude and longitude coordinates
+            image_size: Size of input images
+            patch_size: Size of patches to divide the image into
+            depth: Number of transformer layers
+            heads: Number of attention heads
+            mlp_dim: Hidden dimension for feedforward layers
+            channels: Number of input channels
+            dim_head: Dimension of each attention head
+        """
         super().__init__()
         self.i_h, self.i_w = pair(image_size)
 
@@ -295,6 +435,14 @@ class MetaModel(nn.Module):
         )
 
     def forward(self, x):
+        """Apply the meta model to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Processed tensor
+        """
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
@@ -309,7 +457,15 @@ class MetaModel(nn.Module):
 
 
 class WrapperMetaModel(nn.Module):
+    """Wrapper for MetaModel with batching and debatching functionality."""
     def __init__(self, lat_lons: list, meta_model: MetaModel, scale_factor):
+        """Initialize the WrapperMetaModel.
+        
+        Args:
+            lat_lons: List of latitude and longitude coordinates
+            meta_model: MetaModel instance to wrap
+            scale_factor: Factor for scaling operations
+        """
         super().__init__()
         s_h, s_w = pair(scale_factor)
         self.i_h, self.i_w = meta_model.i_h * s_h, meta_model.i_w * s_w
@@ -331,6 +487,14 @@ class WrapperMetaModel(nn.Module):
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)", s_h=s_h, s_w=s_w)
 
     def forward(self, x):
+        """Apply the wrapped meta model to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Processed tensor
+        """
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
@@ -349,10 +513,10 @@ class WrapperMetaModel(nn.Module):
 
 
 class LoRALayer(nn.Module):
+    """Low-Rank Adaptation layer for efficient model fine-tuning."""
     def __init__(self, linear_layer: nn.Module, r: int):
-        """
-        Initialize LoRALayer.
-
+        """Initialize LoRALayer.
+        
         Args:
             linear_layer (nn.Module): Linear layer to be transformed.
             r (int): rank of the low-rank matrix.
@@ -365,15 +529,23 @@ class LoRALayer(nn.Module):
         self.linear_layer = linear_layer
 
     def forward(self, x):
+        """Apply LoRA transformation to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Transformed tensor
+        """
         out = self.linear_layer(x) + self.B @ self.A @ x
         return out
 
 
 class LoRAModule(nn.Module):
+    """Module that applies LoRA transformations to all linear layers in a model."""
     def __init__(self, model, r=4):
-        """
-        Initialize LoRAModule.
-
+        """Initialize LoRAModule.
+        
         Args:
             model (nn.Module): Model to be modified with LoRA layers.
             r (int, optional): Rank of LoRA layers. Defaults to 4.
@@ -387,4 +559,12 @@ class LoRAModule(nn.Module):
         self.model = model
 
     def forward(self, x):
+        """Apply the LoRA-modified model to the input.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Model output
+        """
         return self.model(x)

@@ -19,6 +19,7 @@ from graph_weather.graph_weather.models.visualization import (
 
 
 def main():
+    """Main function to demonstrate the self-supervised data assimilation framework."""
     print("Self-Supervised Data Assimilation Example")
     print("=" * 50)
 
@@ -158,9 +159,8 @@ def main():
     print(
         f"✓ Analysis improvement over background: {comparison['analysis_improvement_over_bg']:.2f}%"
     )
-    print(
-        f"✓ Analysis improvement over observations: {comparison['analysis_improvement_over_obs']:.2f}%"
-    )
+    improvement = comparison['analysis_improvement_over_obs']
+    print(f"✓ Analysis improvement over observations: {improvement:.2f}%")
 
     print("\nThe model successfully learned to combine background and observations")
     print("optimally to produce better analysis states than either input alone!")

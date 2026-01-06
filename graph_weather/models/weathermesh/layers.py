@@ -8,8 +8,8 @@ import torch.nn.functional as F
 
 
 class ConvDownBlock(nn.Module):
-    """
-    Downsampling convolutional block with residual connection.
+    """Downsampling convolutional block with residual connection.
+    
     Can handle both 2D and 3D inputs.
     """
 
@@ -24,6 +24,18 @@ class ConvDownBlock(nn.Module):
         groups: int = 1,
         activation: nn.Module = nn.GELU(),
     ):
+        """Initialize the ConvDownBlock.
+        
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            is_3d: Whether to use 3D convolutions
+            kernel_size: Size of the convolutional kernel
+            stride: Stride for the convolution
+            padding: Padding for the convolution
+            groups: Number of groups for grouped convolution
+            activation: Activation function to use
+        """
         super().__init__()
 
         Conv = nn.Conv3d if is_3d else nn.Conv2d
@@ -58,6 +70,14 @@ class ConvDownBlock(nn.Module):
         self.bn_down = Norm(out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the ConvDownBlock.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Output tensor after downsampling and residual connection
+        """
         identity = self.bn_down(self.downsample(x))
 
         out = self.conv1(x)
@@ -74,8 +94,7 @@ class ConvDownBlock(nn.Module):
 
 
 class ConvUpBlock(nn.Module):
-    """
-    Upsampling convolutional block with residual connection. same as downBlock but reversed.
+    """Upsampling convolutional block with residual connection. same as downBlock but reversed.
     """
 
     def __init__(
@@ -89,6 +108,18 @@ class ConvUpBlock(nn.Module):
         groups: int = 1,
         activation: nn.Module = nn.GELU(),
     ):
+        """Initialize the ConvUpBlock.
+        
+        Args:
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            is_3d: Whether to use 3D convolutions
+            kernel_size: Size of the convolutional kernel
+            scale_factor: Scale factor for upsampling
+            padding: Padding for the convolution
+            groups: Number of groups for grouped convolution
+            activation: Activation function to use
+        """
         super().__init__()
 
         Conv = nn.Conv3d if is_3d else nn.Conv2d
@@ -125,6 +156,14 @@ class ConvUpBlock(nn.Module):
         self.bn_up = Norm(out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the ConvUpBlock.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Output tensor after upsampling and residual connection
+        """
         # Upsample input
         if self.is_3d:
             x = F.interpolate(

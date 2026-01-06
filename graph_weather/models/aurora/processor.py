@@ -1,5 +1,5 @@
-"""
-Perceiver Transformer Processor:
+"""Perceiver Transformer Processor.
+
 - Takes encoded features and processes them using latent space mapping.
 - Uses a latent-space bottleneck to compress input dimensions.
 - Provides an efficient way to extract long-range dependencies.
@@ -15,6 +15,10 @@ import torch.nn as nn
 
 @dataclass
 class ProcessorConfig:
+    """Configuration class for the Processor.
+    
+    Contains all the parameters needed to configure the PerceiverProcessor.
+    """
     input_dim: int = 256  # Match Swin3D output
     latent_dim: int = 512
     d_model: int = 256  # Match input_dim for consistency
@@ -43,7 +47,18 @@ class ProcessorConfig:
 
 
 class PerceiverProcessor(nn.Module):
+    """Perceiver Processor for processing encoded features using latent space mapping.
+
+    This processor takes encoded features and processes them using a transformer-based
+    architecture with latent space bottleneck for efficient computation.
+    """
+    
     def __init__(self, config: Optional[ProcessorConfig] = None):
+        """Initialize the PerceiverProcessor.
+        
+        Args:
+            config: Processor configuration
+        """
         super().__init__()
         self.config = config or ProcessorConfig()
 
@@ -66,6 +81,15 @@ class PerceiverProcessor(nn.Module):
         self.output_projection = nn.Linear(self.config.d_model, self.config.latent_dim)
 
     def forward(self, x, attention_mask=None):
+        """Forward pass for the perceiver processor.
+        
+        Args:
+            x (torch.Tensor): Input tensor to process.
+            attention_mask (torch.Tensor, optional): Attention mask for padded sequences.
+        
+        Returns:
+            torch.Tensor: Processed tensor after transformer encoding and pooling.
+        """
         # Handle 4D input using einops for clearer reshaping
         if len(x.shape) == 4:
             # Rearrange from (batch, seq, height, width) to (batch, seq*height*width, features)

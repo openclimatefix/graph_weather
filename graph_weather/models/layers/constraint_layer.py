@@ -10,10 +10,9 @@ import torch.nn as nn
 
 
 class PhysicalConstraintLayer(nn.Module):
-    """
+    """Applies physical constraints to network outputs given low-resolution inputs.
 
-    This module implements several constraint types on the network’s intermediate outputs ỹ,
-    given the corresponding low-resolution input x. The following equations are implemented
+    The following equations are implemented
     (with all operations acting per patch – here, a patch is the full grid of H×W pixels):
 
     Additive constraint:
@@ -28,6 +27,7 @@ class PhysicalConstraintLayer(nn.Module):
     We assume that both the intermediate outputs and the low-resolution reference are 4D
     tensors in grid format, with shape [B, C, H, W], where n = H*W is the number of pixels
     (or nodes) in a patch.
+    
     """
 
     def __init__(
@@ -98,14 +98,15 @@ class PhysicalConstraintLayer(nn.Module):
         return self.model.grid_to_graph(result)
 
     def additive_constraint(self, hr, lr):
-        """Enforces local conservation using an additive correction:
+        """Enforces local conservation using an additive correction.
+    
         y = ỹ + ( x - avg(ỹ) )
         where avg(ỹ) is computed per patch (via an average-pooling layer).
-
-        For the additive constraint we follow the paper’s formulation using a Kronecker
+    
+        For the additive constraint we follow the paper's formulation using a Kronecker
         product to expand the discrepancy between the low-resolution field and the
         average of the high-resolution output.
-
+    
         hr: high-resolution tensor [B, C, H_hr, W_hr]
         lr: low-resolution tensor [B, C, h_lr, w_lr]
         (with H_hr = upsampling_factor * h_lr & W_hr = upsampling_factor * w_lr)

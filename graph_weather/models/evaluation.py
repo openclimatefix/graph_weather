@@ -121,9 +121,9 @@ def compute_spatial_metrics(predictions, targets):
 
 
 def compute_information_gain(analysis, background, true_state):
-    """
-    Compute information gain from data assimilation
-    Measures how much better the analysis is compared to background
+    """Compute information gain from data assimilation.
+
+    Measures how much better the analysis is compared to background.
 
     Args:
         analysis: Analysis state from model
@@ -148,6 +148,12 @@ class DataAssimilationEvaluator:
     """
 
     def __init__(self, model, device="cpu"):
+        """Initialize the evaluator.
+        
+        Args:
+            model: Data assimilation model to evaluate
+            device: Device to run evaluation on
+        """
         self.model = model
         self.device = device
 

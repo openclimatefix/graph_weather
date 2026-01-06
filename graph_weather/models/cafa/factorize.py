@@ -1,6 +1,6 @@
-"""
-Core components for the Factorized Attention mechanism,
-based on the principles of Axial Attention.
+"""Core components for the Factorized Attention mechanism.
+
+Based on the principles of Axial Attention.
 """
 
 from einops import rearrange
@@ -8,8 +8,8 @@ from torch import einsum, nn
 
 
 def FeedFoward(dim, multiply=4, dropout=0.0):
-    """
-    Standard feed-forward block used in transformer architecture.
+    """Standard feed-forward block used in transformer architecture.
+
     Consists of 2 linear layers with GELU activation and dropouts, in between.
     """
     inner_dim = int(dim * multiply)
@@ -23,12 +23,20 @@ def FeedFoward(dim, multiply=4, dropout=0.0):
 
 
 class AxialAttention(nn.Module):
-    """
-    Performs multi-head self-attention on a single axis of a 2D feature map.
+    """Performs multi-head self-attention on a single axis of a 2D feature map.
+
     Core building block for Factorized Attention.
     """
 
     def __init__(self, dim, heads, dim_head=64, dropout=0.0):
+        """Initialize the AxialAttention module.
+        
+        Args:
+            dim: Input dimension
+            heads: Number of attention heads
+            dim_head: Dimension of each attention head
+            dropout: Dropout rate
+        """
         super().__init__()
         self.heads = heads
         self.scale = dim_head**-0.5
@@ -39,8 +47,8 @@ class AxialAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, axis):
-        """
-        Forward pass for axial attention
+        """Forward pass for axial attention.
+        
         Args:
             x: Input tensor of shape (batch, height, width, channels)
             axis: Axis to perform attention on (1 for height, 2 for width)
@@ -80,12 +88,20 @@ class AxialAttention(nn.Module):
 
 
 class FactorizedAttention(nn.Module):
-    """
-    Combines 2 AxialAttention blocks to perform full factorized attention
+    """Combines 2 AxialAttention blocks to perform full factorized attention
+
     over a 2D feature map, first along height then along width.
     """
 
     def __init__(self, dim, heads, dim_head=64, dropout=0.0):
+        """Initialize the FactorizedAttention module.
+        
+        Args:
+            dim: Input dimension
+            heads: Number of attention heads
+            dim_head: Dimension of each attention head
+            dropout: Dropout rate
+        """
         super().__init__()
         self.attn_height = AxialAttention(dim, heads, dim_head, dropout)
         self.attn_width = AxialAttention(dim, heads, dim_head, dropout)
@@ -93,7 +109,8 @@ class FactorizedAttention(nn.Module):
         self.norm2 = nn.LayerNorm(dim)
 
     def forward(self, x):
-        """
+        """Forward pass for factorized attention.
+        
         Args:
             x: Input tensor of shape (batch, height, width, channels)
         """
@@ -103,11 +120,20 @@ class FactorizedAttention(nn.Module):
 
 
 class FactorizedTransformerBlock(nn.Module):
-    """
-    Standalone transformer block using Factorized attention
+    """Standalone transformer block using Factorized attention.
+
     """
 
     def __init__(self, dim, heads, dim_head=64, feedforward_multiplier=4, dropout=0.0):
+        """Initialize the FactorizedTransformerBlock module.
+        
+        Args:
+            dim: Input dimension
+            heads: Number of attention heads
+            dim_head: Dimension of each attention head
+            feedforward_multiplier: Multiplier for feedforward network
+            dropout: Dropout rate
+        """
         super().__init__()
         self.attn = FactorizedAttention(dim, heads, dim_head, dropout)
         self.ffn = FeedFoward(dim, feedforward_multiplier, dropout)
@@ -115,7 +141,8 @@ class FactorizedTransformerBlock(nn.Module):
         self.norm2 = nn.LayerNorm(dim)
 
     def forward(self, x):
-        """
+        """Forward pass for factorized transformer block.
+        
         Args:
             x: Input tensor of shape (batch, height, width, channels)
         """

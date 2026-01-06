@@ -67,6 +67,7 @@ class Encoder(torch.nn.Module):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Whether to use gradient checkpointing to use less memory
+            efficient_batching: Whether to use efficient batching to avoid graph replication
         """
         super().__init__()
         self.use_checkpointing = use_checkpointing
@@ -207,10 +208,13 @@ class Encoder(torch.nn.Module):
             )  # Update attributes based on distance
             # Copy attributes batch times
             edge_attr = einops.repeat(edge_attr, "e f -> (repeat e) f", repeat=batch_size)
-            # Expand edge index correct number of times while adding the proper number to the edge index
+            # Expand edge index correct number of times while adding the proper number
+            # to the edge index
             edge_index = torch.cat(
                 [
-                    self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
+                    self.graph.edge_index
+                    + i * torch.max(self.graph.edge_index)
+                    + i
                     for i in range(batch_size)
                 ],
                 dim=1,

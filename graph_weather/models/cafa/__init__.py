@@ -1,5 +1,5 @@
-"""
-CaFA (Climate-Aware Factorized Attention)'s Architectural Design:
+"""CaFA (Climate-Aware Factorized Attention)'s Architectural Design.
+
 - Transformer-based weather forecast for computational efficiency
 - Uses Factorized Attention to reduce the cost of the attention mechanism
 - A Three-Part System for Efficient Forecasting: Encoder, Factorized Transformer, Decoder

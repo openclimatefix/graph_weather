@@ -253,12 +253,10 @@ def run_comprehensive_test():
     print("\nKey Results:")
     print(f"- Analysis RMSE: {comparison_results['avg_analysis_rmse']:.4f}")
     print(f"- Background RMSE: {comparison_results['avg_background_rmse']:.4f}")
-    print(
-        f"- Analysis improvement over background: {comparison_results['analysis_improvement_over_bg']:.2f}%"
-    )
-    print(
-        f"- Analysis improvement over observations: {comparison_results['analysis_improvement_over_obs']:.2f}%"
-    )
+    improvement_bg = comparison_results['analysis_improvement_over_bg']
+    print(f"- Analysis improvement over background: {improvement_bg:.2f}%")
+    improvement_obs = comparison_results['analysis_improvement_over_obs']
+    print(f"- Analysis improvement over observations: {improvement_obs:.2f}%")
 
     return True
 

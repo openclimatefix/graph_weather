@@ -1,21 +1,28 @@
+"""FiLM (Feature-wise Linear Modulation) layers for conditional weather forecasting.
+
+This module contains FiLM generator and applier classes that allow for
+conditional modulation of neural network features based on lead time.
+"""
+
 import torch
 import torch.nn as nn
 
 
 class FiLMGenerator(nn.Module):
-    """
-    Generates FiLM parameters (gamma and beta) from a lead-time index.
+    """Generates FiLM parameters (gamma and beta) from a lead-time index.
 
     A one-hot vector for the given lead time is expanded to the batch size
     and passed through a small MLP to produce FiLM modulation parameters.
-
-    Args:
-        num_lead_times (int): Number of possible lead-time categories.
-        hidden_dim (int): Hidden size for the internal MLP.
-        feature_dim (int): Output dimensionality of gamma and beta.
     """
 
     def __init__(self, num_lead_times: int, hidden_dim: int, feature_dim: int):
+        """Initialize the FiLMGenerator.
+        
+        Args:
+            num_lead_times (int): Number of possible lead-time categories.
+            hidden_dim (int): Hidden size for the internal MLP.
+            feature_dim (int): Output dimensionality of gamma and beta.
+        """
         super().__init__()
         self.num_lead_times = num_lead_times
         self.feature_dim = feature_dim

@@ -15,6 +15,19 @@ from graph_weather.models.weathermesh.layers import ConvDownBlock
 
 @dataclass
 class WeatherMeshEncoderConfig:
+    """Configuration for WeatherMeshEncoder.
+    
+    Args:
+        input_channels_2d: Number of input channels for 2D surface data
+        input_channels_3d: Number of input channels for 3D pressure level data
+        latent_dim: Dimension of the latent space
+        n_pressure_levels: Number of pressure levels
+        num_conv_blocks: Number of convolutional blocks
+        hidden_dim: Hidden dimension for the encoder
+        kernel_size: Kernel size for the neighborhood attention
+        num_heads: Number of attention heads
+        num_transformer_layers: Number of transformer layers
+    """
     input_channels_2d: int
     input_channels_3d: int
     latent_dim: int
@@ -26,14 +39,32 @@ class WeatherMeshEncoderConfig:
     num_transformer_layers: int
 
     @staticmethod
-    def from_json(json: dict) -> "WeatherMeshEncoder":
+    def from_json(json: dict) -> "WeatherMeshEncoderConfig":
+        """Create a WeatherMeshEncoderConfig from a JSON dictionary.
+        
+        Args:
+            json: Dictionary containing configuration values
+        
+        Returns:
+            WeatherMeshEncoderConfig: Config object
+        """
         return dacite.from_dict(data_class=WeatherMeshEncoderConfig, data=json)
 
     def to_json(self) -> dict:
+        """Convert the config to a JSON dictionary.
+        
+        Returns:
+            dict: Dictionary representation of the config
+        """
         return dacite.asdict(self)
 
 
 class WeatherMeshEncoder(nn.Module):
+    """WeatherMesh encoder that transforms 2D and 3D weather data to latent representations.
+    
+    This encoder uses convolutional downsampling blocks followed by transformer layers
+    to encode surface (2D) and pressure level (3D) weather data to latent representations.
+    """
     def __init__(
         self,
         input_channels_2d: int,
@@ -46,6 +77,19 @@ class WeatherMeshEncoder(nn.Module):
         num_heads: int = 8,
         num_transformer_layers: int = 3,
     ):
+        """Initialize the WeatherMeshEncoder.
+        
+        Args:
+            input_channels_2d: Number of input channels for 2D surface data
+            input_channels_3d: Number of input channels for 3D pressure level data
+            latent_dim: Dimension of the latent space
+            n_pressure_levels: Number of pressure levels
+            num_conv_blocks: Number of convolutional blocks
+            hidden_dim: Hidden dimension for the encoder
+            kernel_size: Kernel size for the neighborhood attention
+            num_heads: Number of attention heads
+            num_transformer_layers: Number of transformer layers
+        """
         super().__init__()
 
         # Surface (2D) path
@@ -86,6 +130,15 @@ class WeatherMeshEncoder(nn.Module):
         self.to_latent = nn.Conv3d(hidden_dim * (2**num_conv_blocks), latent_dim, kernel_size=1)
 
     def forward(self, surface: torch.Tensor, pressure: torch.Tensor) -> torch.Tensor:
+        """Encode 2D and 3D weather data to latent representations.
+        
+        Args:
+            surface: Surface tensor of shape (B, C_2d, H, W)
+            pressure: Pressure level tensor of shape (B, C_3d, D, H, W)
+        
+        Returns:
+            torch.Tensor: Latent tensor of shape (B, D, H, W, C_latent)
+        """
         # Process surface data
         for block in self.surface_path:
             surface = block(surface)

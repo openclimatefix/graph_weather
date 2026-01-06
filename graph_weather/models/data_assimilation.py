@@ -327,8 +327,6 @@ def generate_synthetic_data(batch_size=32, grid_size=(10, 10), num_channels=1):
         observations: Observations
         true_state: True state (for evaluation only, not used in training)
     """
-    total_size = np.prod(grid_size) if isinstance(grid_size, (tuple, list)) else grid_size
-
     # Generate a true state with some spatial correlation
     true_state = torch.randn(batch_size, num_channels, *grid_size) * 2
     # Apply some smoothing to create spatial correlation

@@ -1,3 +1,8 @@
+"""ERA5 training module for weather forecasting.
+
+Contains the LightningModule and dataset for training weather forecasting models on ERA5 data.
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -41,16 +46,18 @@ class LitFengWuGHR(pl.LightningModule):
         feature_dim: int = 605,  # TODO where does this come from?
         lr: float = 3e-4,
     ):
-        """
-        Initialize the LitFengWuGHR object with the required args.
-
+        """Initialize the LitFengWuGHR object with the required args.
+        
         Args:
-            lat_lons : List of latitude and longitude values.
-            feature_dim : Dimensionality of the input features.
-            aux_dim : Dimensionality of auxiliary features.
-            hidden_dim : Dimensionality of hidden layers in the model.
-            num_blocks : Number of graph convolutional blocks in the model.
-            lr (float): Learning rate for optimizer.
+            lat_lons: List of latitude and longitude values.
+            channels: Number of input channels.
+            image_size: Size of input images.
+            patch_size: Size of patches for processing.
+            depth: Depth of the transformer.
+            heads: Number of attention heads.
+            mlp_dim: Dimension of MLP layers.
+            feature_dim: Dimensionality of the input features.
+            lr: Learning rate for optimizer.
         """
         super().__init__()
         self.model = MetaModel(
@@ -113,9 +120,11 @@ class Era5Dataset(Dataset):
     """Era5 dataset."""
 
     def __init__(self, xarr, transform=None):
-        """
-        Arguments:
-            #TODO
+        """Initialize the Era5Dataset.
+        
+        Args:
+            xarr: Xarray dataset containing ERA5 data
+            transform: Optional transform to apply to the data
         """
         ds = np.asarray(xarr.to_array())
         ds = torch.from_numpy(ds)

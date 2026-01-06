@@ -1,3 +1,9 @@
+"""LoRA training module for weather forecasting.
+
+Contains the LightningModule and dataset for training weather forecasting models
+    with LoRA (Low-Rank Adaptation).
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +20,10 @@ from graph_weather.models.losses import NormalizedMSELoss
 
 
 class LitLoRAFengWuGHR(pl.LightningModule):
+    """LightningModule for LoRA-based weather forecasting.
+    
+    This module uses Low-Rank Adaptation (LoRA) to fine-tune weather forecasting models.
+    """
     def __init__(
         self,
         lat_lons: list,
@@ -30,6 +40,22 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         feature_dim: int = 605,  # TODO where does this come from?
         lr: float = 3e-4,
     ):
+        """Initialize the LitLoRAFengWuGHR module.
+        
+        Args:
+            lat_lons: List of latitude/longitude coordinates
+            single_step_model_state_dict: State dictionary for the single-step model
+            time_step: Number of time steps for multi-step prediction
+            rank: Rank for LoRA adaptation
+            channels: Number of input channels
+            image_size: Size of the input image
+            patch_size: Size of patches for the transformer
+            depth: Depth of the transformer
+            heads: Number of attention heads
+            mlp_dim: MLP dimension
+            feature_dim: Feature dimension for loss calculation
+            lr: Learning rate
+        """
         super().__init__()
         assert (
             time_step > 1
@@ -54,6 +80,14 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         self.save_hyperparameters()
 
     def forward(self, x):
+        """Forward pass through the ensemble of LoRA models.
+        
+        Args:
+            x: Input tensor
+        
+        Returns:
+            torch.Tensor: Output tensor with predictions for each time step
+        """
         ys = []
         for t, model in enumerate(self.models):
             x = model(x)
@@ -61,6 +95,15 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         return torch.stack(ys, dim=1)
 
     def training_step(self, batch, batch_idx):
+        """Perform a single training step.
+        
+        Args:
+            batch: Input batch containing features and targets
+            batch_idx: Index of the current batch
+        
+        Returns:
+            torch.Tensor: Training loss
+        """
         if torch.isnan(batch).any():
             return None
         x, ys = batch[:, 0, ...], batch[:, 1:, ...]
@@ -71,11 +114,28 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
+        """Configure the optimizer for training.
+        
+        Returns:
+            torch.optim.Optimizer: AdamW optimizer
+        """
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
 
 class Era5Dataset(Dataset):
+    """ERA5 dataset for weather forecasting training.
+    
+    This dataset loads and preprocesses ERA5 reanalysis data for training
+    weather forecasting models.
+    """
     def __init__(self, xarr, time_step=1, transform=None):
+        """Initialize the Era5Dataset.
+        
+        Args:
+            xarr: Xarray dataset containing ERA5 data
+            time_step: Time step for sequence prediction
+            transform: Optional transform to apply to the data
+        """
         assert time_step > 0, "Time step must be greater than 0."
         ds = np.asarray(xarr.to_array())
         ds = torch.from_numpy(ds)

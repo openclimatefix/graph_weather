@@ -1,5 +1,6 @@
-"""
-Data loader for self-supervised data assimilation framework
+"""Data loader for self-supervised data assimilation framework.
+
+Provides data loading capabilities for the self-supervised data assimilation system.
 """
 
 import numpy as np
@@ -8,9 +9,9 @@ from torch.utils.data import DataLoader, Dataset
 
 
 class AssimilationDataset(Dataset):
-    """
-    Dataset for self-supervised data assimilation
-    Each sample contains background state and observations
+    """Dataset for self-supervised data assimilation.
+    
+    Each sample contains background state and observations.
     """
 
     def __init__(self, background_states, observations, true_states=None):
@@ -81,8 +82,6 @@ def create_synthetic_assimilation_dataset(
     Returns:
         dataset: AssimilationDataset object
     """
-    total_size = np.prod(grid_size) if isinstance(grid_size, (tuple, list)) else grid_size
-
     # Generate true states with spatial correlation
     true_states = torch.randn(num_samples, num_channels, *grid_size)
 
