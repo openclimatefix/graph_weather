@@ -21,9 +21,10 @@ from graph_weather.models.losses import NormalizedMSELoss
 
 class LitLoRAFengWuGHR(pl.LightningModule):
     """LightningModule for LoRA-based weather forecasting.
-    
+
     This module uses Low-Rank Adaptation (LoRA) to fine-tune weather forecasting models.
     """
+
     def __init__(
         self,
         lat_lons: list,
@@ -41,7 +42,7 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         lr: float = 3e-4,
     ):
         """Initialize the LitLoRAFengWuGHR module.
-        
+
         Args:
             lat_lons: List of latitude/longitude coordinates
             single_step_model_state_dict: State dictionary for the single-step model
@@ -81,10 +82,10 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
     def forward(self, x):
         """Forward pass through the ensemble of LoRA models.
-        
+
         Args:
             x: Input tensor
-        
+
         Returns:
             torch.Tensor: Output tensor with predictions for each time step
         """
@@ -96,11 +97,11 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         """Perform a single training step.
-        
+
         Args:
             batch: Input batch containing features and targets
             batch_idx: Index of the current batch
-        
+
         Returns:
             torch.Tensor: Training loss
         """
@@ -115,7 +116,7 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
     def configure_optimizers(self):
         """Configure the optimizer for training.
-        
+
         Returns:
             torch.optim.Optimizer: AdamW optimizer
         """
@@ -124,13 +125,14 @@ class LitLoRAFengWuGHR(pl.LightningModule):
 
 class Era5Dataset(Dataset):
     """ERA5 dataset for weather forecasting training.
-    
+
     This dataset loads and preprocesses ERA5 reanalysis data for training
     weather forecasting models.
     """
+
     def __init__(self, xarr, time_step=1, transform=None):
         """Initialize the Era5Dataset.
-        
+
         Args:
             xarr: Xarray dataset containing ERA5 data
             time_step: Time step for sequence prediction

@@ -17,7 +17,7 @@ class CaFADecoder(nn.Module):
 
     def __init__(self, model_dim: int, output_channels: int, upsampling_factor: int = 1):
         """Initialize the CaFA decoder.
-        
+
         Args:
             output_channels: No. of channels/features in output prediction
             model_dim: Dimensions of the model's hidden layers (output channels)
@@ -34,12 +34,12 @@ class CaFADecoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the CaFA decoder.
-        
+
         Args:
             x: Input tensor of shape (batch, model_dim, height, width).
 
         Returns:
-            torch.Tensor: Output tensor of shape (batch, output_channels, 
+            torch.Tensor: Output tensor of shape (batch, output_channels,
                 height*factor, width*factor)
         """
         x = self.decoder(x)

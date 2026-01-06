@@ -12,8 +12,7 @@ from .data_assimilation import ThreeDVarLoss
 
 
 class DataAssimilationTrainer:
-    """Trainer for the self-supervised data assimilation model
-    """
+    """Trainer for the self-supervised data assimilation model"""
 
     def __init__(self, model, loss_fn, optimizer=None, lr=1e-3, device="cpu", scheduler=None):
         """Initialize the trainer.
@@ -343,7 +342,7 @@ def train_with_different_modes(
     device="cpu",
 ):
     """Train the model in different modes:
-    
+
     1. With good first guess (low background error)
     2. With poor first guess (high background error) - cold start
     3. With varying observation densities

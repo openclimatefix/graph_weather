@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 
 class AssimilationDataset(Dataset):
     """Dataset for self-supervised data assimilation.
-    
+
     Each sample contains background state and observations.
     """
 

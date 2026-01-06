@@ -12,14 +12,14 @@ from einops.layers.torch import Rearrange
 
 class Swin3DEncoder(nn.Module):
     """Swin 3D Transformer Encoder.
-    
+
     Uses a 3D convolution for initial feature extraction, applies layer normalization
     and reshapes data, then uses a transformer-based encoder to learn spatial-temporal features.
     """
-    
+
     def __init__(self, in_channels=1, embed_dim=96):
         """Initialize the Swin 3D encoder.
-        
+
         Args:
             in_channels (int): Number of input channels.
             embed_dim (int): Embedding dimension.
@@ -43,10 +43,10 @@ class Swin3DEncoder(nn.Module):
     # To use rearrange function directly instead of the Rearrange layer
     def forward(self, x):
         """Forward pass for the Swin 3D encoder.
-        
+
         Args:
             x (torch.Tensor): Input tensor, shape (batch, in_channels, depth, height, width).
-        
+
         Returns:
             torch.Tensor: Encoded tensor, shape (batch, seq_len, embed_dim).
         """

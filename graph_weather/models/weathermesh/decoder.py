@@ -16,7 +16,7 @@ from graph_weather.models.weathermesh.layers import ConvUpBlock
 @dataclass
 class WeatherMeshDecoderConfig:
     """Configuration for WeatherMeshDecoder.
-    
+
     Args:
         latent_dim: Dimension of the latent space
         output_channels_2d: Number of output channels for 2D surface data
@@ -27,6 +27,7 @@ class WeatherMeshDecoderConfig:
         num_heads: Number of attention heads
         num_transformer_layers: Number of transformer layers
     """
+
     latent_dim: int
     output_channels_2d: int
     output_channels_3d: int
@@ -39,10 +40,10 @@ class WeatherMeshDecoderConfig:
     @staticmethod
     def from_json(json: dict) -> "WeatherMeshDecoderConfig":
         """Create a WeatherMeshDecoderConfig from a JSON dictionary.
-        
+
         Args:
             json: Dictionary containing configuration values
-        
+
         Returns:
             WeatherMeshDecoderConfig: Config object
         """
@@ -50,7 +51,7 @@ class WeatherMeshDecoderConfig:
 
     def to_json(self) -> dict:
         """Convert the config to a JSON dictionary.
-        
+
         Returns:
             dict: Dictionary representation of the config
         """
@@ -59,10 +60,11 @@ class WeatherMeshDecoderConfig:
 
 class WeatherMeshDecoder(nn.Module):
     """WeatherMesh decoder that transforms latent representations to 2D and 3D weather data.
-    
+
     This decoder uses transformer layers followed by convolutional upsampling blocks
     to decode latent representations to surface (2D) and pressure level (3D) weather data.
     """
+
     def __init__(
         self,
         latent_dim,
@@ -75,7 +77,7 @@ class WeatherMeshDecoder(nn.Module):
         num_transformer_layers: int = 3,
     ):
         """Initialize the WeatherMeshDecoder.
-        
+
         Args:
             latent_dim: Dimension of the latent space
             output_channels_2d: Number of output channels for 2D surface data
@@ -126,11 +128,11 @@ class WeatherMeshDecoder(nn.Module):
 
     def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Decode latent representations to 2D and 3D weather data.
-        
+
         Args:
             latent: Latent tensor of shape (B, D, H, W, C) where B is batch size,
                 D is depth (vertical levels), H and W are height and width, and C is channels
-        
+
         Returns:
             tuple[torch.Tensor, torch.Tensor]: Surface features (2D) and pressure
                 level features (3D)

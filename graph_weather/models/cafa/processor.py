@@ -27,7 +27,7 @@ class CaFAProcessor(nn.Module):
         dropout: float = 0.0,
     ):
         """Initialize the CaFAProcessor.
-        
+
         Args:
             dim: No. of input channels/ features
             depth: No. of FactorizedTransformerBlocks to stack
@@ -46,7 +46,7 @@ class CaFAProcessor(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the CaFA processor.
-        
+
         Args:
             x: Input tensor of shape (batch, height, width, channels)
 

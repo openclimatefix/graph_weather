@@ -149,7 +149,7 @@ class DataAssimilationEvaluator:
 
     def __init__(self, model, device="cpu"):
         """Initialize the evaluator.
-        
+
         Args:
             model: Data assimilation model to evaluate
             device: Device to run evaluation on

@@ -159,7 +159,7 @@ def main():
     print(
         f"✓ Analysis improvement over background: {comparison['analysis_improvement_over_bg']:.2f}%"
     )
-    improvement = comparison['analysis_improvement_over_obs']
+    improvement = comparison["analysis_improvement_over_obs"]
     print(f"✓ Analysis improvement over observations: {improvement:.2f}%")
 
     print("\nThe model successfully learned to combine background and observations")

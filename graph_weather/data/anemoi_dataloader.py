@@ -38,7 +38,7 @@ class AnemoiDataset(Dataset):
         **kwargs,
     ):
         """Initialize the AnemoiDataset.
-        
+
         Args:
             dataset_name: Name of the Anemoi dataset (e.g., "era5-o48-2020-2021-6h-v1")
             features: List of atmospheric variables to use

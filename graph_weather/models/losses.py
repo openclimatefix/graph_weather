@@ -120,7 +120,7 @@ class AMSENormalizedLoss(nn.Module):
 
     def __init__(self, feature_variance: list | torch.Tensor, epsilon: float = 1e-9):
         """Initialize the AMSENormalizedLoss.
-        
+
         Args:
             feature_variance: Variance of each physical feature for normalization (length C).
             epsilon: Small constant for numerical stability.
@@ -141,7 +141,7 @@ class AMSENormalizedLoss(nn.Module):
 
     def _get_sht(self, nlat: int, nlon: int, device: torch.device) -> th.RealSHT:
         """Helper to get a cached SHT object, creating it if it doesn't exist.
-        
+
         This prevents re-initializing the SHT object on every forward pass.
         """
         key = (nlat, nlon, device)

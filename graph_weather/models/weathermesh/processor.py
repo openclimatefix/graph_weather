@@ -12,9 +12,10 @@ from natten import NeighborhoodAttention3D
 @dataclass
 class WeatherMeshProcessorConfig:
     """Configuration class for WeatherMesh processor.
-    
+
     Contains parameters for configuring the WeatherMesh processor.
     """
+
     latent_dim: int
     n_layers: int
     kernel: tuple
@@ -23,10 +24,10 @@ class WeatherMeshProcessorConfig:
     @staticmethod
     def from_json(json: dict) -> "WeatherMeshProcessor":
         """Create WeatherMeshProcessorConfig from JSON dictionary.
-        
+
         Args:
             json: Dictionary containing configuration parameters
-        
+
         Returns:
             WeatherMeshProcessorConfig instance
         """
@@ -34,7 +35,7 @@ class WeatherMeshProcessorConfig:
 
     def to_json(self) -> dict:
         """Convert WeatherMeshProcessorConfig to JSON dictionary.
-        
+
         Returns:
             Dictionary containing configuration parameters
         """
@@ -46,10 +47,10 @@ class WeatherMeshProcessor(nn.Module):
 
     Processes latent representations using multiple neighborhood attention layers.
     """
-    
+
     def __init__(self, latent_dim, n_layers=10, kernel=(5, 7, 7), num_heads=8):
         """Initialize the WeatherMesh processor.
-        
+
         Args:
             latent_dim: Dimension of the latent space
             n_layers: Number of processor layers
@@ -71,10 +72,10 @@ class WeatherMeshProcessor(nn.Module):
 
     def forward(self, x):
         """Forward pass of the WeatherMesh processor.
-        
+
         Args:
             x: Input tensor to process
-        
+
         Returns:
             Processed tensor after applying all layers
         """

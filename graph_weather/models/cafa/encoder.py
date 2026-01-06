@@ -17,11 +17,11 @@ class CaFAEncoder(nn.Module):
 
     def __init__(self, input_channels: int, model_dim: int, downsampling_factor: int = 1):
         """Initialize the CaFA encoder.
-        
+
         Args:
             input_channels: No. of channels/features in raw input data
             model_dim: Dimensions of the model's hidden layers (output channels)
-            downsampling_factor: Factor to downsample the spatial dimensions by 
+            downsampling_factor: Factor to downsample the spatial dimensions by
                 (i.e., 2 means H/2, W/2)
         """
         super().__init__()
@@ -34,12 +34,12 @@ class CaFAEncoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the CaFA encoder.
-        
+
         Args:
             x: Input tensor of shape (batch, channels, height, width)
 
         Returns:
-            torch.Tensor: Encoded tensor of shape (batch, model_dim, 
+            torch.Tensor: Encoded tensor of shape (batch, model_dim,
                 height/downsampling_factor, width/downsampling_factor)
         """
         x = self.encoder(x)

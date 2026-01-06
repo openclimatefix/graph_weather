@@ -12,14 +12,14 @@ import torch.nn as nn
 
 class PointEncoder(nn.Module):
     """Point Encoder for processing unstructured point data.
-    
+
     This encoder handles unstructured point data by combining input features
     with coordinate information.
     """
-    
+
     def __init__(self, input_features: int, embed_dim: int, max_seq_len: int = 1024):
         """Initialize the PointEncoder.
-        
+
         Args:
             input_features (int): Number of input features per point.
             embed_dim (int): Embedding dimension.
@@ -52,11 +52,11 @@ class PointEncoder(nn.Module):
 
     def forward(self, points: torch.Tensor, features: torch.Tensor) -> torch.Tensor:
         """Forward pass of the PointEncoder.
-        
+
         Args:
             points: Point coordinates tensor
             features: Point features tensor
-        
+
         Returns:
             torch.Tensor: Encoded tensor
         """
@@ -93,7 +93,7 @@ class PointDecoder(nn.Module):
 
     def __init__(self, embed_dim: int, output_features: int):
         """Initialize the PointDecoder.
-        
+
         Args:
             embed_dim: Embedding dimension
             output_features: Number of output features
@@ -105,10 +105,10 @@ class PointDecoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the PointDecoder.
-        
+
         Args:
             x: (batch_size, num_points, embed_dim) tensor
-        
+
         Returns:
             (batch_size, num_points, output_features) tensor
         """
@@ -124,7 +124,7 @@ class PointCloudProcessor(nn.Module):
 
     def __init__(self, embed_dim: int, num_layers: int = 4):
         """Initialize the PointCloudProcessor.
-        
+
         Args:
             embed_dim: Embedding dimension
             num_layers: Number of layers
@@ -134,10 +134,10 @@ class PointCloudProcessor(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the PointCloudProcessor.
-        
+
         Args:
             x: (batch_size, num_points, embed_dim) tensor
-        
+
         Returns:
             (batch_size, num_points, embed_dim) tensor after processing
         """
@@ -152,10 +152,10 @@ class SelfAttentionLayer(nn.Module):
     This layer applies multi-head self-attention followed by a feed-forward network
     with residual connections and layer normalization.
     """
-    
+
     def __init__(self, embed_dim: int):
         """Initialize the SelfAttentionLayer.
-        
+
         Args:
             embed_dim: Embedding dimension for attention
         """
@@ -169,10 +169,10 @@ class SelfAttentionLayer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the SelfAttentionLayer.
-        
+
         Args:
             x: Input tensor
-        
+
         Returns:
             torch.Tensor: Output tensor after attention and normalization
         """
@@ -193,10 +193,10 @@ class EarthSystemLoss(nn.Module):
     This loss function combines MSE loss, spatial correlation loss, and physical
     consistency loss to guide the model toward physically meaningful predictions.
     """
-    
+
     def __init__(self, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.2):
         """Initialize the EarthSystemLoss.
-        
+
         Args:
             alpha: Weight for MSE loss
             beta: Weight for spatial correlation loss
@@ -211,12 +211,12 @@ class EarthSystemLoss(nn.Module):
         self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor
     ) -> torch.Tensor:
         """Compute spatial correlation loss.
-        
+
         Args:
             pred: Predicted values
             target: Target values
             points: Point coordinates
-        
+
         Returns:
             torch.Tensor: Spatial correlation loss value
         """
@@ -260,12 +260,12 @@ class EarthSystemLoss(nn.Module):
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor) -> dict:
         """Forward pass of the EarthSystemLoss.
-        
+
         Args:
             pred: Predicted values
             target: Target values
             points: Point coordinates
-        
+
         Returns:
             Dictionary containing different loss components
         """
@@ -290,7 +290,7 @@ class AuroraModel(nn.Module):
     This model combines point encoding, processing with attention mechanisms, and
     decoding to produce predictions for earth system variables at unstructured points.
     """
-    
+
     def __init__(
         self,
         input_features: int,
@@ -302,7 +302,7 @@ class AuroraModel(nn.Module):
         use_checkpointing: bool = False,
     ):
         """Initialize the Aurora model.
-        
+
         Args:
             input_features: Number of input features per point
             output_features: Number of output features per point
@@ -341,12 +341,12 @@ class AuroraModel(nn.Module):
         self, points: torch.Tensor, features: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Forward pass of the Aurora model.
-        
+
         Args:
             points: Point coordinates tensor
             features: Point feature tensor
             mask: Optional mask for points
-        
+
         Returns:
             torch.Tensor: Model output predictions
         """

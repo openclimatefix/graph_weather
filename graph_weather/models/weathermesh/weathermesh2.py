@@ -40,9 +40,10 @@ TODO: Add bump attention and rotary embeddings for the circular padding and posi
 @dataclass
 class WeatherMeshConfig:
     """Configuration class for WeatherMesh model.
-    
+
     Contains encoder, processors, decoder and other configuration parameters.
     """
+
     encoder: WeatherMeshEncoderConfig
     processors: List[WeatherMeshProcessorConfig]
     decoder: WeatherMeshDecoderConfig
@@ -64,10 +65,10 @@ class WeatherMeshConfig:
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh":
         """Create WeatherMeshConfig from JSON dictionary.
-        
+
         Args:
             json: Dictionary containing configuration parameters
-        
+
         Returns:
             WeatherMeshConfig instance
         """
@@ -75,7 +76,7 @@ class WeatherMeshConfig:
 
     def to_json(self) -> dict:
         """Convert WeatherMeshConfig to JSON dictionary.
-        
+
         Returns:
             Dictionary containing configuration parameters
         """
@@ -85,9 +86,10 @@ class WeatherMeshConfig:
 @dataclass
 class WeatherMeshOutput:
     """Output container for WeatherMesh model predictions.
-    
+
     Contains surface and pressure level predictions.
     """
+
     surface: torch.Tensor
     pressure: torch.Tensor
 
@@ -98,7 +100,7 @@ class WeatherMesh(nn.Module):
     This model uses an encoder-processor-decoder architecture to process weather data
     on a mesh structure for improved forecasting accuracy.
     """
-    
+
     def __init__(
         self,
         encoder: nn.Module | None,
@@ -120,7 +122,7 @@ class WeatherMesh(nn.Module):
         num_heads: int | None,
     ):
         """Initialize the WeatherMesh model.
-        
+
         Args:
             encoder: Encoder module or None to create default
             processors: List of processor modules or None to create default
@@ -189,12 +191,12 @@ class WeatherMesh(nn.Module):
         self, surface: torch.Tensor, pressure: torch.Tensor, forecast_steps: int
     ) -> WeatherMeshOutput:
         """Forward pass of the WeatherMesh model.
-        
+
         Args:
             surface: Surface weather data tensor
             pressure: Pressure level weather data tensor
             forecast_steps: Number of forecast steps to perform
-        
+
         Returns:
             WeatherMeshOutput: Output containing surface and pressure predictions
         """

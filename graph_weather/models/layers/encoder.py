@@ -212,9 +212,7 @@ class Encoder(torch.nn.Module):
             # to the edge index
             edge_index = torch.cat(
                 [
-                    self.graph.edge_index
-                    + i * torch.max(self.graph.edge_index)
-                    + i
+                    self.graph.edge_index + i * torch.max(self.graph.edge_index) + i
                     for i in range(batch_size)
                 ],
                 dim=1,

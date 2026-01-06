@@ -47,7 +47,7 @@ class LitFengWuGHR(pl.LightningModule):
         lr: float = 3e-4,
     ):
         """Initialize the LitFengWuGHR object with the required args.
-        
+
         Args:
             lat_lons: List of latitude and longitude values.
             channels: Number of input channels.
@@ -121,7 +121,7 @@ class Era5Dataset(Dataset):
 
     def __init__(self, xarr, transform=None):
         """Initialize the Era5Dataset.
-        
+
         Args:
             xarr: Xarray dataset containing ERA5 data
             transform: Optional transform to apply to the data

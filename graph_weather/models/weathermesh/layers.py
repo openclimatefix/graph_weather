@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 class ConvDownBlock(nn.Module):
     """Downsampling convolutional block with residual connection.
-    
+
     Can handle both 2D and 3D inputs.
     """
 
@@ -25,7 +25,7 @@ class ConvDownBlock(nn.Module):
         activation: nn.Module = nn.GELU(),
     ):
         """Initialize the ConvDownBlock.
-        
+
         Args:
             in_channels: Number of input channels
             out_channels: Number of output channels
@@ -71,10 +71,10 @@ class ConvDownBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the ConvDownBlock.
-        
+
         Args:
             x: Input tensor
-        
+
         Returns:
             torch.Tensor: Output tensor after downsampling and residual connection
         """
@@ -94,8 +94,7 @@ class ConvDownBlock(nn.Module):
 
 
 class ConvUpBlock(nn.Module):
-    """Upsampling convolutional block with residual connection. same as downBlock but reversed.
-    """
+    """Upsampling convolutional block with residual connection. same as downBlock but reversed."""
 
     def __init__(
         self,
@@ -109,7 +108,7 @@ class ConvUpBlock(nn.Module):
         activation: nn.Module = nn.GELU(),
     ):
         """Initialize the ConvUpBlock.
-        
+
         Args:
             in_channels: Number of input channels
             out_channels: Number of output channels
@@ -157,10 +156,10 @@ class ConvUpBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the ConvUpBlock.
-        
+
         Args:
             x: Input tensor
-        
+
         Returns:
             torch.Tensor: Output tensor after upsampling and residual connection
         """

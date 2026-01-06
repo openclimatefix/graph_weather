@@ -17,7 +17,7 @@ class FiLMGenerator(nn.Module):
 
     def __init__(self, num_lead_times: int, hidden_dim: int, feature_dim: int):
         """Initialize the FiLMGenerator.
-        
+
         Args:
             num_lead_times (int): Number of possible lead-time categories.
             hidden_dim (int): Hidden size for the internal MLP.

@@ -30,7 +30,7 @@ class AxialAttention(nn.Module):
 
     def __init__(self, dim, heads, dim_head=64, dropout=0.0):
         """Initialize the AxialAttention module.
-        
+
         Args:
             dim: Input dimension
             heads: Number of attention heads
@@ -48,7 +48,7 @@ class AxialAttention(nn.Module):
 
     def forward(self, x, axis):
         """Forward pass for axial attention.
-        
+
         Args:
             x: Input tensor of shape (batch, height, width, channels)
             axis: Axis to perform attention on (1 for height, 2 for width)
@@ -95,7 +95,7 @@ class FactorizedAttention(nn.Module):
 
     def __init__(self, dim, heads, dim_head=64, dropout=0.0):
         """Initialize the FactorizedAttention module.
-        
+
         Args:
             dim: Input dimension
             heads: Number of attention heads
@@ -110,7 +110,7 @@ class FactorizedAttention(nn.Module):
 
     def forward(self, x):
         """Forward pass for factorized attention.
-        
+
         Args:
             x: Input tensor of shape (batch, height, width, channels)
         """
@@ -120,13 +120,11 @@ class FactorizedAttention(nn.Module):
 
 
 class FactorizedTransformerBlock(nn.Module):
-    """Standalone transformer block using Factorized attention.
-
-    """
+    """Standalone transformer block using Factorized attention."""
 
     def __init__(self, dim, heads, dim_head=64, feedforward_multiplier=4, dropout=0.0):
         """Initialize the FactorizedTransformerBlock module.
-        
+
         Args:
             dim: Input dimension
             heads: Number of attention heads
@@ -142,7 +140,7 @@ class FactorizedTransformerBlock(nn.Module):
 
     def forward(self, x):
         """Forward pass for factorized transformer block.
-        
+
         Args:
             x: Input tensor of shape (batch, height, width, channels)
         """

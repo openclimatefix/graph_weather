@@ -31,7 +31,7 @@ class CaFAForecaster(nn.Module):
         dropout: float = 0.0,
     ):
         """Initialize the CaFA forecaster.
-        
+
         Args:
             input_channels: No. of input channels/features
             output_channels: No. of channels to predict
@@ -70,7 +70,7 @@ class CaFAForecaster(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the CaFA forecaster.
-        
+
         Args:
             x: Input tensor of shape (batch, input_channels, height, width)
 
