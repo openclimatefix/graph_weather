@@ -35,7 +35,7 @@ class ThreeDVarLoss(nn.Module):
         obs_weight=1.0,
     ):
         """Initialize the 3D-Var loss function.
-        
+
         Args:
             background_error_covariance: B matrix (background error covariance)
             observation_error_covariance: R matrix (observation error covariance)
@@ -80,12 +80,12 @@ class ThreeDVarLoss(nn.Module):
 
     def forward(self, analysis, background, observations):
         """Compute the 3D-Var loss.
-        
+
         Args:
             analysis: Model output (analysis state x)
             background: Background state (x_b)
             observations: Observations (y)
-        
+
         Returns:
             Total loss value
         """
@@ -150,7 +150,7 @@ class DataAssimilationModel(nn.Module):
 
     def __init__(self, input_dim, hidden_dim=256, num_layers=3, dropout=0.1, activation="relu"):
         """Initialize the data assimilation model.
-        
+
         Args:
             input_dim: Dimension of the input state
             hidden_dim: Hidden layer dimension
@@ -192,11 +192,11 @@ class DataAssimilationModel(nn.Module):
 
     def forward(self, background, observations):
         """Forward pass of the data assimilation model.
-        
+
         Args:
             background: Background state (x_b)
             observations: Observations (y)
-        
+
         Returns:
             analysis: Analysis state (x)
         """
@@ -216,7 +216,7 @@ class SimpleDataAssimilationModel(nn.Module):
 
     def __init__(self, grid_size, num_channels=1, hidden_dim=64, num_layers=2):
         """Initialize a simple data assimilation model for grid data.
-        
+
         Args:
             grid_size: Size of the spatial grid (height, width) or (size,)
             num_channels: Number of channels/variables
@@ -250,11 +250,11 @@ class SimpleDataAssimilationModel(nn.Module):
 
     def forward(self, background, observations):
         """Forward pass for grid data.
-        
+
         Args:
             background: Background state [batch, channels, ...spatial_dims]
             observations: Observations [batch, channels, ...spatial_dims]
-        
+
         Returns:
             analysis: Analysis state [batch, channels, ...spatial_dims]
         """
