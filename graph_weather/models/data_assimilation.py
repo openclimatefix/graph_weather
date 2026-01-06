@@ -207,6 +207,7 @@ class DataAssimilationModel(nn.Module):
 
         return analysis
 
+
 def create_observation_operator(grid_size, obs_fraction=0.5, obs_locations=None):
     """
     Create a simple observation operator H that selects a subset of grid points
@@ -235,4 +236,3 @@ def create_observation_operator(grid_size, obs_fraction=0.5, obs_locations=None)
         H[i, idx] = 1.0
 
     return H
-
