@@ -170,9 +170,7 @@ def test_full_pipeline_output_equivalence():
     # Run without checkpointing
     with torch.no_grad():
         x, edge_idx, edge_attr = encoder_no_cp(features)
-        x = processor_no_cp(
-            x, edge_idx, edge_attr, batch_size=batch_size, efficient_batching=True
-        )
+        x = processor_no_cp(x, edge_idx, edge_attr, batch_size=batch_size, efficient_batching=True)
         out_no_cp = decoder_no_cp(x, features, batch_size)
 
     # Create models with checkpointing
