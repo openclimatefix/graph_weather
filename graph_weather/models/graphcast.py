@@ -4,7 +4,6 @@ This module provides a complete GraphCast-style weather forecasting model
 with NVIDIA-style hierarchical gradient checkpointing for memory-efficient training.
 
 Based on:
-- "Forecasting Global Weather with Graph Neural Networks" (arXiv:2202.07575)
 - NVIDIA PhysicsNeMo GraphCast implementation
 """
 
@@ -25,69 +24,11 @@ class GraphCast(torch.nn.Module):
     This model combines Encoder, Processor, and Decoder with NVIDIA-style
     hierarchical checkpointing controls for flexible memory-compute tradeoffs.
 
-    Parameters
-    ----------
-    lat_lons : list
-        List of (lat, lon) tuples defining the grid points
-    resolution : int, optional
-        H3 resolution level, by default 2
-    input_dim : int, optional
-        Input feature dimension, by default 78
-    output_dim : int, optional
-        Output feature dimension, by default 78
-    hidden_dim : int, optional
-        Hidden dimension for all layers, by default 256
-    num_processor_blocks : int, optional
-        Number of message passing blocks in processor, by default 9
-    hidden_layers : int, optional
-        Number of hidden layers in MLPs, by default 2
-    mlp_norm_type : str, optional
-        Normalization type for MLPs, by default "LayerNorm"
-    use_checkpointing : bool, optional
-        Enable fine-grained checkpointing in all layers, by default False
-    efficient_batching : bool, optional
-        Use efficient batching (avoid graph replication), by default False
-
-    Hierarchical Checkpointing Methods
-    -----------------------------------
-    set_checkpoint_model(flag: bool)
-        Checkpoint entire forward pass as single segment.
-        Disables all other checkpointing when enabled.
-        Maximum memory savings, highest recomputation cost.
-
-    set_checkpoint_encoder(flag: bool)
-        Checkpoint encoder section (embedder + encoder + first processor).
-
-    set_checkpoint_processor(segments: int)
-        Checkpoint processor with configurable segments:
-        - segments = 0: No checkpointing
-        - segments = -1: Checkpoint entire processor as one block
-        - segments = N: Checkpoint every N blocks (not yet implemented)
-
-    set_checkpoint_decoder(flag: bool)
-        Checkpoint decoder section (last processor + decoder).
-
-    Examples
-    --------
-    >>> # Create model with hierarchical checkpointing
-    >>> lat_lons = [(lat, lon) for lat in range(-90, 90, 5)
-    ...             for lon in range(0, 360, 5)]
-    >>> model = GraphCast(lat_lons, use_checkpointing=False)
-    >>>
-    >>> # Strategy 1: Checkpoint entire model (maximum memory savings)
-    >>> model.set_checkpoint_model(True)
-    >>>
-    >>> # Strategy 2: Fine-grained checkpointing
-    >>> model.set_checkpoint_model(False)
-    >>> model.set_checkpoint_encoder(True)
-    >>> model.set_checkpoint_processor(-1)  # Checkpoint all processor blocks
-    >>> model.set_checkpoint_decoder(True)
-    >>>
-    >>> # Strategy 3: No checkpointing (maximum speed)
-    >>> model.set_checkpoint_model(False)
-    >>> model.set_checkpoint_encoder(False)
-    >>> model.set_checkpoint_processor(0)
-    >>> model.set_checkpoint_decoder(False)
+    Hierarchical checkpointing methods:
+        - set_checkpoint_model(flag): Checkpoint entire forward pass
+        - set_checkpoint_encoder(flag): Checkpoint encoder section
+        - set_checkpoint_processor(segments): Checkpoint processor with configurable segments
+        - set_checkpoint_decoder(flag): Checkpoint decoder section
     """
 
     def __init__(
@@ -103,6 +44,21 @@ class GraphCast(torch.nn.Module):
         use_checkpointing: bool = False,
         efficient_batching: bool = False,
     ):
+        """
+        Initialize GraphCast model with hierarchical checkpointing support.
+
+        Args:
+            lat_lons: List of (lat, lon) tuples defining the grid points
+            resolution: H3 resolution level
+            input_dim: Input feature dimension
+            output_dim: Output feature dimension
+            hidden_dim: Hidden dimension for all layers
+            num_processor_blocks: Number of message passing blocks in processor
+            hidden_layers: Number of hidden layers in MLPs
+            mlp_norm_type: Normalization type for MLPs
+            use_checkpointing: Enable fine-grained checkpointing in all layers
+            efficient_batching: Use efficient batching (avoid graph replication)
+        """
         super().__init__()
 
         self.lat_lons = lat_lons
@@ -161,16 +117,15 @@ class GraphCast(torch.nn.Module):
         self._checkpoint_decoder = False
 
     def set_checkpoint_model(self, checkpoint_flag: bool):
-        """Checkpoint entire model as a single segment.
+        """
+        Checkpoint entire model as a single segment.
 
         When enabled, creates one checkpoint for the entire forward pass.
         This provides maximum memory savings but highest recomputation cost.
         Disables all other hierarchical checkpointing when enabled.
 
-        Parameters
-        ----------
-        checkpoint_flag : bool
-            If True, checkpoint entire model. If False, use hierarchical checkpointing.
+        Args:
+            checkpoint_flag: If True, checkpoint entire model. If False, use hierarchical checkpointing.
         """
         self._checkpoint_model = checkpoint_flag
         if checkpoint_flag:
@@ -178,24 +133,22 @@ class GraphCast(torch.nn.Module):
             self._checkpoint_encoder = False
             self._checkpoint_processor_segments = 0
             self._checkpoint_decoder = False
-            # Disable layer-level checkpointing
-            self._set_layer_checkpointing(False)
 
     def set_checkpoint_encoder(self, checkpoint_flag: bool):
-        """Checkpoint encoder section.
+        """
+        Checkpoint encoder section.
 
         Checkpoints the encoder forward pass as a single segment.
         Only effective when set_checkpoint_model(False).
 
-        Parameters
-        ----------
-        checkpoint_flag : bool
-            If True, checkpoint encoder section.
+        Args:
+            checkpoint_flag: If True, checkpoint encoder section.
         """
         self._checkpoint_encoder = checkpoint_flag
 
     def set_checkpoint_processor(self, checkpoint_segments: int):
-        """Checkpoint processor with configurable segments.
+        """
+        Checkpoint processor with configurable segments.
 
         Controls how the processor is checkpointed:
         - 0: Use processor's internal per-block checkpointing
@@ -204,35 +157,27 @@ class GraphCast(torch.nn.Module):
 
         Only effective when set_checkpoint_model(False).
 
-        Parameters
-        ----------
-        checkpoint_segments : int
-            Checkpointing strategy (0, -1, or positive integer).
+        Args:
+            checkpoint_segments: Checkpointing strategy (0, -1, or positive integer).
         """
         self._checkpoint_processor_segments = checkpoint_segments
 
     def set_checkpoint_decoder(self, checkpoint_flag: bool):
-        """Checkpoint decoder section.
+        """
+        Checkpoint decoder section.
 
         Checkpoints the decoder forward pass as a single segment.
         Only effective when set_checkpoint_model(False).
 
-        Parameters
-        ----------
-        checkpoint_flag : bool
-            If True, checkpoint decoder section.
+        Args:
+            checkpoint_flag: If True, checkpoint decoder section.
         """
         self._checkpoint_decoder = checkpoint_flag
 
-    def _set_layer_checkpointing(self, flag: bool):
-        """Enable/disable fine-grained checkpointing in all layers."""
-        # This would require modifying the encoder/processor/decoder
-        # to support runtime checkpoint flag changes
-        # For now, this is controlled via __init__ parameter
-        pass
-
     def _encoder_forward(self, features: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        """Encoder forward pass (for checkpointing)."""
+        """
+        Encoder forward pass (for checkpointing).
+        """
         return self.encoder(features)
 
     def _processor_forward(
@@ -242,7 +187,9 @@ class GraphCast(torch.nn.Module):
         edge_attr: Tensor,
         batch_size: Optional[int] = None,
     ) -> Tensor:
-        """Processor forward pass (for checkpointing)."""
+        """
+        Processor forward pass (for checkpointing).
+        """
         return self.processor(
             x,
             edge_index,
@@ -257,11 +204,15 @@ class GraphCast(torch.nn.Module):
         original_features: Tensor,
         batch_size: int,
     ) -> Tensor:
-        """Decoder forward pass (for checkpointing)."""
+        """
+        Decoder forward pass (for checkpointing).
+        """
         return self.decoder(processed_features, original_features, batch_size)
 
     def _custom_forward(self, features: Tensor) -> Tensor:
-        """Forward pass with hierarchical checkpointing."""
+        """
+        Forward pass with hierarchical checkpointing.
+        """
         batch_size = features.shape[0]
 
         # Encoder
@@ -315,14 +266,10 @@ class GraphCast(torch.nn.Module):
     def forward(self, features: Tensor) -> Tensor:
         """Forward pass through GraphCast model.
 
-        Parameters
-        ----------
-        features : Tensor
-            Input features of shape [batch_size, num_points, input_dim]
+        Args:
+            features: Input features of shape [batch_size, num_points, input_dim]
 
-        Returns
-        -------
-        Tensor
+        Returns:
             Output predictions of shape [batch_size, num_points, output_dim]
         """
         if self._checkpoint_model:
@@ -346,7 +293,9 @@ class GraphCastConfig:
 
     @staticmethod
     def no_checkpointing(model: GraphCast):
-        """Disable all checkpointing (maximum speed, maximum memory)."""
+        """
+        Disable all checkpointing (maximum speed, maximum memory).
+        """
         model.set_checkpoint_model(False)
         model.set_checkpoint_encoder(False)
         model.set_checkpoint_processor(0)
@@ -354,12 +303,16 @@ class GraphCastConfig:
 
     @staticmethod
     def full_checkpointing(model: GraphCast):
-        """Checkpoint entire model (maximum memory savings, slowest)."""
+        """
+        Checkpoint entire model (maximum memory savings, slowest).
+        """
         model.set_checkpoint_model(True)
 
     @staticmethod
     def balanced_checkpointing(model: GraphCast):
-        """Balanced strategy (good memory savings, moderate speed)."""
+        """
+        Balanced strategy (good memory savings, moderate speed).
+        """
         model.set_checkpoint_model(False)
         model.set_checkpoint_encoder(True)
         model.set_checkpoint_processor(-1)
@@ -367,8 +320,26 @@ class GraphCastConfig:
 
     @staticmethod
     def processor_only_checkpointing(model: GraphCast):
-        """Checkpoint only processor (targets main memory bottleneck)."""
+        """
+        Checkpoint only processor (targets main memory bottleneck).
+        """
         model.set_checkpoint_model(False)
         model.set_checkpoint_encoder(False)
         model.set_checkpoint_processor(-1)
+        model.set_checkpoint_decoder(False)
+
+    @staticmethod
+    def fine_grained_checkpointing(model: GraphCast):
+        """
+        Fine-grained per-layer checkpointing (best memory savings).
+
+        This checkpoints each individual MLP and processor block separately.
+        Provides the best memory savings with moderate recomputation cost.
+        Note: Model must be created with use_checkpointing=True.
+        """
+        # Fine-grained is enabled via use_checkpointing=True in __init__
+        # This just disables hierarchical checkpointing
+        model.set_checkpoint_model(False)
+        model.set_checkpoint_encoder(False)
+        model.set_checkpoint_processor(0)
         model.set_checkpoint_decoder(False)

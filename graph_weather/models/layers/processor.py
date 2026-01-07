@@ -72,19 +72,11 @@ class Processor(torch.nn.Module):
 
         This matches NVIDIA's API for controlling processor checkpointing.
 
-        Parameters
-        ----------
-        checkpoint_segments : int
-            Number of checkpointing segments for gradient computation:
-            - 0: Use processor's internal per-block checkpointing (controlled by use_checkpointing)
-            - -1: Checkpoint entire processor as one segment (handled at GraphCast level)
-            - N > 0: Checkpoint every N blocks (not yet implemented)
-
-        Notes
-        -----
-        This method stores the checkpoint_segments value which is used by the
-        hierarchical GraphCast model. The actual checkpointing at this level
-        is controlled via the use_checkpointing parameter passed to GraphProcessor.
+        Args:
+            checkpoint_segments: Number of checkpointing segments for gradient computation.
+                - 0: Use processor's internal per-block checkpointing (controlled by use_checkpointing)
+                - -1: Checkpoint entire processor as one segment (handled at GraphCast level)
+                - N > 0: Checkpoint every N blocks (not yet implemented)
         """
         self.checkpoint_segments = checkpoint_segments
 
