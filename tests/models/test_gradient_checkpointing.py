@@ -441,10 +441,3 @@ def test_gradient_equivalence():
     assert len(grads_no_cp) == len(grads_with_cp)
     for g1, g2 in zip(grads_no_cp, grads_with_cp):
         assert torch.allclose(g1, g2, atol=1e-5), "Gradients differ with checkpointing"
-
-
-def test_checkpoint_uses_correct_flags():
-    """Test that checkpointing uses use_reentrant=False and preserve_rng_state=False."""
-    # This is tested implicitly by the other tests working correctly
-    # The flags are hardcoded in the implementation
-    pass
