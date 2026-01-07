@@ -117,6 +117,7 @@ class AssimilatorDecoder(torch.nn.Module):
             hidden_layers_node=hidden_layers_processor_node,
             hidden_layers_edge=hidden_layers_processor_edge,
             norm_type=mlp_norm_type,
+            use_checkpointing=self.use_checkpointing,
         )
         self.node_decoder = MLP(
             input_dim,
