@@ -1,19 +1,7 @@
-import sys
-import os
 import torch
 import pytest
 
-# Add the AI assimilation module directory to the path
-ai_assimilation_path = os.path.join(
-    os.path.dirname(__file__), "..", "graph_weather", "models", "ai_assimilation"
-)
-sys.path.insert(0, ai_assimilation_path)
-
-# Import the modules directly (avoiding package import issues)
-import model
-import loss
-import data
-import training
+from graph_weather.models.ai_assimilation import model, loss, data, training
 
 
 def test_model_creation_and_forward_pass():
