@@ -1,4 +1,10 @@
+"""
+Training Module for AI-based Data Assimilation
 
+Implements the training loop for the AI-based data assimilation approach
+using the 3D-Var loss function as described in:
+"AI-Based Data Assimilation: Learning the Functional of Analysis Estimation" (arXiv:2406.00390)
+"""
 
 import importlib.util
 import os
@@ -36,7 +42,17 @@ class AIBasedAssimilationTrainer(Module):
         device: str = 'cpu',
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None
     ):
+        """
+        Initialize the trainer.
         
+        Args:
+            model: AI-based assimilation model
+            loss_fn: 3D-Var loss function
+            optimizer: Optimizer (default: Adam)
+            lr: Learning rate
+            device: Device to train on
+            scheduler: Learning rate scheduler
+        """
         super().__init__()
         self.model = model.to(device)
         self.loss_fn = loss_fn.to(device)
@@ -88,7 +104,16 @@ class AIBasedAssimilationTrainer(Module):
         return loss.item()
     
     def validation_step(self, first_guess: torch.Tensor, observations: torch.Tensor) -> float:
+        """
+        Perform a validation step.
         
+        Args:
+            first_guess: First-guess state
+            observations: Observations
+            
+        Returns:
+            loss: Validation loss value
+        """
         self.model.eval()
         
         with torch.no_grad():
@@ -105,7 +130,15 @@ class AIBasedAssimilationTrainer(Module):
         return loss.item()
     
     def train_epoch(self, train_loader: torch.utils.data.DataLoader) -> float:
+        """
+        Train for one epoch.
         
+        Args:
+            train_loader: Training data loader
+            
+        Returns:
+            avg_loss: Average training loss for the epoch
+        """
         total_loss = 0.0
         num_batches = 0
         
@@ -121,7 +154,15 @@ class AIBasedAssimilationTrainer(Module):
         return avg_loss
     
     def validate_epoch(self, val_loader: torch.utils.data.DataLoader) -> float:
-
+        """
+        Validate for one epoch.
+        
+        Args:
+            val_loader: Validation data loader
+            
+        Returns:
+            avg_loss: Average validation loss for the epoch
+        """
         total_loss = 0.0
         num_batches = 0
         
@@ -146,6 +187,22 @@ class AIBasedAssimilationTrainer(Module):
         model_save_path: str = "best_ai_assimilation_model.pth",
         early_stopping_patience: int = 10
     ) -> Tuple[list, list]:
+        """
+        Train the model.
+        
+        Args:
+            train_loader: Training data loader
+            val_loader: Validation data loader
+            epochs: Number of training epochs
+            verbose: Whether to print progress
+            save_best_model: Whether to save the best model
+            model_save_path: Path to save the best model
+            early_stopping_patience: Patience for early stopping
+            
+        Returns:
+            train_losses: Training losses for each epoch
+            val_losses: Validation losses for each epoch
+        """
         best_val_loss = float('inf')
         patience_counter = 0
         
@@ -210,7 +267,16 @@ class AIBasedAssimilationTrainer(Module):
         test_loader: torch.utils.data.DataLoader, 
         compute_additional_metrics: bool = True
     ) -> Dict[str, float]:
+        """
+        Evaluate the model on test data.
         
+        Args:
+            test_loader: Test data loader
+            compute_additional_metrics: Whether to compute additional metrics
+            
+        Returns:
+            results: Dictionary with evaluation results
+        """
         self.model.eval()
         total_loss = 0.0
         num_batches = 0
@@ -249,7 +315,9 @@ class AIBasedAssimilationTrainer(Module):
             analysis_vs_bg_loss = self.loss_fn(
                 all_analysis, all_first_guess, all_observations
             ).item()
-            bg_vs_bg_loss = self.loss_fn(all_first_guess, all_first_guess, all_observations).item()
+            bg_vs_bg_loss = self.loss_fn(
+                all_first_guess, all_first_guess, all_observations
+            ).item()
             
             results.update({
                 'analysis_3dvar_loss': analysis_vs_bg_loss,
@@ -274,7 +342,24 @@ def train_ai_assimilation_model(
     lr: float = 1e-3,
     device: str = 'cpu'
 ) -> Tuple[Any, Dict[str, Any]]:
+    """
+    Convenience function to train an AI-based assimilation model.
     
+    Args:
+        model: AI-based assimilation model
+        train_loader: Training data loader
+        val_loader: Validation data loader
+        background_error_covariance: Background error covariance matrix
+        observation_error_covariance: Observation error covariance matrix
+        observation_operator: Observation operator matrix
+        epochs: Number of training epochs
+        lr: Learning rate
+        device: Device to train on
+        
+    Returns:
+        trainer: Trained trainer object
+        results: Training results dictionary
+    """
     # Initialize the 3D-Var loss function
     loss_fn = ThreeDVarLoss(
         background_error_covariance=background_error_covariance,
@@ -306,7 +391,13 @@ def train_ai_assimilation_model(
 
 
 def plot_training_history(trainer: AIBasedAssimilationTrainer, title: str = "Training History"):
+    """
+    Plot the training history of the AI-based assimilation model.
     
+    Args:
+        trainer: Trained AIBasedAssimilationTrainer
+        title: Title for the plot
+    """
     fig, axes = plt.subplots(1, 2, figsize=(15, 5))
     
     # Plot losses

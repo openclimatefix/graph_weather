@@ -1,178 +1,173 @@
+"""
+Loss Module for AI-based Data Assimilation
 
+Implements physics-based loss functions for training AI-based data assimilation models
+without requiring ground-truth labels, following the 3D-Var approach.
+"""
 
-from typing import Optional, Union
+from typing import Optional, Tuple
 
-import numpy as np
 import torch
-from torch.nn import Module
+import torch.nn as nn
 
 
-class ThreeDVarLoss(Module):
+class ThreeDVarLoss(nn.Module):
     """
-    3D-Var cost function loss for self-supervised AI-based data assimilation.
+    3D-Var loss function for AI-based data assimilation.
 
-    The 3D-Var cost function is defined as:
-    J(x) = (x - x_b)^T B^{-1}(x - x_b) + (y - Hx)^T R^{-1}(y - Hx)
-
-    Where:
-    - x: analysis state (model output)
-    - x_b: background state (first guess)
-    - y: observations
-    - B: background error covariance matrix
-    - R: observation error covariance matrix
-    - H: observation operator matrix
+    Implements the traditional 3D-Var cost function that balances fit to
+    background (first-guess) state and observations.
     """
+
     def __init__(
         self,
-        background_error_covariance: Optional[Union[torch.Tensor, np.ndarray]] = None,
-        observation_error_covariance: Optional[Union[torch.Tensor, np.ndarray]] = None,
-        observation_operator: Optional[Union[torch.Tensor, np.ndarray]] = None,
-        bg_weight: float = 1.0,
-        obs_weight: float = 1.0,
+        background_error_covariance: Optional[torch.Tensor] = None,
+        observation_error_covariance: Optional[torch.Tensor] = None,
+        observation_operator: Optional[torch.Tensor] = None,
     ):
-        
-        super(ThreeDVarLoss, self).__init__()
+        """
+        Initialize the 3D-Var loss function.
 
-        self.bg_weight = bg_weight
-        self.obs_weight = obs_weight
-
-        # Initialize background error covariance B
-        if background_error_covariance is None:
-            # Default to identity matrix (diagonal with unit variance)
-            self.register_buffer("B_inv", None)  # Will be computed as identity when needed
-        else:
-            if isinstance(background_error_covariance, torch.Tensor):
-                B_inv = torch.inverse(background_error_covariance)
-            else:
-                B_inv = torch.inverse(
-                    torch.tensor(background_error_covariance, dtype=torch.float32)
-                )
-            self.register_buffer("B_inv", B_inv)
-
-        # Initialize observation error covariance R
-        if observation_error_covariance is None:
-            # Default to identity matrix (diagonal with unit variance)
-            self.register_buffer("R_inv", None)  # Will be computed as identity when needed
-        else:
-            if isinstance(observation_error_covariance, torch.Tensor):
-                R_inv = torch.inverse(observation_error_covariance)
-            else:
-                R_inv = torch.inverse(
-                    torch.tensor(observation_error_covariance, dtype=torch.float32)
-                )
-            self.register_buffer("R_inv", R_inv)
-
-        # Initialize observation operator H
-        if observation_operator is None:
-            # Default to identity (direct observation of state variables)
-            self.register_buffer("H", None)  # Will be treated as identity when needed
-        else:
-            if isinstance(observation_operator, torch.Tensor):
-                H = observation_operator
-            else:
-                H = torch.tensor(observation_operator, dtype=torch.float32)
-            self.register_buffer("H", H)
+        Args:
+            background_error_covariance: Background error covariance matrix B
+            observation_error_covariance: Observation error covariance matrix R
+            observation_operator: Observation operator matrix H
+        """
+        super().__init__()
+        self.background_error_covariance = background_error_covariance
+        self.observation_error_covariance = observation_error_covariance
+        self.observation_operator = observation_operator
 
     def forward(
-        self, analysis: torch.Tensor, first_guess: torch.Tensor, observations: torch.Tensor
+        self,
+        analysis: torch.Tensor,
+        background: torch.Tensor,
+        observations: torch.Tensor,
     ) -> torch.Tensor:
-        batch_size = analysis.size(0)
+        """
+        Compute the 3D-Var cost function.
 
-        # Background term: (x - x_b)^T B^{-1} (x - x_b)
-        bg_diff = analysis - first_guess
+        Args:
+            analysis: Analysis state produced by the AI model
+            background: Background (first-guess) state
+            observations: Observation values
 
-        if self.B_inv is None:
-            # Use identity matrix for B^{-1} - element-wise square and sum
-            bg_term = torch.sum(bg_diff * bg_diff, dim=-1)
+        Returns:
+            Total 3D-Var cost as a scalar tensor
+        """
+        # Background term: (x_a - x_b)^T B^{-1} (x_a - x_b)
+        bg_diff = analysis - background
+        if self.background_error_covariance is not None:
+            # Use provided covariance matrix
+            inv_bg_cov = torch.inverse(self.background_error_covariance)
+            bg_quadratic = bg_diff @ inv_bg_cov * bg_diff
+            bg_term = torch.sum(bg_quadratic, dim=-1)
         else:
-            # Compute quadratic form (x - x_b)^T B^{-1} (x - x_b)
-            # For efficiency, assuming B_inv is diagonal for now
-            if self.B_inv.dim() == 1:  # Diagonal matrix stored as 1D
-                bg_term = torch.sum(bg_diff * bg_diff * self.B_inv.unsqueeze(0), dim=-1)
-            elif self.B_inv.dim() == 2:  # Full matrix
-                bg_term = torch.sum(
-                    bg_diff * torch.matmul(bg_diff.unsqueeze(-2), self.B_inv).squeeze(-2), dim=-1
-                )
-            else:
-                raise ValueError(f"B_inv has unexpected dimensions: {self.B_inv.shape}")
+            # Simplified: assume identity covariance (sum of squares)
+            bg_term = torch.sum(bg_diff ** 2, dim=-1)
 
-        bg_term = self.bg_weight * torch.mean(bg_term)
-
-        # Observation term: (y - Hx)^T R^{-1} (y - Hx)
-        if self.H is None:
-            # H is identity, so Hx = x (assuming same dimensions for obs and state)
+        # Observation term: (y - H x_a)^T R^{-1} (y - H x_a)
+        if self.observation_operator is not None:
+            # Apply observation operator
+            hx = torch.matmul(
+                analysis.unsqueeze(1), 
+                self.observation_operator.transpose(-1, -2)
+            ).squeeze(1)
+        else:
+            # Identity observation operator (direct comparison)
             hx = analysis
-        else:
-            # Apply observation operator: Hx
-            if len(analysis.shape) == 2:
-                # 2D case: [batch, features]
-                hx = torch.matmul(analysis, self.H.t())
-            else:
-                # For multi-dimensional case, we might need to reshape
-                original_shape = analysis.shape
-                analysis_flat = analysis.view(batch_size, -1)
-                hx_flat = torch.matmul(analysis_flat, self.H.t())
-                hx = hx_flat.view(original_shape)
 
         obs_diff = observations - hx
-
-        if self.R_inv is None:
-            # Use identity matrix for R^{-1} - element-wise square and sum
-            obs_term = torch.sum(obs_diff * obs_diff, dim=-1)
+        if self.observation_error_covariance is not None:
+            # Use provided covariance matrix
+            inv_obs_cov = torch.inverse(self.observation_error_covariance)
+            obs_quadratic = obs_diff @ inv_obs_cov * obs_diff
+            obs_term = torch.sum(obs_quadratic, dim=-1)
         else:
-            # Compute quadratic form (y - Hx)^T R^{-1} (y - Hx)
-            # For efficiency, assuming R_inv is diagonal for now
-            if self.R_inv.dim() == 1:  # Diagonal matrix stored as 1D
-                obs_term = torch.sum(obs_diff * obs_diff * self.R_inv.unsqueeze(0), dim=-1)
-            elif self.R_inv.dim() == 2:  # Full matrix
-                obs_term = torch.sum(
-                    obs_diff * torch.matmul(obs_diff.unsqueeze(-2), self.R_inv).squeeze(-2), dim=-1
-                )
-            else:
-                raise ValueError(f"R_inv has unexpected dimensions: {self.R_inv.shape}")
+            # Simplified: assume identity covariance (sum of squares)
+            obs_term = torch.sum(obs_diff ** 2, dim=-1)
 
-        obs_term = self.obs_weight * torch.mean(obs_term)
+        # Combine terms with equal weighting (can be adjusted)
+        total_cost = 0.5 * (torch.mean(bg_term) + torch.mean(obs_term))
 
-        # Total 3D-Var cost
-        total_loss = bg_term + obs_term
-
-        return total_loss
+        return total_cost
 
 
-class GaussianCovarianceBuilder:
+class PhysicsInformedLoss(nn.Module):
+    """
+    Physics-informed loss combining 3D-Var with physical constraints.
 
-    @staticmethod
-    def build_gaussian_covariance(
-        size: int,
-        length_scale: float = 1.0,
-        variance: float = 1.0,
-        grid_shape: Optional[tuple] = None,
-    ) -> torch.Tensor:
-        
-        if grid_shape is not None and len(grid_shape) == 2:
-            # For 2D grid, calculate distances based on grid positions
-            h, w = grid_shape
-            if h * w != size:
-                raise ValueError(f"Grid shape {grid_shape} doesn't match size {size}")
+    Extends the basic 3D-Var loss with additional physics-based regularization terms.
+    """
 
-            # Create coordinate grid
-            coords = torch.zeros(size, 2)
-            for i in range(h):
-                for j in range(w):
-                    idx = i * w + j
-                    coords[idx, 0] = i
-                    coords[idx, 1] = j
+    def __init__(
+        self,
+        three_d_var_weight: float = 1.0,
+        smoothness_weight: float = 0.1,
+        conservation_weight: float = 0.05,
+    ):
+        """
+        Initialize physics-informed loss.
 
-            # Calculate pairwise distances
-            diff = coords.unsqueeze(1) - coords.unsqueeze(0)  # [size, size, 2]
-            dist_sq = torch.sum(diff**2, dim=2)  # [size, size]
+        Args:
+            three_d_var_weight: Weight for 3D-Var term
+            smoothness_weight: Weight for spatial smoothness regularization
+            conservation_weight: Weight for conservation law enforcement
+        """
+        super().__init__()
+        self.three_d_var_weight = three_d_var_weight
+        self.smoothness_weight = smoothness_weight
+        self.conservation_weight = conservation_weight
+        self.base_loss = ThreeDVarLoss()
+
+    def forward(
+        self,
+        analysis: torch.Tensor,
+        background: torch.Tensor,
+        observations: torch.Tensor,
+        grid_spacing: Optional[float] = None,
+    ) -> Tuple[torch.Tensor, dict]:
+        """
+        Compute physics-informed loss with component breakdown.
+
+        Args:
+            analysis: Analysis state from AI model
+            background: Background state
+            observations: Observation values
+            grid_spacing: Spatial grid spacing for derivative calculations
+
+        Returns:
+            Tuple of (total_loss, loss_components_dict)
+        """
+        # Base 3D-Var loss
+        three_d_var_loss = self.base_loss(analysis, background, observations)
+
+        # Smoothness regularization (penalize spatial gradients)
+        if analysis.dim() == 4:  # [batch, channels, height, width]
+            # Compute spatial gradients
+            dy = torch.abs(analysis[:, :, 1:, :] - analysis[:, :, :-1, :]).mean()
+            dx = torch.abs(analysis[:, :, :, 1:] - analysis[:, :, :, :-1]).mean()
+            smoothness_loss = (dy + dx) / 2.0
         else:
-            # For 1D case, assume points are evenly spaced
-            positions = torch.arange(size, dtype=torch.float32).unsqueeze(1)  # [size, 1]
-            diff = positions - positions.t()  # [size, size]
-            dist_sq = diff**2
+            # For 1D or other cases, use simple gradient approximation
+            smoothness_loss = torch.mean(torch.abs(analysis[:, 1:] - analysis[:, :-1]))
 
-        # Calculate Gaussian covariance: C(i,j) = variance * exp(-d^2 / (2 * length_scale^2))
-        covariance = variance * torch.exp(-dist_sq / (2 * length_scale**2))
+        # Conservation constraint (enforce mass/energy conservation)
+        conservation_loss = torch.abs(torch.mean(analysis - background))
 
-        return covariance
+        # Weighted combination
+        total_loss = (
+            self.three_d_var_weight * three_d_var_loss +
+            self.smoothness_weight * smoothness_loss +
+            self.conservation_weight * conservation_loss
+        )
+
+        # Return components for monitoring
+        components = {
+            'three_d_var': three_d_var_loss.item(),
+            'smoothness': smoothness_loss.item(),
+            'conservation': conservation_loss.item(),
+            'total': total_loss.item()
+        }
+
+        return total_loss, components
