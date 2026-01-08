@@ -1,10 +1,3 @@
-"""
-Data Module for AI-based Data Assimilation
-
-Handles the loading and preprocessing of first-guess states and observations
-for the AI-based assimilation approach.
-"""
-
 import warnings
 from typing import Dict, Optional, Tuple
 
@@ -16,28 +9,12 @@ warnings.filterwarnings("ignore")
 
 
 class AIAssimilationDataset(Dataset):
-    """
-    Dataset for AI-based data assimilation.
-
-    Each sample contains a first-guess state and corresponding observations.
-    The dataset is designed to work with self-supervised learning where
-    no ground-truth analysis is required.
-    """
-
     def __init__(
         self,
         first_guess_states: torch.Tensor,
         observations: torch.Tensor,
         observation_locations: Optional[torch.Tensor] = None,
     ):
-        """
-        Initialize the AI assimilation dataset.
-
-        Args:
-            first_guess_states: First-guess states (background) [num_samples, state_size]
-            observations: Observation values [num_samples, obs_size]
-            observation_locations: Optional tensor indicating observation locations
-        """
         self.first_guess_states = first_guess_states
         self.observations = observations
         self.observation_locations = observation_locations
@@ -51,15 +28,6 @@ class AIAssimilationDataset(Dataset):
         return len(self.first_guess_states)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """
-        Get a sample from the dataset.
-
-        Args:
-            idx: Index of the sample
-
-        Returns:
-            Dictionary containing first_guess, observations, and optionally locations
-        """
         sample = {
             "first_guess": self.first_guess_states[idx],
             "observations": self.observations[idx],
@@ -80,21 +48,6 @@ def generate_synthetic_assimilation_data(
     spatial_correlation: bool = False,
     grid_shape: Optional[Tuple[int, int]] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """
-    Generate synthetic data for AI-based data assimilation experiments.
-
-    Args:
-        num_samples: Number of samples to generate
-        state_size: Size of the state vector
-        obs_fraction: Fraction of state variables that have observations
-        bg_error_std: Standard deviation of background (first-guess) errors
-        obs_error_std: Standard deviation of observation errors
-        spatial_correlation: Whether to add spatial correlation to the data
-        grid_shape: Shape of spatial grid if applicable (h, w)
-
-    Returns:
-        Tuple of (first_guess, observations, true_state) tensors
-    """
     # Generate a true state with possible spatial correlation
     if spatial_correlation and grid_shape is not None:
         h, w = grid_shape
@@ -158,12 +111,6 @@ def generate_synthetic_assimilation_data(
 
 
 class AIAssimilationDataModule:
-    """
-    Data module for AI-based assimilation following PyTorch Lightning pattern.
-
-    Handles data splits and provides train/val/test loaders.
-    """
-
     def __init__(
         self,
         num_samples: int = 1000,
@@ -178,22 +125,7 @@ class AIAssimilationDataModule:
         spatial_correlation: bool = False,
         grid_shape: Optional[Tuple[int, int]] = None,
     ):
-        """
-        Initialize the AI assimilation data module.
 
-        Args:
-            num_samples: Number of total samples
-            state_size: Size of state vector
-            obs_fraction: Fraction of observed values
-            bg_error_std: Background error standard deviation
-            obs_error_std: Observation error standard deviation
-            batch_size: Batch size for data loaders
-            train_ratio: Fraction for training
-            val_ratio: Fraction for validation
-            test_ratio: Fraction for testing
-            spatial_correlation: Whether to include spatial correlation
-            grid_shape: Shape of spatial grid if applicable
-        """
         self.num_samples = num_samples
         self.state_size = state_size
         self.obs_fraction = obs_fraction
@@ -215,12 +147,7 @@ class AIAssimilationDataModule:
         self.test_loader = None
 
     def setup(self, stage: Optional[str] = None):
-        """
-        Setup the datasets and data loaders.
 
-        Args:
-            stage: Stage of training (fit, validate, test, predict)
-        """
         # Generate synthetic data
         first_guess, observations, true_state = generate_synthetic_assimilation_data(
             num_samples=self.num_samples,
@@ -266,17 +193,7 @@ class AIAssimilationDataModule:
 def create_observation_operator(
     state_size: int, obs_size: int, obs_locations: Optional[np.ndarray] = None
 ) -> torch.Tensor:
-    """
-    Create an observation operator matrix H that maps state space to observation space.
 
-    Args:
-        state_size: Size of the state vector
-        obs_size: Size of the observation vector
-        obs_locations: Specific locations of observations (indices in state vector)
-
-    Returns:
-        Observation operator H [obs_size, state_size]
-    """
     if obs_locations is None:
         # Randomly select observation locations
         obs_indices = np.random.choice(state_size, size=obs_size, replace=False)

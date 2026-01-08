@@ -1,10 +1,3 @@
-"""
-Loss Module for AI-based Data Assimilation
-
-Implements physics-based loss functions for training AI-based data assimilation models
-without requiring ground-truth labels, following the 3D-Var approach.
-"""
-
 from typing import Optional, Tuple
 
 import torch
@@ -12,27 +5,12 @@ import torch.nn as nn
 
 
 class ThreeDVarLoss(nn.Module):
-    """
-    3D-Var loss function for AI-based data assimilation.
-
-    Implements the traditional 3D-Var cost function that balances fit to
-    background (first-guess) state and observations.
-    """
-
     def __init__(
         self,
         background_error_covariance: Optional[torch.Tensor] = None,
         observation_error_covariance: Optional[torch.Tensor] = None,
         observation_operator: Optional[torch.Tensor] = None,
     ):
-        """
-        Initialize the 3D-Var loss function.
-
-        Args:
-            background_error_covariance: Background error covariance matrix B
-            observation_error_covariance: Observation error covariance matrix R
-            observation_operator: Observation operator matrix H
-        """
         super().__init__()
         self.background_error_covariance = background_error_covariance
         self.observation_error_covariance = observation_error_covariance
@@ -44,17 +22,6 @@ class ThreeDVarLoss(nn.Module):
         background: torch.Tensor,
         observations: torch.Tensor,
     ) -> torch.Tensor:
-        """
-        Compute the 3D-Var cost function.
-
-        Args:
-            analysis: Analysis state produced by the AI model
-            background: Background (first-guess) state
-            observations: Observation values
-
-        Returns:
-            Total 3D-Var cost as a scalar tensor
-        """
         # Background term: (x_a - x_b)^T B^{-1} (x_a - x_b)
         bg_diff = analysis - background
         if self.background_error_covariance is not None:
@@ -93,26 +60,12 @@ class ThreeDVarLoss(nn.Module):
 
 
 class PhysicsInformedLoss(nn.Module):
-    """
-    Physics-informed loss combining 3D-Var with physical constraints.
-
-    Extends the basic 3D-Var loss with additional physics-based regularization terms.
-    """
-
     def __init__(
         self,
         three_d_var_weight: float = 1.0,
         smoothness_weight: float = 0.1,
         conservation_weight: float = 0.05,
     ):
-        """
-        Initialize physics-informed loss.
-
-        Args:
-            three_d_var_weight: Weight for 3D-Var term
-            smoothness_weight: Weight for spatial smoothness regularization
-            conservation_weight: Weight for conservation law enforcement
-        """
         super().__init__()
         self.three_d_var_weight = three_d_var_weight
         self.smoothness_weight = smoothness_weight
@@ -126,18 +79,6 @@ class PhysicsInformedLoss(nn.Module):
         observations: torch.Tensor,
         grid_spacing: Optional[float] = None,
     ) -> Tuple[torch.Tensor, dict]:
-        """
-        Compute physics-informed loss with component breakdown.
-
-        Args:
-            analysis: Analysis state from AI model
-            background: Background state
-            observations: Observation values
-            grid_spacing: Spatial grid spacing for derivative calculations
-
-        Returns:
-            Tuple of (total_loss, loss_components_dict)
-        """
         # Base 3D-Var loss
         three_d_var_loss = self.base_loss(analysis, background, observations)
 
