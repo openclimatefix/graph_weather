@@ -4,7 +4,9 @@ import torch
 import pytest
 
 # Add the AI assimilation module directory to the path
-ai_assimilation_path = os.path.join(os.path.dirname(__file__), '..', 'graph_weather', 'models', 'ai_assimilation')
+ai_assimilation_path = os.path.join(
+    os.path.dirname(__file__), "..", "graph_weather", "models", "ai_assimilation"
+)
 sys.path.insert(0, ai_assimilation_path)
 
 # Import the modules directly (avoiding package import issues)
@@ -32,7 +34,6 @@ def test_model_creation_and_forward_pass():
 
 
 def test_3dvar_loss_function():
-    """Test that the 3D-Var loss function works correctly."""
     loss_fn = loss.ThreeDVarLoss()
     
     # Create test tensors

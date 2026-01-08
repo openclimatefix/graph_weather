@@ -64,14 +64,13 @@ class ThreeDVarLoss(nn.Module):
             bg_term = torch.sum(bg_quadratic, dim=-1)
         else:
             # Simplified: assume identity covariance (sum of squares)
-            bg_term = torch.sum(bg_diff ** 2, dim=-1)
+            bg_term = torch.sum(bg_diff**2, dim=-1)
 
         # Observation term: (y - H x_a)^T R^{-1} (y - H x_a)
         if self.observation_operator is not None:
             # Apply observation operator
             hx = torch.matmul(
-                analysis.unsqueeze(1), 
-                self.observation_operator.transpose(-1, -2)
+                analysis.unsqueeze(1), self.observation_operator.transpose(-1, -2)
             ).squeeze(1)
         else:
             # Identity observation operator (direct comparison)
@@ -85,7 +84,7 @@ class ThreeDVarLoss(nn.Module):
             obs_term = torch.sum(obs_quadratic, dim=-1)
         else:
             # Simplified: assume identity covariance (sum of squares)
-            obs_term = torch.sum(obs_diff ** 2, dim=-1)
+            obs_term = torch.sum(obs_diff**2, dim=-1)
 
         # Combine terms with equal weighting (can be adjusted)
         total_cost = 0.5 * (torch.mean(bg_term) + torch.mean(obs_term))
@@ -157,17 +156,17 @@ class PhysicsInformedLoss(nn.Module):
 
         # Weighted combination
         total_loss = (
-            self.three_d_var_weight * three_d_var_loss +
-            self.smoothness_weight * smoothness_loss +
-            self.conservation_weight * conservation_loss
+            self.three_d_var_weight * three_d_var_loss
+            + self.smoothness_weight * smoothness_loss
+            + self.conservation_weight * conservation_loss
         )
 
         # Return components for monitoring
         components = {
-            'three_d_var': three_d_var_loss.item(),
-            'smoothness': smoothness_loss.item(),
-            'conservation': conservation_loss.item(),
-            'total': total_loss.item()
+            "three_d_var": three_d_var_loss.item(),
+            "smoothness": smoothness_loss.item(),
+            "conservation": conservation_loss.item(),
+            "total": total_loss.item(),
         }
 
         return total_loss, components
