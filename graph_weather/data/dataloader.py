@@ -117,7 +117,7 @@ class AnalysisDataset(Dataset):
             end_solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])
             )
-        end_solar_times = np.array(solar_times)
+        end_solar_times = np.array(end_solar_times)
 
         # Normalize to between -1 and 1
         solar_times -= const.SOLAR_MEAN
