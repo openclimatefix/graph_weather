@@ -1,7 +1,7 @@
 [project]
 name = "graph_weather"
 requires-python = ">=3.11"
-version = "1.0.129"
+version = "1.0.130"
 description = "Graph-based AI Weather models"
 authors = [
     {name = "Jacob Prince-Bieker", email = "jacob@bieker.tech"},
