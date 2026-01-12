@@ -1,5 +1,6 @@
 """Setup"""
 
+import re
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -7,9 +8,20 @@ from setuptools import find_packages, setup
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
+
+# Read version from pyproject.toml (single source of truth)
+def get_version():
+    pyproject_path = this_directory / "pyproject.toml"
+    content = pyproject_path.read_text()
+    match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    raise RuntimeError("Unable to find version string in pyproject.toml")
+
+
 setup(
     name="graph_weather",
-    version="1.0.129",
+    version=get_version(),
     packages=find_packages(),
     url="https://github.com/openclimatefix/graph_weather",
     license="MIT License",
