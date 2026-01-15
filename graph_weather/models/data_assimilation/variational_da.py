@@ -195,16 +195,7 @@ class VariationalDA(DataAssimilationBase):
         ensemble: Union[Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[Data, HeteroData]:
-        """
-        Perform variational assimilation for graph-based ensemble.
         
-        Args:
-            ensemble: Graph ensemble
-            observations: Observation data
-            
-        Returns:
-            Updated graph ensemble
-        """
         # For graph-based ensemble, we need to handle the optimization differently
         # This is a simplified implementation that optimizes the node features
         
