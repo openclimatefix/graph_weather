@@ -161,9 +161,7 @@ class RateLimiter:
                 self.last_minute_refill = current_time
             else:
                 refill = int(elapsed_minute * self.requests_per_minute / 60)
-                self.minute_tokens = min(
-                    self.requests_per_minute, self.minute_tokens + refill
-                )
+                self.minute_tokens = min(self.requests_per_minute, self.minute_tokens + refill)
                 if refill > 0:
                     self.last_minute_refill = current_time
 
@@ -200,9 +198,7 @@ class RateLimiter:
         if self.minute_tokens <= 0:
             sleep_time = 60 - (time.time() - self.last_minute_refill)
             if sleep_time > 0:
-                logger.info(
-                    f"Minute rate limit reached (600/min). Waiting {sleep_time:.1f}s..."
-                )
+                logger.info(f"Minute rate limit reached (600/min). Waiting {sleep_time:.1f}s...")
                 time.sleep(sleep_time)
             self.minute_tokens = self.requests_per_minute
             self.last_minute_refill = time.time()
@@ -355,9 +351,7 @@ class OpenMeteoWeatherDataFetcher:
             return cached
 
         # Generate grid
-        lat_coords, lon_coords, flat_coords = self._generate_grid(
-            lat_range, lon_range, resolution
-        )
+        lat_coords, lon_coords, flat_coords = self._generate_grid(lat_range, lon_range, resolution)
 
         logger.info(
             f"Fetching forecast data for {len(flat_coords)} grid points "
@@ -450,9 +444,7 @@ class OpenMeteoWeatherDataFetcher:
             return cached
 
         # Generate grid
-        lat_coords, lon_coords, flat_coords = self._generate_grid(
-            lat_range, lon_range, resolution
-        )
+        lat_coords, lon_coords, flat_coords = self._generate_grid(lat_range, lon_range, resolution)
 
         logger.info(
             f"Fetching historical data for {len(flat_coords)} grid points "
@@ -662,17 +654,13 @@ class OpenMeteoWeatherDataFetcher:
                     full_url,
                     headers={"Accept": "application/json"},
                 )
-                with urllib.request.urlopen(
-                    request, timeout=self.timeout_seconds
-                ) as response:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                     return json.loads(response.read().decode())
 
             except urllib.error.HTTPError as e:
                 if e.code == 429:  # Rate limited
                     wait_time = backoff_factor**attempt
-                    logger.warning(
-                        f"Rate limited (429), waiting {wait_time:.1f}s before retry"
-                    )
+                    logger.warning(f"Rate limited (429), waiting {wait_time:.1f}s before retry")
                     time.sleep(wait_time)
                 elif e.code >= 500:  # Server error
                     wait_time = backoff_factor**attempt
@@ -682,9 +670,7 @@ class OpenMeteoWeatherDataFetcher:
                     time.sleep(wait_time)
                 else:
                     error_body = e.read().decode() if e.fp else ""
-                    raise OpenMeteoAPIError(
-                        f"HTTP {e.code}: {e.reason}. Body: {error_body}"
-                    )
+                    raise OpenMeteoAPIError(f"HTTP {e.code}: {e.reason}. Body: {error_body}")
 
             except urllib.error.URLError as e:
                 if attempt < max_retries - 1:

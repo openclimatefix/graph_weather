@@ -417,15 +417,17 @@ def test_fetch_forecast_gridded_output(mock_fetch_all, fetcher):
     responses = []
     for lat in [50.0, 51.0, 52.0]:
         for lon in [10.0, 11.0, 12.0]:
-            responses.append({
-                "latitude": lat,
-                "longitude": lon,
-                "hourly": {
-                    "time": ["2024-01-01T00:00", "2024-01-01T01:00"],
-                    "temperature_2m": [10.0, 11.0],
-                },
-                "hourly_units": {"temperature_2m": "°C"},
-            })
+            responses.append(
+                {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "hourly": {
+                        "time": ["2024-01-01T00:00", "2024-01-01T01:00"],
+                        "temperature_2m": [10.0, 11.0],
+                    },
+                    "hourly_units": {"temperature_2m": "°C"},
+                }
+            )
 
     mock_fetch_all.return_value = responses
 
@@ -449,16 +451,18 @@ def test_fetch_forecast_configurable_parameters(mock_fetch_all, fetcher):
     """Test that hourly parameters are configurable (maintainer requirement)."""
     custom_params = ["temperature_2m", "wind_speed_10m"]
 
-    mock_fetch_all.return_value = [{
-        "latitude": 52.0,
-        "longitude": 13.0,
-        "hourly": {
-            "time": ["2024-01-01T00:00"],
-            "temperature_2m": [10.0],
-            "wind_speed_10m": [5.0],
-        },
-        "hourly_units": {},
-    }]
+    mock_fetch_all.return_value = [
+        {
+            "latitude": 52.0,
+            "longitude": 13.0,
+            "hourly": {
+                "time": ["2024-01-01T00:00"],
+                "temperature_2m": [10.0],
+                "wind_speed_10m": [5.0],
+            },
+            "hourly_units": {},
+        }
+    ]
 
     ds = fetcher.fetch_forecast(
         lat_range=(52.0, 52.5),
