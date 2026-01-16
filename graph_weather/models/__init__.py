@@ -13,4 +13,3 @@ from .layers.decoder import Decoder
 from .layers.encoder import Encoder
 from .layers.processor import Processor
 from .layers.stochastic_decomposition import StochasticDecompositionLayer
-from .data_assimilation import DataAssimilationModel, ThreeDVarLoss
