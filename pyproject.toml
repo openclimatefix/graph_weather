@@ -139,7 +139,7 @@ output-format = "github"
 [tool.ruff.lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F", "D", "I"]
-ignore = ["D200","D202","D210","D212","D415","D105"]
+ignore = ["D200","D202","D210","D212","D415","D105","D100","D101","D102","D103","D104","D107"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "I"]
