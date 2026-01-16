@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 class AIAssimilationNet(nn.Module):
+
     def __init__(
         self,
         state_size: int,
@@ -12,6 +13,7 @@ class AIAssimilationNet(nn.Module):
         activation: str = "relu",
         dropout_rate: float = 0.1,
     ):
+
 
         super(AIAssimilationNet, self).__init__()
 
@@ -48,6 +50,7 @@ class AIAssimilationNet(nn.Module):
         self.network = nn.Sequential(*layers)
 
     def forward(self, first_guess: torch.Tensor, observations: torch.Tensor) -> torch.Tensor:
+
         # Concatenate first-guess and observations
         combined_input = torch.cat([first_guess, observations], dim=-1)
 
@@ -59,12 +62,15 @@ class AIAssimilationNet(nn.Module):
 
 class BlankFirstGuessGenerator(nn.Module):
 
+
     def __init__(self, state_size: int, init_value: float = 0.0):
+
         super(BlankFirstGuessGenerator, self).__init__()
         self.state_size = state_size
         self.init_value = init_value
 
     def forward(self, batch_size: int, device: torch.device = None) -> torch.Tensor:
+
         if device is None:
             device = torch.device("cpu")
 

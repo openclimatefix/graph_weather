@@ -9,12 +9,14 @@ warnings.filterwarnings("ignore")
 
 
 class AIAssimilationDataset(Dataset):
+
     def __init__(
         self,
         first_guess_states: torch.Tensor,
         observations: torch.Tensor,
         observation_locations: Optional[torch.Tensor] = None,
     ):
+
         self.first_guess_states = first_guess_states
         self.observations = observations
         self.observation_locations = observation_locations
@@ -48,6 +50,7 @@ def generate_synthetic_assimilation_data(
     spatial_correlation: bool = False,
     grid_shape: Optional[Tuple[int, int]] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
     # Generate a true state with possible spatial correlation
     if spatial_correlation and grid_shape is not None:
         h, w = grid_shape
@@ -111,6 +114,7 @@ def generate_synthetic_assimilation_data(
 
 
 class AIAssimilationDataModule:
+
     def __init__(
         self,
         num_samples: int = 1000,
@@ -125,6 +129,7 @@ class AIAssimilationDataModule:
         spatial_correlation: bool = False,
         grid_shape: Optional[Tuple[int, int]] = None,
     ):
+
 
         self.num_samples = num_samples
         self.state_size = state_size
@@ -147,6 +152,7 @@ class AIAssimilationDataModule:
         self.test_loader = None
 
     def setup(self, stage: Optional[str] = None):
+
 
         # Generate synthetic data
         first_guess, observations, true_state = generate_synthetic_assimilation_data(
@@ -193,6 +199,7 @@ class AIAssimilationDataModule:
 def create_observation_operator(
     state_size: int, obs_size: int, obs_locations: Optional[np.ndarray] = None
 ) -> torch.Tensor:
+
 
     if obs_locations is None:
         # Randomly select observation locations

@@ -12,6 +12,7 @@ from .loss import ThreeDVarLoss
 
 class AIBasedAssimilationTrainer(Module):
 
+
     def __init__(
         self,
         model: Module,
@@ -21,6 +22,7 @@ class AIBasedAssimilationTrainer(Module):
         device: str = "cpu",
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
     ):
+
         super().__init__()
         self.model = model.to(device)
         self.loss_fn = loss_fn.to(device)
@@ -37,6 +39,7 @@ class AIBasedAssimilationTrainer(Module):
         self.learning_rates = []
 
     def train_step(self, first_guess: torch.Tensor, observations: torch.Tensor) -> float:
+
         self.model.train()
         self.optimizer.zero_grad()
 
@@ -88,6 +91,7 @@ class AIBasedAssimilationTrainer(Module):
         return loss.item()
 
     def train_epoch(self, train_loader: torch.utils.data.DataLoader) -> float:
+
         total_loss = 0.0
         num_batches = 0
 
@@ -103,6 +107,7 @@ class AIBasedAssimilationTrainer(Module):
         return avg_loss
 
     def validate_epoch(self, val_loader: torch.utils.data.DataLoader) -> float:
+
         total_loss = 0.0
         num_batches = 0
 
@@ -127,6 +132,7 @@ class AIBasedAssimilationTrainer(Module):
         model_save_path: str = "best_ai_assimilation_model.pth",
         early_stopping_patience: int = 10,
     ) -> Tuple[list, list]:
+
         best_val_loss = float("inf")
         patience_counter = 0
 
@@ -190,6 +196,7 @@ class AIBasedAssimilationTrainer(Module):
     def evaluate_model(
         self, test_loader: torch.utils.data.DataLoader, compute_additional_metrics: bool = True
     ) -> Dict[str, float]:
+
 
         self.model.eval()
         total_loss = 0.0
@@ -257,6 +264,7 @@ def train_ai_assimilation_model(
     lr: float = 1e-3,
     device: str = "cpu",
 ) -> Tuple[Any, Dict[str, Any]]:
+
     # Initialize the 3D-Var loss function
     loss_fn = ThreeDVarLoss(
         background_error_covariance=background_error_covariance,
@@ -280,6 +288,7 @@ def train_ai_assimilation_model(
 
 
 def plot_training_history(trainer: AIBasedAssimilationTrainer, title: str = "Training History"):
+
     fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
     # Plot losses

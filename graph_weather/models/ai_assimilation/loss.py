@@ -5,12 +5,14 @@ import torch.nn as nn
 
 
 class ThreeDVarLoss(nn.Module):
+
     def __init__(
         self,
         background_error_covariance: Optional[torch.Tensor] = None,
         observation_error_covariance: Optional[torch.Tensor] = None,
         observation_operator: Optional[torch.Tensor] = None,
     ):
+
         super().__init__()
         self.background_error_covariance = background_error_covariance
         self.observation_error_covariance = observation_error_covariance
@@ -22,6 +24,7 @@ class ThreeDVarLoss(nn.Module):
         background: torch.Tensor,
         observations: torch.Tensor,
     ) -> torch.Tensor:
+
         # Background term: (x_a - x_b)^T B^{-1} (x_a - x_b)
         bg_diff = analysis - background
         if self.background_error_covariance is not None:
@@ -60,12 +63,14 @@ class ThreeDVarLoss(nn.Module):
 
 
 class PhysicsInformedLoss(nn.Module):
+
     def __init__(
         self,
         three_d_var_weight: float = 1.0,
         smoothness_weight: float = 0.1,
         conservation_weight: float = 0.05,
     ):
+
         super().__init__()
         self.three_d_var_weight = three_d_var_weight
         self.smoothness_weight = smoothness_weight
@@ -79,6 +84,7 @@ class PhysicsInformedLoss(nn.Module):
         observations: torch.Tensor,
         grid_spacing: Optional[float] = None,
     ) -> Tuple[torch.Tensor, dict]:
+
         # Base 3D-Var loss
         three_d_var_loss = self.base_loss(analysis, background, observations)
 
