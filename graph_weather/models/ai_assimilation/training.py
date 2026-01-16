@@ -12,7 +12,6 @@ from .loss import ThreeDVarLoss
 
 class AIBasedAssimilationTrainer(Module):
 
-
     def __init__(
         self,
         model: Module,
@@ -196,7 +195,6 @@ class AIBasedAssimilationTrainer(Module):
     def evaluate_model(
         self, test_loader: torch.utils.data.DataLoader, compute_additional_metrics: bool = True
     ) -> Dict[str, float]:
-
 
         self.model.eval()
         total_loss = 0.0

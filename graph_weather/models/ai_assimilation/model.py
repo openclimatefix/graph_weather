@@ -14,7 +14,6 @@ class AIAssimilationNet(nn.Module):
         dropout_rate: float = 0.1,
     ):
 
-
         super(AIAssimilationNet, self).__init__()
 
         if hidden_dims is None:
@@ -61,7 +60,6 @@ class AIAssimilationNet(nn.Module):
 
 
 class BlankFirstGuessGenerator(nn.Module):
-
 
     def __init__(self, state_size: int, init_value: float = 0.0):
 

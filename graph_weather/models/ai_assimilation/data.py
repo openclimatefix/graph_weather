@@ -130,7 +130,6 @@ class AIAssimilationDataModule:
         grid_shape: Optional[Tuple[int, int]] = None,
     ):
 
-
         self.num_samples = num_samples
         self.state_size = state_size
         self.obs_fraction = obs_fraction
@@ -152,7 +151,6 @@ class AIAssimilationDataModule:
         self.test_loader = None
 
     def setup(self, stage: Optional[str] = None):
-
 
         # Generate synthetic data
         first_guess, observations, true_state = generate_synthetic_assimilation_data(
@@ -199,7 +197,6 @@ class AIAssimilationDataModule:
 def create_observation_operator(
     state_size: int, obs_size: int, obs_locations: Optional[np.ndarray] = None
 ) -> torch.Tensor:
-
 
     if obs_locations is None:
         # Randomly select observation locations
