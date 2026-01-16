@@ -1,9 +1,4 @@
-"""
-Particle Filter-based Data Assimilation Module.
 
-This module implements particle filtering techniques for data assimilation,
-providing a non-parametric approach suitable for non-linear, non-Gaussian systems.
-"""
 from typing import Any, Dict, Optional, Union
 
 import torch
@@ -13,24 +8,9 @@ from torch_geometric.data import Data, HeteroData
 
 
 class ParticleFilterDA(DataAssimilationBase):
-    """
-    Particle Filter implementation for data assimilation.
-    
-    This implementation uses importance sampling to approximate the posterior distribution
-    using particles (samples) with associated weights.
-    """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize the Particle Filter DA module.
-        
-        Args:
-            config: Configuration dictionary with parameters like:
-                   - num_particles: Number of particles to use
-                   - resample_threshold: Threshold for effective sample size to trigger resampling
-                   - observation_error_std: Standard deviation of observation errors
-                   - process_noise_std: Standard deviation of process noise
-        """
+
         super().__init__(config)
         
         self.num_particles = self.config.get('num_particles', 100)
@@ -54,17 +34,7 @@ class ParticleFilterDA(DataAssimilationBase):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform particle filter data assimilation step.
-        
-        Args:
-            state_in: Input state (graph or tensor)
-            observations: Observation data
-            ensemble_members: Optional pre-generated particles
-            
-        Returns:
-            Updated state in the same format as input
-        """
+
         if ensemble_members is None:
             particles = self.initialize_ensemble(state_in, self.num_particles)
         else:
@@ -81,16 +51,7 @@ class ParticleFilterDA(DataAssimilationBase):
         background_state: Union[torch.Tensor, Data, HeteroData], 
         num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Initialize particle ensemble from background state.
-        
-        Args:
-            background_state: Background state to generate particles from
-            num_members: Number of particles to generate
-            
-        Returns:
-            Particle ensemble
-        """
+
         return self.particle_generator(background_state, num_members)
     
     def assimilate(
@@ -98,16 +59,7 @@ class ParticleFilterDA(DataAssimilationBase):
         ensemble: Union[torch.Tensor, Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform particle filter assimilation with importance sampling and resampling.
-        
-        Args:
-            ensemble: Particle ensemble
-            observations: Observation data
-            
-        Returns:
-            Updated particle ensemble
-        """
+
         if isinstance(ensemble, torch.Tensor):
             return self._assimilate_tensor_particles(ensemble, observations)
         elif isinstance(ensemble, (Data, HeteroData)):
@@ -120,16 +72,7 @@ class ParticleFilterDA(DataAssimilationBase):
         particles: torch.Tensor, 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Perform particle filter assimilation for tensor-based particles.
-        
-        Args:
-            particles: Particle tensor of shape [batch_size, num_particles, ...]
-            observations: Observations of shape [batch_size, obs_dim]
-            
-        Returns:
-            Updated particle tensor
-        """
+
         # Extract batch and particle dimensions
         _ = particles.size(0)  # batch_size
         _ = particles.size(1)  # num_particles
@@ -163,16 +106,7 @@ class ParticleFilterDA(DataAssimilationBase):
         particles: torch.Tensor, 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Compute log-likelihood for each particle given observations.
-        
-        Args:
-            particles: Particle tensor of shape [batch_size, num_particles, ...]
-            observations: Observations of shape [batch_size, obs_dim]
-            
-        Returns:
-            Log-likelihood weights of shape [batch_size, num_particles, ...]
-        """
+
         # Extract particle dimensions
         _ = particles.size(0)  # batch_size
         _ = particles.size(1)  # num_particles
@@ -215,16 +149,7 @@ class ParticleFilterDA(DataAssimilationBase):
         particles: torch.Tensor, 
         weights: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Resample particles based on their weights using systematic resampling.
-        
-        Args:
-            particles: Particle tensor of shape [batch_size, num_particles, ...]
-            weights: Normalized weights of shape [batch_size, num_particles, ...]
-            
-        Returns:
-            Resampled particle tensor
-        """
+
         # Extract batch and particle dimensions
         _ = particles.size(0)  # batch_size
         _ = particles.size(1)  # num_particles
@@ -263,16 +188,7 @@ class ParticleFilterDA(DataAssimilationBase):
         particles: Union[Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[Data, HeteroData]:
-        """
-        Perform particle filter assimilation for graph-based particles.
-        
-        Args:
-            particles: Graph particle ensemble
-            observations: Observation data
-            
-        Returns:
-            Updated graph particle ensemble
-        """
+
         # For graph-based particles, we focus on resampling nodes based on weights
         if isinstance(particles, HeteroData):
             # Handle heterogeneous graph particles
@@ -413,15 +329,7 @@ class ParticleFilterDA(DataAssimilationBase):
         self, 
         ensemble: Union[torch.Tensor, Data, HeteroData]
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Compute analysis state as the weighted average of particles.
-        
-        Args:
-            ensemble: Particle ensemble
-            
-        Returns:
-            Analysis state (weighted average of particles)
-        """
+
         if isinstance(ensemble, torch.Tensor):
             # Return mean across particle dimension (dim=1)
             return torch.mean(ensemble, dim=1)

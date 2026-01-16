@@ -1,9 +1,4 @@
-"""
-Variational Data Assimilation Module.
 
-This module implements variational data assimilation techniques, particularly
-3D-Var and 4D-Var approaches, for finding the optimal state estimate.
-"""
 from typing import Any, Dict, Optional, Union
 
 import torch
@@ -14,25 +9,9 @@ from torch_geometric.data import Data, HeteroData
 
 
 class VariationalDA(DataAssimilationBase):
-    """
-    Variational Data Assimilation implementation.
-    
-    This implementation uses gradient-based optimization to find the optimal
-    state estimate that minimizes a cost function balancing background and observation terms.
-    """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize the Variational DA module.
-        
-        Args:
-            config: Configuration dictionary with parameters like:
-                   - iterations: Number of optimization iterations
-                   - learning_rate: Learning rate for optimization
-                   - regularization_weight: Weight for regularization terms
-                   - background_error_std: Standard deviation for background error
-                   - observation_error_std: Standard deviation for observation error
-        """
+
         super().__init__(config)
         
         self.iterations = self.config.get('iterations', 10)
@@ -57,17 +36,7 @@ class VariationalDA(DataAssimilationBase):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform variational data assimilation optimization.
-        
-        Args:
-            state_in: Input state (graph or tensor)
-            observations: Observation data
-            ensemble_members: Optional pre-generated ensemble members
-            
-        Returns:
-            Optimized state in the same format as input
-        """
+
         # Initialize analysis state from background state
         if isinstance(state_in, torch.Tensor):
             analysis_state = state_in.clone().detach().requires_grad_(True)
@@ -106,16 +75,7 @@ class VariationalDA(DataAssimilationBase):
         background_state: Union[torch.Tensor, Data, HeteroData], 
         num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Initialize ensemble from background state.
-        
-        Args:
-            background_state: Background state to generate ensemble from
-            num_members: Number of ensemble members to generate
-            
-        Returns:
-            Ensemble of states
-        """
+
         return self.ensemble_generator(background_state, num_members)
     
     def assimilate(
@@ -123,16 +83,7 @@ class VariationalDA(DataAssimilationBase):
         ensemble: Union[torch.Tensor, Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform variational assimilation on ensemble members.
-        
-        Args:
-            ensemble: Ensemble of states
-            observations: Observation data
-            
-        Returns:
-            Updated ensemble of states
-        """
+
         # For variational DA, we typically optimize a single analysis state
         # rather than updating each ensemble member individually
         # Here we'll apply the optimization to each member in the ensemble
@@ -149,16 +100,7 @@ class VariationalDA(DataAssimilationBase):
         ensemble: torch.Tensor, 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Perform variational assimilation for tensor-based ensemble.
-        
-        Args:
-            ensemble: Ensemble tensor of shape [batch_size, num_members, ...]
-            observations: Observations of shape [batch_size, obs_dim]
-            
-        Returns:
-            Updated ensemble tensor
-        """
+
         # Extract ensemble dimensions
         _ = ensemble.size(0)  # batch_size
         num_members = ensemble.size(1)  # num_members
@@ -313,17 +255,7 @@ class VariationalDA(DataAssimilationBase):
         background_state: Union[torch.Tensor, Data, HeteroData], 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Compute the total cost function combining background and observation terms.
-        
-        Args:
-            analysis_state: Current analysis state being optimized
-            background_state: Background state (prior estimate)
-            observations: Observation data
-            
-        Returns:
-            Cost function value (scalar tensor)
-        """
+
         if isinstance(analysis_state, torch.Tensor):
             return self._compute_tensor_cost_function(
                 analysis_state, background_state, observations
@@ -339,19 +271,7 @@ class VariationalDA(DataAssimilationBase):
         background_state: torch.Tensor, 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Compute cost function for tensor states.
-        
-        J(x) = (x - x_b)^T B^{-1} (x - x_b) + (y - Hx)^T R^{-1} (y - Hx)
-        
-        Args:
-            analysis_state: Analysis state tensor
-            background_state: Background state tensor  
-            observations: Observation tensor
-            
-        Returns:
-            Cost function value
-        """
+
         # Ensure same shape for comparison
         if analysis_state.shape != background_state.shape:
             # Try to reshape or broadcast appropriately
@@ -405,17 +325,7 @@ class VariationalDA(DataAssimilationBase):
         background_state: Union[Data, HeteroData], 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Compute cost function for graph states.
-        
-        Args:
-            analysis_state: Analysis graph state
-            background_state: Background graph state
-            observations: Observation tensor
-            
-        Returns:
-            Cost function value
-        """
+
         # Extract node features for cost computation
         if hasattr(analysis_state, 'x') and analysis_state.x is not None:
             analysis_features = analysis_state.x
@@ -480,15 +390,7 @@ class VariationalDA(DataAssimilationBase):
         return total_cost
     
     def _clone_graph_state(self, graph_state: Union[Data, HeteroData]) -> Union[Data, HeteroData]:
-        """
-        Helper function to clone a graph state.
-        
-        Args:
-            graph_state: Graph state to clone
-            
-        Returns:
-            Cloned graph state
-        """
+
         if isinstance(graph_state, HeteroData):
             cloned = HeteroData()
             for node_type in graph_state.node_types:
@@ -520,15 +422,7 @@ class VariationalDA(DataAssimilationBase):
         self, 
         ensemble: Union[torch.Tensor, Data, HeteroData]
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Compute analysis state as the optimal solution.
-        
-        Args:
-            ensemble: Ensemble of states (not used in variational DA)
-            
-        Returns:
-            Analysis state (optimal solution)
-        """
+
         # In variational DA, the analysis is the optimized state itself
         # This method is kept for interface consistency
         if isinstance(ensemble, torch.Tensor):

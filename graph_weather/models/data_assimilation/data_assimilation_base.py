@@ -1,9 +1,4 @@
-"""
-Base classes for modular data assimilation framework.
 
-This module defines the foundational classes for the data assimilation system,
-including the base class and ensemble generation mechanisms.
-"""
 import abc
 from typing import Any, Dict, Optional, Union
 
@@ -13,20 +8,9 @@ from torch_geometric.data import Data, HeteroData
 
 
 class DataAssimilationBase(nn.Module, metaclass=abc.ABCMeta):
-    """
-    Abstract base class for data assimilation modules.
-    
-    This class defines the interface for data assimilation components that can
-    work with both graph-based and node-based representations.
-    """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize the data assimilation module.
-        
-        Args:
-            config: Configuration dictionary with DA parameters
-        """
+
         super().__init__()
         self.config = config or {}
         
@@ -37,17 +21,7 @@ class DataAssimilationBase(nn.Module, metaclass=abc.ABCMeta):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform data assimilation step.
-        
-        Args:
-            state_in: Input state (graph or tensor)
-            observations: Observation data
-            ensemble_members: Optional ensemble members
-            
-        Returns:
-            Updated state in the same format as input
-        """
+
         pass
     
     @abc.abstractmethod
@@ -56,16 +30,7 @@ class DataAssimilationBase(nn.Module, metaclass=abc.ABCMeta):
         background_state: Union[torch.Tensor, Data, HeteroData], 
         num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Initialize ensemble members from background state.
-        
-        Args:
-            background_state: Background state to generate ensemble from
-            num_members: Number of ensemble members to generate
-            
-        Returns:
-            Ensemble of states
-        """
+
         pass
     
     @abc.abstractmethod
@@ -74,35 +39,14 @@ class DataAssimilationBase(nn.Module, metaclass=abc.ABCMeta):
         ensemble: Union[torch.Tensor, Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform the actual assimilation step on ensemble members.
-        
-        Args:
-            ensemble: Ensemble of states
-            observations: Observation data
-            
-        Returns:
-            Updated ensemble of states
-        """
+
         pass
 
 
 class EnsembleGenerator(nn.Module):
-    """
-    Generic ensemble generator that can work with various model types.
-    
-    This component generates ensemble members efficiently from a single model
-    prediction, enabling cheap large ensembles of predictions.
-    """
-    
+
     def __init__(self, noise_std: float = 0.1, method: str = "gaussian"):
-        """
-        Initialize the ensemble generator.
-        
-        Args:
-            noise_std: Standard deviation of noise to add for ensemble diversity
-            method: Method for generating ensemble members ('gaussian', 'dropout', 'perturbation')
-        """
+
         super().__init__()
         self.noise_std = noise_std
         self.method = method
@@ -112,16 +56,7 @@ class EnsembleGenerator(nn.Module):
         state: Union[torch.Tensor, Data, HeteroData], 
         num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Generate ensemble members from a single state.
-        
-        Args:
-            state: Input state (graph or tensor)
-            num_members: Number of ensemble members to generate
-            
-        Returns:
-            Ensemble of states in the same format as input
-        """
+
         if isinstance(state, torch.Tensor):
             return self._generate_tensor_ensemble(state, num_members)
         elif isinstance(state, (Data, HeteroData)):
@@ -130,16 +65,7 @@ class EnsembleGenerator(nn.Module):
             raise TypeError(f"Unsupported state type: {type(state)}")
     
     def _generate_tensor_ensemble(self, state: torch.Tensor, num_members: int) -> torch.Tensor:
-        """
-        Generate ensemble for tensor-based state.
-        
-        Args:
-            state: Input tensor of shape [batch_size, ...]
-            num_members: Number of ensemble members
-            
-        Returns:
-            Tensor of shape [batch_size, num_members, ...]
-        """
+
         expanded_states = state.unsqueeze(1).expand(-1, num_members, *state.shape[1:])
         
         if self.method == "gaussian":
@@ -164,16 +90,7 @@ class EnsembleGenerator(nn.Module):
         state: Union[Data, HeteroData], 
         num_members: int
     ) -> Union[Data, HeteroData]:
-        """
-        Generate ensemble for graph-based state.
-        
-        Args:
-            state: Input graph state
-            num_members: Number of ensemble members
-            
-        Returns:
-            Graph state with ensemble dimension
-        """
+
         # For graph-based states, we replicate the structure and add noise to node/edge features
         if isinstance(state, HeteroData):
             # Handle heterogeneous graphs

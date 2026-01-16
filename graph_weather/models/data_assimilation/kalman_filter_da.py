@@ -1,9 +1,4 @@
-"""
-Kalman Filter-based Data Assimilation Module.
 
-This module implements ensemble Kalman filtering techniques for data assimilation,
-enabling efficient ensemble generation and state estimation.
-"""
 from typing import Any, Dict, Optional, Union
 
 import torch
@@ -13,24 +8,9 @@ from torch_geometric.data import Data, HeteroData
 
 
 class KalmanFilterDA(DataAssimilationBase):
-    """
-    Ensemble Kalman Filter implementation for data assimilation.
-    
-    This implementation supports both tensor-based and graph-based representations,
-    allowing for flexible integration with various model architectures.
-    """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize the Kalman Filter DA module.
-        
-        Args:
-            config: Configuration dictionary with parameters like:
-                   - ensemble_size: Number of ensemble members
-                   - inflation_factor: Multiplicative inflation factor for ensemble spread
-                   - observation_error_std: Standard deviation of observation errors
-                   - background_error_std: Standard deviation of background errors
-        """
+
         super().__init__(config)
         
         self.ensemble_size = self.config.get('ensemble_size', 20)
@@ -55,17 +35,7 @@ class KalmanFilterDA(DataAssimilationBase):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform Kalman filter data assimilation step.
-        
-        Args:
-            state_in: Input state (graph or tensor)
-            observations: Observation data
-            ensemble_members: Optional pre-generated ensemble members
-            
-        Returns:
-            Updated state in the same format as input
-        """
+
         if ensemble_members is None:
             ensemble = self.initialize_ensemble(state_in, self.ensemble_size)
         else:
@@ -82,16 +52,7 @@ class KalmanFilterDA(DataAssimilationBase):
         background_state: Union[torch.Tensor, Data, HeteroData], 
         num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Initialize ensemble members from background state using the ensemble generator.
-        
-        Args:
-            background_state: Background state to generate ensemble from
-            num_members: Number of ensemble members to generate
-            
-        Returns:
-            Ensemble of states
-        """
+
         return self.ensemble_generator(background_state, num_members)
     
     def assimilate(
@@ -99,16 +60,7 @@ class KalmanFilterDA(DataAssimilationBase):
         ensemble: Union[torch.Tensor, Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Perform ensemble Kalman filter assimilation.
-        
-        Args:
-            ensemble: Ensemble of states
-            observations: Observation data
-            
-        Returns:
-            Updated ensemble of states
-        """
+
         if isinstance(ensemble, torch.Tensor):
             return self._assimilate_tensor_ensemble(ensemble, observations)
         elif isinstance(ensemble, (Data, HeteroData)):
@@ -121,16 +73,7 @@ class KalmanFilterDA(DataAssimilationBase):
         ensemble: torch.Tensor, 
         observations: torch.Tensor
     ) -> torch.Tensor:
-        """
-        Perform EKF assimilation for tensor-based ensemble.
-        
-        Args:
-            ensemble: Ensemble tensor of shape [batch_size, num_members, ...]
-            observations: Observations of shape [batch_size, obs_dim]
-            
-        Returns:
-            Updated ensemble tensor
-        """
+
         batch_size, num_members = ensemble.size(0), ensemble.size(1)
         
         # Reshape ensemble for computation: [batch_size * num_members, ...]
@@ -230,16 +173,7 @@ class KalmanFilterDA(DataAssimilationBase):
         ensemble: Union[Data, HeteroData], 
         observations: torch.Tensor
     ) -> Union[Data, HeteroData]:
-        """
-        Perform EKF assimilation for graph-based ensemble.
-        
-        Args:
-            ensemble: Graph ensemble
-            observations: Observation data
-            
-        Returns:
-            Updated graph ensemble
-        """
+
         # For graph-based ensemble, we need to handle node and edge features appropriately
         # This is a simplified implementation focusing on node features
         if isinstance(ensemble, HeteroData):
@@ -341,15 +275,7 @@ class KalmanFilterDA(DataAssimilationBase):
         self, 
         ensemble: Union[torch.Tensor, Data, HeteroData]
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """
-        Compute analysis state as the mean of the ensemble.
-        
-        Args:
-            ensemble: Ensemble of states
-            
-        Returns:
-            Analysis state (mean of ensemble)
-        """
+
         if isinstance(ensemble, torch.Tensor):
             # Return mean across ensemble dimension (dim=1)
             return torch.mean(ensemble, dim=1)
