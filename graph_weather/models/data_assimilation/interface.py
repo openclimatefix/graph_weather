@@ -1,4 +1,3 @@
-
 from typing import Any, Dict, Literal, Optional, Union
 
 import torch
@@ -15,88 +14,84 @@ class DAInterface(nn.Module):
 
     def __init__(
         self,
-        strategy: Literal['kalman', 'particle', 'variational'] = 'kalman',
-        config: Optional[Dict[str, Any]] = None
+        strategy: Literal["kalman", "particle", "variational"] = "kalman",
+        config: Optional[Dict[str, Any]] = None,
     ):
 
         super().__init__()
-        
+
         self.strategy = strategy
         self.config = config or {}
-        
+
         # Initialize the appropriate DA module
-        if strategy == 'kalman':
+        if strategy == "kalman":
             self.da_module = KalmanFilterDA(self.config)
-        elif strategy == 'particle':
+        elif strategy == "particle":
             self.da_module = ParticleFilterDA(self.config)
-        elif strategy == 'variational':
+        elif strategy == "variational":
             self.da_module = VariationalDA(self.config)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
-    
+
     def forward(
         self,
         state_in: Union[torch.Tensor, Data, HeteroData],
         observations: torch.Tensor,
-        ensemble_members: Optional[torch.Tensor] = None
+        ensemble_members: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, Data, HeteroData]:
 
         return self.da_module(state_in, observations, ensemble_members)
-    
+
     def initialize_ensemble(
-        self,
-        background_state: Union[torch.Tensor, Data, HeteroData],
-        num_members: int
+        self, background_state: Union[torch.Tensor, Data, HeteroData], num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
 
         return self.da_module.initialize_ensemble(background_state, num_members)
-    
+
     def assimilate(
-        self,
-        ensemble: Union[torch.Tensor, Data, HeteroData],
-        observations: torch.Tensor
+        self, ensemble: Union[torch.Tensor, Data, HeteroData], observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
 
         return self.da_module.assimilate(ensemble, observations)
-    
+
     def switch_strategy(
         self,
-        new_strategy: Literal['kalman', 'particle', 'variational'],
-        new_config: Optional[Dict[str, Any]] = None
+        new_strategy: Literal["kalman", "particle", "variational"],
+        new_config: Optional[Dict[str, Any]] = None,
     ):
 
         config = new_config or self.config
-        
+
         if new_strategy == self.strategy:
             return  # Already using this strategy
-        
-        if new_strategy == 'kalman':
+
+        if new_strategy == "kalman":
             self.da_module = KalmanFilterDA(config)
-        elif new_strategy == 'particle':
+        elif new_strategy == "particle":
             self.da_module = ParticleFilterDA(config)
-        elif new_strategy == 'variational':
+        elif new_strategy == "variational":
             self.da_module = VariationalDA(config)
         else:
             raise ValueError(f"Unknown strategy: {new_strategy}")
-        
+
         self.strategy = new_strategy
         self.config = config
-    
+
     def get_strategy(self) -> str:
 
         return self.strategy
 
 
 def create_da_module(
-    strategy: Literal['kalman', 'particle', 'variational'] = 'kalman',
-    config: Optional[Dict[str, Any]] = None
+    strategy: Literal["kalman", "particle", "variational"] = "kalman",
+    config: Optional[Dict[str, Any]] = None,
 ) -> DataAssimilationBase:
 
-    if strategy == 'kalman':
+    if strategy == "kalman":
         return KalmanFilterDA(config)
-    elif strategy == 'particle':
+    elif strategy == "particle":
         return ParticleFilterDA(config)
-    elif strategy == 'variational':
+    elif strategy == "variational":
         return VariationalDA(config)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
@@ -109,70 +104,67 @@ class ModelIntegratedDA(nn.Module):
         base_model: nn.Module,
         da_interface: DAInterface,
         ensemble_size: int = 20,
-        enable_da: bool = True
+        enable_da: bool = True,
     ):
 
         super().__init__()
-        
+
         self.base_model = base_model
         self.da_interface = da_interface
         self.ensemble_size = ensemble_size
         self.enable_da = enable_da
-    
+
     def forward(
         self,
         inputs: Union[torch.Tensor, Data, HeteroData],
         observations: Optional[torch.Tensor] = None,
-        return_ensemble: bool = False
+        return_ensemble: bool = False,
     ) -> Union[torch.Tensor, Data, HeteroData, Dict[str, Union[torch.Tensor, Data, HeteroData]]]:
 
         # Get base model prediction
         base_prediction = self.base_model(inputs)
-        
+
         if not self.enable_da or observations is None:
             if return_ensemble:
                 # Generate ensemble from base prediction
                 ensemble = self.da_interface.initialize_ensemble(
                     base_prediction, self.ensemble_size
                 )
-                return {
-                    'prediction': base_prediction,
-                    'ensemble': ensemble
-                }
+                return {"prediction": base_prediction, "ensemble": ensemble}
             else:
                 return base_prediction
-        
+
         # Perform ensemble generation and DA
         ensemble = self.da_interface.initialize_ensemble(base_prediction, self.ensemble_size)
-        
+
         # Apply DA if observations are available
         updated_ensemble = self.da_interface.assimilate(ensemble, observations)
-        
+
         # Compute analysis from updated ensemble
         analysis = self.da_interface._compute_analysis(updated_ensemble)
-        
+
         if return_ensemble:
             return {
-                'prediction': analysis,
-                'ensemble': updated_ensemble,
-                'base_prediction': base_prediction
+                "prediction": analysis,
+                "ensemble": updated_ensemble,
+                "base_prediction": base_prediction,
             }
         else:
             return analysis
-    
+
     def toggle_da(self, enable: bool):
         self.enable_da = enable
-    
+
     def get_base_model(self) -> nn.Module:
         return self.base_model
 
 
 def integrate_da_with_model(
     model: nn.Module,
-    da_strategy: Literal['kalman', 'particle', 'variational'] = 'kalman',
+    da_strategy: Literal["kalman", "particle", "variational"] = "kalman",
     da_config: Optional[Dict[str, Any]] = None,
-    ensemble_size: int = 20
+    ensemble_size: int = 20,
 ) -> ModelIntegratedDA:
-    
+
     da_interface = DAInterface(da_strategy, da_config)
     return ModelIntegratedDA(model, da_interface, ensemble_size)

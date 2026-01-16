@@ -1,4 +1,3 @@
-
 from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
 from .interface import DAInterface
 from .kalman_filter_da import KalmanFilterDA
@@ -9,7 +8,7 @@ __all__ = [
     "DataAssimilationBase",
     "EnsembleGenerator",
     "KalmanFilterDA",
-    "ParticleFilterDA", 
+    "ParticleFilterDA",
     "VariationalDA",
-    "DAInterface"
+    "DAInterface",
 ]
