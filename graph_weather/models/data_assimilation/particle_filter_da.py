@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
+
 # Import with fallbacks to handle different execution contexts
 try:
     # For relative import when used as part of package
@@ -9,19 +10,21 @@ try:
 except ImportError:
     try:
         # For absolute import when used as standalone
-        from graph_weather.models.data_assimilation.data_assimilation_base import DataAssimilationBase, EnsembleGenerator
+        from graph_weather.models.data_assimilation.data_assimilation_base import (
+            DataAssimilationBase,
+            EnsembleGenerator,
+        )
     except ImportError:
         # For direct execution in isolated context
-        import sys
-        import os
         import importlib.util
-        
+        import os
+
         # Load the base module dynamically
-        base_path = os.path.join(os.path.dirname(__file__), 'data_assimilation_base.py')
-        spec = importlib.util.spec_from_file_location('data_assimilation_base', base_path)
+        base_path = os.path.join(os.path.dirname(__file__), "data_assimilation_base.py")
+        spec = importlib.util.spec_from_file_location("data_assimilation_base", base_path)
         base_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(base_module)
-        
+
         DataAssimilationBase = base_module.DataAssimilationBase
         EnsembleGenerator = base_module.EnsembleGenerator
 from torch_geometric.data import Data, HeteroData
