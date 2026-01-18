@@ -6,9 +6,9 @@ from .particle_filter_da import ParticleFilterDA
 from .variational_da import VariationalDA
 
 __all__ = [
-    'DataAssimilationBase',
-    'EnsembleGenerator',
-    'KalmanFilterDA',
-    'ParticleFilterDA', 
-    'VariationalDA'
+    "DataAssimilationBase",
+    "EnsembleGenerator",
+    "KalmanFilterDA",
+    "ParticleFilterDA",
+    "VariationalDA",
 ]
