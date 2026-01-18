@@ -14,65 +14,66 @@ try:
 except ImportError:
     try:
         # For absolute import when used as standalone
-        from graph_weather.models.data_assimilation.data_assimilation_base import DataAssimilationBase
+        from graph_weather.models.data_assimilation.data_assimilation_base import (
+            DataAssimilationBase,
+        )
         from graph_weather.models.data_assimilation.kalman_filter_da import KalmanFilterDA
         from graph_weather.models.data_assimilation.particle_filter_da import ParticleFilterDA
         from graph_weather.models.data_assimilation.variational_da import VariationalDA
     except ImportError:
         # For direct execution in isolated context
-        import sys
-        import os
         import importlib.util
-        
+        import os
+
         # Load modules dynamically
         current_dir = os.path.dirname(__file__)
-        
+
         # Load base module
-        base_path = os.path.join(current_dir, 'data_assimilation_base.py')
-        spec = importlib.util.spec_from_file_location('data_assimilation_base', base_path)
+        base_path = os.path.join(current_dir, "data_assimilation_base.py")
+        spec = importlib.util.spec_from_file_location("data_assimilation_base", base_path)
         base_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(base_module)
-        
+
         # Load Kalman module
-        kalman_path = os.path.join(current_dir, 'kalman_filter_da.py')
-        spec = importlib.util.spec_from_file_location('kalman_filter_da', kalman_path)
+        kalman_path = os.path.join(current_dir, "kalman_filter_da.py")
+        spec = importlib.util.spec_from_file_location("kalman_filter_da", kalman_path)
         kalman_module = importlib.util.module_from_spec(spec)
         kalman_module.DataAssimilationBase = base_module.DataAssimilationBase
         kalman_module.EnsembleGenerator = base_module.EnsembleGenerator
-        kalman_module.Data = __import__('torch_geometric.data').data.Data
-        kalman_module.HeteroData = __import__('torch_geometric.data').data.HeteroData
-        kalman_module.torch = __import__('torch')
-        kalman_module.nn = __import__('torch.nn')
-        kalman_module.typing = __import__('typing')
+        kalman_module.Data = __import__("torch_geometric.data").data.Data
+        kalman_module.HeteroData = __import__("torch_geometric.data").data.HeteroData
+        kalman_module.torch = __import__("torch")
+        kalman_module.nn = __import__("torch.nn")
+        kalman_module.typing = __import__("typing")
         spec.loader.exec_module(kalman_module)
-        
+
         # Load Particle module
-        particle_path = os.path.join(current_dir, 'particle_filter_da.py')
-        spec = importlib.util.spec_from_file_location('particle_filter_da', particle_path)
+        particle_path = os.path.join(current_dir, "particle_filter_da.py")
+        spec = importlib.util.spec_from_file_location("particle_filter_da", particle_path)
         particle_module = importlib.util.module_from_spec(spec)
         particle_module.DataAssimilationBase = base_module.DataAssimilationBase
         particle_module.EnsembleGenerator = base_module.EnsembleGenerator
-        particle_module.Data = __import__('torch_geometric.data').data.Data
-        particle_module.HeteroData = __import__('torch_geometric.data').data.HeteroData
-        particle_module.torch = __import__('torch')
-        particle_module.nn = __import__('torch.nn')
-        particle_module.typing = __import__('typing')
+        particle_module.Data = __import__("torch_geometric.data").data.Data
+        particle_module.HeteroData = __import__("torch_geometric.data").data.HeteroData
+        particle_module.torch = __import__("torch")
+        particle_module.nn = __import__("torch.nn")
+        particle_module.typing = __import__("typing")
         spec.loader.exec_module(particle_module)
-        
+
         # Load Variational module
-        var_path = os.path.join(current_dir, 'variational_da.py')
-        spec = importlib.util.spec_from_file_location('variational_da', var_path)
+        var_path = os.path.join(current_dir, "variational_da.py")
+        spec = importlib.util.spec_from_file_location("variational_da", var_path)
         var_module = importlib.util.module_from_spec(spec)
         var_module.DataAssimilationBase = base_module.DataAssimilationBase
         var_module.EnsembleGenerator = base_module.EnsembleGenerator
-        var_module.Data = __import__('torch_geometric.data').data.Data
-        var_module.HeteroData = __import__('torch_geometric.data').data.HeteroData
-        var_module.torch = __import__('torch')
-        var_module.nn = __import__('torch.nn')
-        var_module.F = __import__('torch.nn.functional')
-        var_module.typing = __import__('typing')
+        var_module.Data = __import__("torch_geometric.data").data.Data
+        var_module.HeteroData = __import__("torch_geometric.data").data.HeteroData
+        var_module.torch = __import__("torch")
+        var_module.nn = __import__("torch.nn")
+        var_module.F = __import__("torch.nn.functional")
+        var_module.typing = __import__("typing")
         spec.loader.exec_module(var_module)
-        
+
         DataAssimilationBase = base_module.DataAssimilationBase
         KalmanFilterDA = kalman_module.KalmanFilterDA
         ParticleFilterDA = particle_module.ParticleFilterDA
