@@ -157,4 +157,3 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features.shape[0])
         return x
-
