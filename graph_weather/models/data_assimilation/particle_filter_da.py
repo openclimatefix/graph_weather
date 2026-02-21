@@ -2,9 +2,9 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
+from torch_geometric.data import Data, HeteroData
 
 from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
-from torch_geometric.data import Data, HeteroData
 
 
 class ParticleFilterDA(DataAssimilationBase):
@@ -108,7 +108,9 @@ class ParticleFilterDA(DataAssimilationBase):
         # Compute log-likelihood using common helper
         return self._compute_log_likelihood_from_obs(particle_obs, observations)
 
-    def _map_particles_to_observation_space(self, particles: torch.Tensor, obs_dim: int) -> torch.Tensor:
+    def _map_particles_to_observation_space(
+        self, particles: torch.Tensor, obs_dim: int
+    ) -> torch.Tensor:
         """Map particles to observation space by extracting or expanding features."""
         state_dim = int(torch.prod(torch.tensor(particles.shape[2:])))
 
@@ -120,7 +122,7 @@ class ParticleFilterDA(DataAssimilationBase):
             reps = obs_dim // state_dim + (1 if obs_dim % state_dim > 0 else 0)
             expanded = particles[:, :, :state_dim].repeat(1, 1, reps)
             particle_obs = expanded[:, :, :obs_dim]  # [batch_size, num_particles, obs_dim]
-        
+
         return particle_obs
 
     def _compute_log_likelihood_from_obs(
@@ -157,11 +159,13 @@ class ParticleFilterDA(DataAssimilationBase):
 
         # Perform systematic resampling using common helper
         indices = self._systematic_resampling_indices(flat_weights, particles.size(1))
-        
+
         # Resample particles using common helper
         return self._resample_particles_by_indices(particles, indices)
 
-    def _systematic_resampling_indices(self, weights: torch.Tensor, num_particles: int) -> torch.Tensor:
+    def _systematic_resampling_indices(
+        self, weights: torch.Tensor, num_particles: int
+    ) -> torch.Tensor:
         """Generate resampling indices using systematic resampling."""
         device = weights.device
         dtype = weights.dtype
@@ -180,10 +184,12 @@ class ParticleFilterDA(DataAssimilationBase):
         # Find indices of particles to select
         indices = torch.searchsorted(cumsum_weights, u.clamp(0, 1))  # [batch_size, num_particles]
         indices = torch.clamp(indices, 0, num_particles - 1)  # Ensure valid indices
-        
+
         return indices
 
-    def _resample_particles_by_indices(self, particles: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+    def _resample_particles_by_indices(
+        self, particles: torch.Tensor, indices: torch.Tensor
+    ) -> torch.Tensor:
         """Resample particles using provided indices."""
         # Create output tensor
         resampled = torch.zeros_like(particles)
@@ -227,9 +233,13 @@ class ParticleFilterDA(DataAssimilationBase):
 
                         # Compute log-likelihood weights using common helper
                         obs_expanded = observations[0:1].expand(particle_means.size(0), -1)
-                        log_likelihood = self._compute_log_likelihood_from_obs(
-                            particle_obs.unsqueeze(0), obs_expanded
-                        ).squeeze(0).squeeze(-1)
+                        log_likelihood = (
+                            self._compute_log_likelihood_from_obs(
+                                particle_obs.unsqueeze(0), obs_expanded
+                            )
+                            .squeeze(0)
+                            .squeeze(-1)
+                        )
 
                         # Normalize weights
                         max_log_weight = torch.max(log_likelihood)
@@ -239,7 +249,9 @@ class ParticleFilterDA(DataAssimilationBase):
                         # Systematic resampling using common helper
                         # Reshape weights for batch dimension compatibility
                         weights_batched = weights.unsqueeze(0)  # [1, num_particles]
-                        indices = self._systematic_resampling_indices(weights_batched, node_features.size(1))
+                        indices = self._systematic_resampling_indices(
+                            weights_batched, node_features.size(1)
+                        )
                         indices = indices.squeeze(0)  # Remove batch dimension
 
                         # Resample particles using common helper
@@ -285,9 +297,13 @@ class ParticleFilterDA(DataAssimilationBase):
 
                     # Compute log-likelihood weights using common helper
                     obs_expanded = observations[0:1].expand(num_particles, -1)
-                    log_likelihood = self._compute_log_likelihood_from_obs(
-                        particle_obs.unsqueeze(0), obs_expanded
-                    ).squeeze(0).squeeze(-1)
+                    log_likelihood = (
+                        self._compute_log_likelihood_from_obs(
+                            particle_obs.unsqueeze(0), obs_expanded
+                        )
+                        .squeeze(0)
+                        .squeeze(-1)
+                    )
 
                     # Normalize weights
                     max_log_weight = torch.max(log_likelihood)
@@ -329,9 +345,7 @@ class ParticleFilterDA(DataAssimilationBase):
         else:
             raise TypeError(f"Unsupported ensemble type: {type(ensemble)}")
 
-    def _compute_analysis_graph(
-        self, ensemble: Union[Data, HeteroData]
-    ) -> Union[Data, HeteroData]:
+    def _compute_analysis_graph(self, ensemble: Union[Data, HeteroData]) -> Union[Data, HeteroData]:
         """Compute analysis for graph ensembles with shared logic for both Data and HeteroData."""
         if isinstance(ensemble, HeteroData):
             result = HeteroData()
@@ -352,7 +366,7 @@ class ParticleFilterDA(DataAssimilationBase):
                 node_data = ensemble
                 result_node_data = result
                 node_type = None  # For homogeneous graphs
-                
+
             if hasattr(node_data, "x") and node_data.x is not None:
                 node_features = node_data.x
                 if node_features.dim() == 3:  # [num_nodes, num_particles, features]

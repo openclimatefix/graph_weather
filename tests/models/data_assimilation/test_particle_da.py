@@ -1,4 +1,3 @@
-
 import pytest
 import torch
 import torch.nn as nn
@@ -281,6 +280,3 @@ def test_particle_error_handling():
     # Test invalid ensemble type
     with pytest.raises(TypeError):
         pf_da.assimilate("invalid_type", torch.randn(2, 5))
-
-
-
