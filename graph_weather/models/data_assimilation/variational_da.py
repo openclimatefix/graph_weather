@@ -2,9 +2,10 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
-from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
 import torch.nn.functional as F
 from torch_geometric.data import Data, HeteroData
+
+from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
 
 
 class VariationalDA(DataAssimilationBase):
@@ -130,7 +131,7 @@ class VariationalDA(DataAssimilationBase):
 
         # For graph-based ensemble, we need to handle the optimization differently
         # This is a simplified implementation that optimizes the node features
-        
+
         # Refactored to handle both Data and HeteroData with shared logic
         return self._process_graph_ensemble(ensemble, observations)
 
@@ -407,9 +408,7 @@ class VariationalDA(DataAssimilationBase):
 
             return result
 
-    def _compute_analysis_graph(
-        self, ensemble: Union[Data, HeteroData]
-    ) -> Union[Data, HeteroData]:
+    def _compute_analysis_graph(self, ensemble: Union[Data, HeteroData]) -> Union[Data, HeteroData]:
         """
         Compute analysis for graph ensembles with shared logic for both Data and HeteroData.
         """
