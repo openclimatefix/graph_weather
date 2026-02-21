@@ -1,49 +1,10 @@
-"""
-Comprehensive tests for the Particle Filter Data Assimilation method.
-
-Tests include functionality for both tensor and graph-based inputs.
-"""
 
 import pytest
 import torch
 import torch.nn as nn
 from torch_geometric.data import Data
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath("."))
-
-# Use direct import to avoid package conflicts
-import importlib.util
-
-# Add the graph_weather directory to the path to make relative imports work
-sys.path.insert(0, os.path.join(os.getcwd(), "graph_weather"))
-
-# Load base module first
-spec = importlib.util.spec_from_file_location(
-    "data_assimilation_base", "./graph_weather/models/data_assimilation/data_assimilation_base.py"
-)
-base_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base_module)
-
-# Load particle module with proper base class injection
-spec = importlib.util.spec_from_file_location(
-    "particle_filter_da", "./graph_weather/models/data_assimilation/particle_filter_da.py"
-)
-particle_module = importlib.util.module_from_spec(spec)
-particle_module.DataAssimilationBase = base_module.DataAssimilationBase
-particle_module.EnsembleGenerator = base_module.EnsembleGenerator
-particle_module.Data = Data
-particle_module.HeteroData = getattr(
-    __import__("torch_geometric.data", fromlist=["HeteroData"]), "HeteroData", None
-)
-particle_module.torch = torch
-particle_module.nn = torch.nn
-particle_module.typing = __import__("typing")
-spec.loader.exec_module(particle_module)
-
-ParticleFilterDA = particle_module.ParticleFilterDA
-EnsembleGenerator = base_module.EnsembleGenerator
+from graph_weather.models.data_assimilation.particle_filter_da import ParticleFilterDA
+from graph_weather.models.data_assimilation.data_assimilation_base import EnsembleGenerator
 
 
 def test_particle_filter_initialization():
@@ -322,46 +283,4 @@ def test_particle_error_handling():
         pf_da.assimilate("invalid_type", torch.randn(2, 5))
 
 
-if __name__ == "__main__":
-    print("Running Particle Filter DA tests...")
 
-    test_particle_filter_initialization()
-    print("✓ Initialization test passed")
-
-    test_particle_tensor_forward()
-    print("✓ Tensor forward test passed")
-
-    test_particle_tensor_initialize_ensemble()
-    print("✓ Tensor ensemble initialization test passed")
-
-    test_particle_tensor_assimilate()
-    print("✓ Tensor assimilation test passed")
-
-    test_particle_compute_log_likelihood()
-    print("✓ Log-likelihood computation test passed")
-
-    test_particle_resample_particles()
-    print("✓ Particle resampling test passed")
-
-    test_particle_graph_forward()
-    print("✓ Graph forward test passed")
-
-    test_particle_graph_initialize_ensemble()
-    print("✓ Graph ensemble initialization test passed")
-
-    test_particle_graph_assimilate()
-    print("✓ Graph assimilation test passed")
-
-    test_particle_compute_analysis_tensor()
-    print("✓ Tensor analysis computation test passed")
-
-    test_particle_compute_analysis_graph()
-    print("✓ Graph analysis computation test passed")
-
-    test_particle_temperature_parameter()
-    print("✓ Temperature parameter test passed")
-
-    test_particle_error_handling()
-    print("✓ Error handling test passed")
-
-    print("\n✅ All Particle Filter DA tests passed!")

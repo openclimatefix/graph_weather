@@ -3,30 +3,7 @@ from typing import Any, Dict, Optional, Union
 import torch
 import torch.nn as nn
 
-# Import with fallbacks to handle different execution contexts
-try:
-    # For relative import when used as part of package
-    from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
-except ImportError:
-    try:
-        # For absolute import when used as standalone
-        from graph_weather.models.data_assimilation.data_assimilation_base import (
-            DataAssimilationBase,
-            EnsembleGenerator,
-        )
-    except ImportError:
-        # For direct execution in isolated context
-        import importlib.util
-        import os
-
-        # Load the base module dynamically
-        base_path = os.path.join(os.path.dirname(__file__), "data_assimilation_base.py")
-        spec = importlib.util.spec_from_file_location("data_assimilation_base", base_path)
-        base_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(base_module)
-
-        DataAssimilationBase = base_module.DataAssimilationBase
-        EnsembleGenerator = base_module.EnsembleGenerator
+from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
 from torch_geometric.data import Data, HeteroData
 
 
@@ -126,8 +103,13 @@ class ParticleFilterDA(DataAssimilationBase):
         _ = particles.size(1)  # num_particles
 
         # Map particles to observation space
-        # For simplicity, assume observation operator H extracts first obs_dim features
-        obs_dim = observations.size(1)
+        particle_obs = self._map_particles_to_observation_space(particles, observations.size(1))
+
+        # Compute log-likelihood using common helper
+        return self._compute_log_likelihood_from_obs(particle_obs, observations)
+
+    def _map_particles_to_observation_space(self, particles: torch.Tensor, obs_dim: int) -> torch.Tensor:
+        """Map particles to observation space by extracting or expanding features."""
         state_dim = int(torch.prod(torch.tensor(particles.shape[2:])))
 
         if state_dim >= obs_dim:
@@ -138,7 +120,13 @@ class ParticleFilterDA(DataAssimilationBase):
             reps = obs_dim // state_dim + (1 if obs_dim % state_dim > 0 else 0)
             expanded = particles[:, :, :state_dim].repeat(1, 1, reps)
             particle_obs = expanded[:, :, :obs_dim]  # [batch_size, num_particles, obs_dim]
+        
+        return particle_obs
 
+    def _compute_log_likelihood_from_obs(
+        self, particle_obs: torch.Tensor, observations: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute log-likelihood from particle observations and actual observations."""
         # Compute likelihood: p(y|x) ~ exp(-||y - Hx||^2 / (2*sigma^2))
         # Using temperature parameter for adaptability
         temp = torch.clamp(self.temperature, min=0.1, max=10.0)
@@ -167,24 +155,36 @@ class ParticleFilterDA(DataAssimilationBase):
         # Flatten weights for resampling (consider only the first weight dimension)
         flat_weights = weights.squeeze(-1).squeeze(-1)  # Remove extra dims if they exist
 
-        # Systematic resampling
-        device = particles.device
-        dtype = particles.dtype
+        # Perform systematic resampling using common helper
+        indices = self._systematic_resampling_indices(flat_weights, particles.size(1))
+        
+        # Resample particles using common helper
+        return self._resample_particles_by_indices(particles, indices)
+
+    def _systematic_resampling_indices(self, weights: torch.Tensor, num_particles: int) -> torch.Tensor:
+        """Generate resampling indices using systematic resampling."""
+        device = weights.device
+        dtype = weights.dtype
+        batch_size = weights.size(0)
 
         # Create cumulative sum of weights
-        cumsum_weights = torch.cumsum(flat_weights, dim=1)  # [batch_size, num_particles]
+        cumsum_weights = torch.cumsum(weights, dim=1)  # [batch_size, num_particles]
 
         # Generate uniform samples for systematic resampling
         u = (
-            torch.arange(particles.size(1), dtype=dtype, device=device)
-            + torch.rand(particles.size(0), 1, device=device)
-        ) / particles.size(1)
+            torch.arange(num_particles, dtype=dtype, device=device)
+            + torch.rand(batch_size, 1, device=device)
+        ) / num_particles
         # [batch_size, num_particles]
 
         # Find indices of particles to select
         indices = torch.searchsorted(cumsum_weights, u.clamp(0, 1))  # [batch_size, num_particles]
-        indices = torch.clamp(indices, 0, particles.size(1) - 1)  # Ensure valid indices
+        indices = torch.clamp(indices, 0, num_particles - 1)  # Ensure valid indices
+        
+        return indices
 
+    def _resample_particles_by_indices(self, particles: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+        """Resample particles using provided indices."""
         # Create output tensor
         resampled = torch.zeros_like(particles)
 
@@ -225,34 +225,24 @@ class ParticleFilterDA(DataAssimilationBase):
                         obs_dim = min(particle_means.size(1), observations.size(1))
                         particle_obs = particle_means[:, :obs_dim]  # [num_particles, obs_dim]
 
-                        # Compute log-likelihood weights
-                        # [num_particles, obs_dim]
+                        # Compute log-likelihood weights using common helper
                         obs_expanded = observations[0:1].expand(particle_means.size(0), -1)
-                        diff = particle_obs - obs_expanded
-                        squared_diff = torch.sum(diff**2, dim=1)  # [num_particles]
-
-                        temp = torch.clamp(self.temperature, min=0.1, max=10.0)
-                        obs_error_var = self.observation_error_std**2
-                        log_likelihood = -squared_diff / (2 * obs_error_var * temp)
+                        log_likelihood = self._compute_log_likelihood_from_obs(
+                            particle_obs.unsqueeze(0), obs_expanded
+                        ).squeeze(0).squeeze(-1)
 
                         # Normalize weights
                         max_log_weight = torch.max(log_likelihood)
                         weights = torch.exp(log_likelihood - max_log_weight)
                         weights = weights / (torch.sum(weights) + 1e-12)
 
-                        # Systematic resampling
-                        device = node_features.device
-                        dtype = node_features.dtype
+                        # Systematic resampling using common helper
+                        # Reshape weights for batch dimension compatibility
+                        weights_batched = weights.unsqueeze(0)  # [1, num_particles]
+                        indices = self._systematic_resampling_indices(weights_batched, node_features.size(1))
+                        indices = indices.squeeze(0)  # Remove batch dimension
 
-                        cumsum_weights = torch.cumsum(weights, dim=0)
-                        u = (
-                            torch.arange(node_features.size(1), dtype=dtype, device=device)
-                            + torch.rand(1, device=device)
-                        ) / node_features.size(1)
-                        indices = torch.searchsorted(cumsum_weights, u.clamp(0, 1))
-                        indices = torch.clamp(indices, 0, node_features.size(1) - 1)
-
-                        # Resample particles
+                        # Resample particles using common helper
                         resampled_features = node_features[:, indices, :]
 
                         # Add small noise to prevent degeneracy
@@ -293,34 +283,24 @@ class ParticleFilterDA(DataAssimilationBase):
                     obs_dim = min(particle_means.size(1), observations.size(1))
                     particle_obs = particle_means[:, :obs_dim]  # [num_particles, obs_dim]
 
-                    # Compute log-likelihood weights
-                    # [num_particles, obs_dim]
+                    # Compute log-likelihood weights using common helper
                     obs_expanded = observations[0:1].expand(num_particles, -1)
-                    diff = particle_obs - obs_expanded
-                    squared_diff = torch.sum(diff**2, dim=1)  # [num_particles]
-
-                    temp = torch.clamp(self.temperature, min=0.1, max=10.0)
-                    obs_error_var = self.observation_error_std**2
-                    log_likelihood = -squared_diff / (2 * obs_error_var * temp)
+                    log_likelihood = self._compute_log_likelihood_from_obs(
+                        particle_obs.unsqueeze(0), obs_expanded
+                    ).squeeze(0).squeeze(-1)
 
                     # Normalize weights
                     max_log_weight = torch.max(log_likelihood)
                     weights = torch.exp(log_likelihood - max_log_weight)
                     weights = weights / (torch.sum(weights) + 1e-12)
 
-                    # Systematic resampling
-                    device = node_features.device
-                    dtype = node_features.dtype
+                    # Systematic resampling using common helper
+                    # Reshape weights for batch dimension compatibility
+                    weights_batched = weights.unsqueeze(0)  # [1, num_particles]
+                    indices = self._systematic_resampling_indices(weights_batched, num_particles)
+                    indices = indices.squeeze(0)  # Remove batch dimension
 
-                    cumsum_weights = torch.cumsum(weights, dim=0)
-                    u = (
-                        torch.arange(num_particles, dtype=dtype, device=device)
-                        + torch.rand(1, device=device)
-                    ) / num_particles
-                    indices = torch.searchsorted(cumsum_weights, u.clamp(0, 1))
-                    indices = torch.clamp(indices, 0, num_particles - 1)
-
-                    # Resample particles
+                    # Resample particles using common helper
                     resampled_features = node_features[:, indices, :]
 
                     # Add small noise to prevent degeneracy
@@ -344,45 +324,57 @@ class ParticleFilterDA(DataAssimilationBase):
         if isinstance(ensemble, torch.Tensor):
             # Return mean across particle dimension (dim=1)
             return torch.mean(ensemble, dim=1)
-        elif isinstance(ensemble, HeteroData):
-            result = HeteroData()
-
-            for node_type in ensemble.node_types:
-                if hasattr(ensemble[node_type], "x") and ensemble[node_type].x is not None:
-                    node_features = ensemble[node_type].x
-                    if node_features.dim() == 3:  # [num_nodes, num_particles, features]
-                        # Mean across particle dimension (dim=1)
-                        result[node_type].x = torch.mean(node_features, dim=1)
-                    else:
-                        result[node_type].x = ensemble[node_type].x
-                else:
-                    # Copy other node attributes
-                    for key, value in ensemble[node_type].items():
-                        if key != "x":
-                            setattr(result[node_type], key, value)
-
-            # Copy edge attributes
-            for edge_type in ensemble.edge_types:
-                for key, value in ensemble[edge_type].items():
-                    setattr(result[edge_type], key, value)
-
-            return result
-        elif isinstance(ensemble, Data):
-            result = Data()
-
-            if hasattr(ensemble, "x") and ensemble.x is not None:
-                node_features = ensemble.x
-                if node_features.dim() == 3:  # [num_nodes, num_particles, features]
-                    # Mean across particle dimension (dim=1)
-                    result.x = torch.mean(node_features, dim=1)
-                else:
-                    result.x = ensemble.x
-
-            # Copy other attributes
-            for key, value in ensemble.items():
-                if key != "x":
-                    setattr(result, key, value)
-
-            return result
+        elif isinstance(ensemble, (Data, HeteroData)):
+            return self._compute_analysis_graph(ensemble)
         else:
             raise TypeError(f"Unsupported ensemble type: {type(ensemble)}")
+
+    def _compute_analysis_graph(
+        self, ensemble: Union[Data, HeteroData]
+    ) -> Union[Data, HeteroData]:
+        """Compute analysis for graph ensembles with shared logic for both Data and HeteroData."""
+        if isinstance(ensemble, HeteroData):
+            result = HeteroData()
+            node_types = ensemble.node_types
+            edge_types = ensemble.edge_types
+        else:
+            result = Data()
+            node_types = [None]  # Single node type for homogeneous graphs
+            edge_types = [None]  # Single edge type for homogeneous graphs
+
+        # Process node features
+        for node_type in node_types:
+            # Get the actual node data (different access for HeteroData vs Data)
+            if isinstance(ensemble, HeteroData):
+                node_data = ensemble[node_type]
+                result_node_data = result[node_type]
+            else:
+                node_data = ensemble
+                result_node_data = result
+                node_type = None  # For homogeneous graphs
+                
+            if hasattr(node_data, "x") and node_data.x is not None:
+                node_features = node_data.x
+                if node_features.dim() == 3:  # [num_nodes, num_particles, features]
+                    # Mean across particle dimension (dim=1)
+                    result_node_data.x = torch.mean(node_features, dim=1)
+                else:
+                    result_node_data.x = node_data.x
+            else:
+                # Copy other node attributes
+                for key, value in node_data.items():
+                    if key != "x":
+                        setattr(result_node_data, key, value)
+
+        # Copy edge attributes
+        if isinstance(ensemble, HeteroData):
+            for edge_type in edge_types:
+                for key, value in ensemble[edge_type].items():
+                    setattr(result[edge_type], key, value)
+        else:
+            # For homogeneous graphs, copy edge attributes directly
+            for key, value in ensemble.items():
+                if key not in ["x"] and not key.startswith("edge"):
+                    setattr(result, key, value)
+
+        return result
