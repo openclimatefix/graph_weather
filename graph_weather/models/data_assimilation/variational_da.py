@@ -2,29 +2,8 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
+from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
 import torch.nn.functional as F
-# Import with fallbacks to handle different execution contexts
-try:
-    # For relative import when used as part of package
-    from .data_assimilation_base import DataAssimilationBase, EnsembleGenerator
-except ImportError:
-    try:
-        # For absolute import when used as standalone
-        from graph_weather.models.data_assimilation.data_assimilation_base import DataAssimilationBase, EnsembleGenerator
-    except ImportError:
-        # For direct execution in isolated context
-        import sys
-        import os
-        import importlib.util
-        
-        # Load the base module dynamically
-        base_path = os.path.join(os.path.dirname(__file__), 'data_assimilation_base.py')
-        spec = importlib.util.spec_from_file_location('data_assimilation_base', base_path)
-        base_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(base_module)
-        
-        DataAssimilationBase = base_module.DataAssimilationBase
-        EnsembleGenerator = base_module.EnsembleGenerator
 from torch_geometric.data import Data, HeteroData
 
 
@@ -151,112 +130,9 @@ class VariationalDA(DataAssimilationBase):
 
         # For graph-based ensemble, we need to handle the optimization differently
         # This is a simplified implementation that optimizes the node features
-
-        if isinstance(ensemble, HeteroData):
-            # Handle heterogeneous graph ensemble
-            result = HeteroData()
-
-            for node_type in ensemble.node_types:
-                if hasattr(ensemble[node_type], "x") and ensemble[node_type].x is not None:
-                    node_features = ensemble[node_type].x
-
-                    # If node_features has ensemble dimension [num_nodes, num_members, features]
-                    if node_features.dim() == 3:
-                        # Extract node dimensions
-                        _ = node_features.shape  # num_nodes, num_members, feat_dim
-                        num_members = node_features.size(1)
-
-                        updated_members = []
-                        for member_idx in range(num_members):
-                            # Process each ensemble member
-                            member = (
-                                node_features[:, member_idx].clone().detach().requires_grad_(True)
-                            )
-                            background_member = node_features[:, member_idx].detach()
-
-                            # Perform optimization for this member
-                            for i in range(self.iterations):
-                                if member.grad is not None:
-                                    member.grad.zero_()
-
-                                # Compute cost function for this member
-                                # Simplified: treat as tensor optimization
-                                cost = self._compute_tensor_cost_function(
-                                    member, background_member, observations
-                                )
-
-                                # Backpropagate
-                                cost.backward()
-
-                                # Update member
-                                with torch.no_grad():
-                                    member -= self.learning_rate * member.grad
-
-                            updated_members.append(member.detach())
-
-                        result[node_type].x = torch.stack(updated_members, dim=1)
-                    else:
-                        result[node_type].x = ensemble[node_type].x
-                else:
-                    # Copy other node attributes
-                    for key, value in ensemble[node_type].items():
-                        if key != "x":
-                            setattr(result[node_type], key, value)
-
-            # Copy edge attributes
-            for edge_type in ensemble.edge_types:
-                for key, value in ensemble[edge_type].items():
-                    setattr(result[edge_type], key, value)
-
-            return result
-        else:
-            # Handle homogeneous graph ensemble
-            result = Data()
-
-            if hasattr(ensemble, "x") and ensemble.x is not None:
-                node_features = ensemble.x
-
-                # If node_features has ensemble dimension [num_nodes, num_members, features]
-                if node_features.dim() == 3:
-                    # Extract node dimensions
-                    _ = node_features.shape  # num_nodes, num_members, feat_dim
-                    num_members = node_features.size(1)
-
-                    updated_members = []
-                    for member_idx in range(num_members):
-                        # Process each ensemble member
-                        member = node_features[:, member_idx].clone().detach().requires_grad_(True)
-                        background_member = node_features[:, member_idx].detach()
-
-                        # Perform optimization for this member
-                        for i in range(self.iterations):
-                            if member.grad is not None:
-                                member.grad.zero_()
-
-                            # Compute cost function for this member
-                            cost = self._compute_tensor_cost_function(
-                                member, background_member, observations
-                            )
-
-                            # Backpropagate
-                            cost.backward()
-
-                            # Update member
-                            with torch.no_grad():
-                                member -= self.learning_rate * member.grad
-
-                        updated_members.append(member.detach())
-
-                    result.x = torch.stack(updated_members, dim=1)
-                else:
-                    result.x = ensemble.x
-
-            # Copy other attributes
-            for key, value in ensemble.items():
-                if key != "x":
-                    setattr(result, key, value)
-
-            return result
+        
+        # Refactored to handle both Data and HeteroData with shared logic
+        return self._process_graph_ensemble(ensemble, observations)
 
     def _compute_cost_function(
         self,
@@ -419,15 +295,125 @@ class VariationalDA(DataAssimilationBase):
                 setattr(cloned, key, value.clone() if torch.is_tensor(value) else value)
             return cloned
 
-    def _compute_analysis(
-        self, ensemble: Union[torch.Tensor, Data, HeteroData]
-    ) -> Union[torch.Tensor, Data, HeteroData]:
+    def _process_graph_ensemble(
+        self, ensemble: Union[Data, HeteroData], observations: torch.Tensor
+    ) -> Union[Data, HeteroData]:
+        """
+        Process graph ensemble with shared logic for both Data and HeteroData.
+        """
+        if isinstance(ensemble, HeteroData):
+            # Handle heterogeneous graph ensemble
+            result = HeteroData()
 
-        # In variational DA, the analysis is the optimized state itself
-        # This method is kept for interface consistency
-        if isinstance(ensemble, torch.Tensor):
-            return torch.mean(ensemble, dim=1) if ensemble.dim() > 2 else ensemble
-        elif isinstance(ensemble, HeteroData):
+            for node_type in ensemble.node_types:
+                if hasattr(ensemble[node_type], "x") and ensemble[node_type].x is not None:
+                    node_features = ensemble[node_type].x
+
+                    # If node_features has ensemble dimension [num_nodes, num_members, features]
+                    if node_features.dim() == 3:
+                        # Extract node dimensions
+                        _ = node_features.shape  # num_nodes, num_members, feat_dim
+                        num_members = node_features.size(1)
+
+                        updated_members = []
+                        for member_idx in range(num_members):
+                            # Process each ensemble member
+                            member = (
+                                node_features[:, member_idx].clone().detach().requires_grad_(True)
+                            )
+                            background_member = node_features[:, member_idx].detach()
+
+                            # Perform optimization for this member
+                            for i in range(self.iterations):
+                                if member.grad is not None:
+                                    member.grad.zero_()
+
+                                # Compute cost function for this member
+                                # Simplified: treat as tensor optimization
+                                cost = self._compute_tensor_cost_function(
+                                    member, background_member, observations
+                                )
+
+                                # Backpropagate
+                                cost.backward()
+
+                                # Update member
+                                with torch.no_grad():
+                                    member -= self.learning_rate * member.grad
+
+                            updated_members.append(member.detach())
+
+                        result[node_type].x = torch.stack(updated_members, dim=1)
+                    else:
+                        result[node_type].x = ensemble[node_type].x
+                else:
+                    # Copy other node attributes
+                    for key, value in ensemble[node_type].items():
+                        if key != "x":
+                            setattr(result[node_type], key, value)
+
+            # Copy edge attributes
+            for edge_type in ensemble.edge_types:
+                for key, value in ensemble[edge_type].items():
+                    setattr(result[edge_type], key, value)
+
+            return result
+        else:
+            # Handle homogeneous graph ensemble
+            result = Data()
+
+            if hasattr(ensemble, "x") and ensemble.x is not None:
+                node_features = ensemble.x
+
+                # If node_features has ensemble dimension [num_nodes, num_members, features]
+                if node_features.dim() == 3:
+                    # Extract node dimensions
+                    _ = node_features.shape  # num_nodes, num_members, feat_dim
+                    num_members = node_features.size(1)
+
+                    updated_members = []
+                    for member_idx in range(num_members):
+                        # Process each ensemble member
+                        member = node_features[:, member_idx].clone().detach().requires_grad_(True)
+                        background_member = node_features[:, member_idx].detach()
+
+                        # Perform optimization for this member
+                        for i in range(self.iterations):
+                            if member.grad is not None:
+                                member.grad.zero_()
+
+                            # Compute cost function for this member
+                            cost = self._compute_tensor_cost_function(
+                                member, background_member, observations
+                            )
+
+                            # Backpropagate
+                            cost.backward()
+
+                            # Update member
+                            with torch.no_grad():
+                                member -= self.learning_rate * member.grad
+
+                        updated_members.append(member.detach())
+
+                    result.x = torch.stack(updated_members, dim=1)
+                else:
+                    result.x = ensemble.x
+
+            # Copy other attributes
+            for key, value in ensemble.items():
+                if key != "x":
+                    setattr(result, key, value)
+
+            return result
+
+    def _compute_analysis_graph(
+        self, ensemble: Union[Data, HeteroData]
+    ) -> Union[Data, HeteroData]:
+        """
+        Compute analysis for graph ensembles with shared logic for both Data and HeteroData.
+        """
+        if isinstance(ensemble, HeteroData):
             result = HeteroData()
             for node_type in ensemble.node_types:
                 if hasattr(ensemble[node_type], "x") and ensemble[node_type].x is not None:
@@ -444,7 +430,7 @@ class VariationalDA(DataAssimilationBase):
                 for key, value in ensemble[edge_type].items():
                     setattr(result[edge_type], key, value)
             return result
-        elif isinstance(ensemble, Data):
+        else:  # Data case
             result = Data()
             if hasattr(ensemble, "x") and ensemble.x is not None:
                 node_features = ensemble.x
@@ -456,5 +442,16 @@ class VariationalDA(DataAssimilationBase):
                 if key != "x":
                     setattr(result, key, value)
             return result
+
+    def _compute_analysis(
+        self, ensemble: Union[torch.Tensor, Data, HeteroData]
+    ) -> Union[torch.Tensor, Data, HeteroData]:
+
+        # In variational DA, the analysis is the optimized state itself
+        # This method is kept for interface consistency
+        if isinstance(ensemble, torch.Tensor):
+            return torch.mean(ensemble, dim=1) if ensemble.dim() > 2 else ensemble
+        elif isinstance(ensemble, (Data, HeteroData)):
+            return self._compute_analysis_graph(ensemble)
         else:
             raise TypeError(f"Unsupported ensemble type: {type(ensemble)}")

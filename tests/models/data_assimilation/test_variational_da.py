@@ -7,36 +7,8 @@ import pytest
 import torch
 import torch.nn as nn
 from torch_geometric.data import Data, HeteroData
-import sys
-import os
-sys.path.insert(0, os.path.abspath('.'))
-
-# Use direct import to avoid package conflicts
-import importlib.util
-
-# Add the graph_weather directory to the path to make relative imports work
-sys.path.insert(0, os.path.join(os.getcwd(), 'graph_weather'))
-
-# Load base module first
-spec = importlib.util.spec_from_file_location('data_assimilation_base', './graph_weather/models/data_assimilation/data_assimilation_base.py')
-base_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base_module)
-
-# Load variational module with proper base class injection
-spec = importlib.util.spec_from_file_location('variational_da', './graph_weather/models/data_assimilation/variational_da.py')
-var_module = importlib.util.module_from_spec(spec)
-var_module.DataAssimilationBase = base_module.DataAssimilationBase
-var_module.EnsembleGenerator = base_module.EnsembleGenerator
-var_module.Data = Data
-var_module.HeteroData = HeteroData
-var_module.torch = torch
-var_module.nn = torch.nn
-var_module.F = torch.nn.functional
-var_module.typing = __import__('typing')
-spec.loader.exec_module(var_module)
-
-VariationalDA = var_module.VariationalDA
-EnsembleGenerator = base_module.EnsembleGenerator
+from graph_weather.models.data_assimilation.variational_da import VariationalDA
+from graph_weather.models.data_assimilation.data_assimilation_base import EnsembleGenerator
 
 
 def test_variational_da_initialization():
@@ -375,54 +347,3 @@ def test_variational_error_handling():
     # Test unsupported state type
     with pytest.raises(TypeError):
         var_da._compute_cost_function("invalid_type", torch.randn(2, 5), torch.randn(2, 3))
-
-
-if __name__ == "__main__":
-    print("Running Variational DA tests...")
-    
-    test_variational_da_initialization()
-    print("✓ Initialization test passed")
-    
-    test_variational_tensor_forward()
-    print("✓ Tensor forward test passed")
-    
-    test_variational_tensor_initialize_ensemble()
-    print("✓ Tensor ensemble initialization test passed")
-    
-    test_variational_tensor_assimilate()
-    print("✓ Tensor assimilation test passed")
-    
-    test_variational_compute_tensor_cost_function()
-    print("✓ Tensor cost function test passed")
-    
-    test_variational_tensor_assimilate_ensemble()
-    print("✓ Tensor ensemble assimilation test passed")
-    
-    test_variational_graph_forward()
-    print("✓ Graph forward test passed")
-    
-    test_variational_graph_initialize_ensemble()
-    print("✓ Graph ensemble initialization test passed")
-    
-    test_variational_graph_assimilate()
-    print("✓ Graph assimilation test passed")
-    
-    test_variational_compute_graph_cost_function()
-    print("✓ Graph cost function test passed")
-    
-    test_variational_compute_analysis_tensor()
-    print("✓ Tensor analysis computation test passed")
-    
-    test_variational_compute_analysis_graph()
-    print("✓ Graph analysis computation test passed")
-    
-    test_variational_learnable_weights()
-    print("✓ Learnable weights test passed")
-    
-    test_variational_clone_graph_state()
-    print("✓ Graph cloning test passed")
-    
-    test_variational_error_handling()
-    print("✓ Error handling test passed")
-    
-    print("\n✅ All Variational DA tests passed!")
