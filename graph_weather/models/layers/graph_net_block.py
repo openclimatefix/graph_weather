@@ -71,7 +71,7 @@ class MLP(nn.Module):
             The transformed tensor
         """
         if self.use_checkpointing:
-            out = checkpoint(self.model, x, use_reentrant=False)
+            out = checkpoint(self.model, x, use_reentrant=False, preserve_rng_state=False)
         else:
             out = self.model(x)
         return out
@@ -241,6 +241,7 @@ class GraphProcessor(nn.Module):
         hidden_layers_node: int = 2,
         hidden_layers_edge: int = 2,
         norm_type: str = "LayerNorm",
+        use_checkpointing: bool = False,
     ):
         """
         Graph Processor
@@ -255,9 +256,11 @@ class GraphProcessor(nn.Module):
             hidden_layers_edge: Number of hidden layers for edge processing
             norm_type: Normalization type
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
+            use_checkpointing: Whether to use gradient checkpointing
         """
 
         super(GraphProcessor, self).__init__()
+        self.use_checkpointing = use_checkpointing
 
         self.blocks = nn.ModuleList()
         for _ in range(mp_iterations):
@@ -288,6 +291,11 @@ class GraphProcessor(nn.Module):
             Updated nodes and edge attributes
         """
         for block in self.blocks:
-            x, edge_attr, _ = block(x, edge_index, edge_attr)
+            if self.use_checkpointing:
+                x, edge_attr, _ = checkpoint(
+                    block, x, edge_index, edge_attr, use_reentrant=False, preserve_rng_state=False
+                )
+            else:
+                x, edge_attr, _ = block(x, edge_index, edge_attr)
 
         return x, edge_attr

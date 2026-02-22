@@ -147,6 +147,7 @@ class Encoder(torch.nn.Module):
             hidden_layers_processor_node,
             hidden_layers_processor_edge,
             mlp_norm_type,
+            use_checkpointing=self.use_checkpointing,
         )
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

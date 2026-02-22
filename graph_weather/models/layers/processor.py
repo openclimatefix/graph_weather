@@ -28,6 +28,7 @@ class Processor(torch.nn.Module):
         hidden_layers_processor_edge: int = 2,
         mlp_norm_type: str = "LayerNorm",
         use_thermalizer: bool = False,
+        use_checkpointing: bool = False,
     ):
         """
         Latent graph processor
@@ -43,12 +44,14 @@ class Processor(torch.nn.Module):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_thermalizer: Whether to use the thermalizer layer
+            use_checkpointing: Whether to use gradient checkpointing
         """
         super().__init__()
         # Build the default graph
         # Take features from encoder and put into processor graph
         self.input_dim = input_dim
         self.use_thermalizer = use_thermalizer
+        self.checkpoint_segments = 0  # 0 = use layer's internal checkpointing
 
         self.graph_processor = GraphProcessor(
             num_blocks,
@@ -59,9 +62,23 @@ class Processor(torch.nn.Module):
             hidden_layers_processor_node,
             hidden_layers_processor_edge,
             mlp_norm_type,
+            use_checkpointing,
         )
         if self.use_thermalizer:
             self.thermalizer = ThermalizerLayer(input_dim)
+
+    def set_checkpoint_segments(self, checkpoint_segments: int):
+        """Sets checkpoint segments for the processor.
+
+        This matches NVIDIA's API for controlling processor checkpointing.
+
+        Args:
+            checkpoint_segments: Number of checkpointing segments for gradient computation.
+                - 0: Use processor's internal per-block checkpointing (controlled by use_checkpointing)
+                - -1: Checkpoint entire processor as one segment (handled at GraphCast level)
+                - N > 0: Checkpoint every N blocks (not yet implemented)
+        """
+        self.checkpoint_segments = checkpoint_segments
 
     def forward(
         self,
