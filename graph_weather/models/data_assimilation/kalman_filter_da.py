@@ -1,8 +1,3 @@
-"""Kalman Filter Data Assimilation implementation.
-
-Implements ensemble-based Kalman filter for data assimilation in weather forecasting.
-Supports both tensor and graph-based data structures.
-"""
 
 from typing import Any, Dict, Optional, Union
 
@@ -17,11 +12,7 @@ class KalmanFilterDA(DataAssimilationBase):
     """Kalman Filter Data Assimilation implementation."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """Initialize Kalman Filter DA.
 
-        Args:
-            config: Configuration dictionary with parameters
-        """
         super().__init__(config)
 
         self.ensemble_size = self.config.get("ensemble_size", 20)
@@ -45,16 +36,6 @@ class KalmanFilterDA(DataAssimilationBase):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """Forward pass performing data assimilation.
-
-        Args:
-            state_in: Background state
-            observations: Observation data
-            ensemble_members: Pre-computed ensemble members
-
-        Returns:
-            Analysis state after assimilation
-        """
         if ensemble_members is None:
             ensemble = self.initialize_ensemble(state_in, self.ensemble_size)
         else:
@@ -69,32 +50,11 @@ class KalmanFilterDA(DataAssimilationBase):
     def initialize_ensemble(
         self, background_state: Union[torch.Tensor, Data, HeteroData], num_members: int
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """Initialize ensemble members from background state.
-
-        Args:
-            background_state: Background state tensor or graph data
-            num_members: Number of ensemble members to generate
-
-        Returns:
-            Ensemble with specified number of members
-        """
         return self.ensemble_generator(background_state, num_members)
 
     def assimilate(
         self, ensemble: Union[torch.Tensor, Data, HeteroData], observations: torch.Tensor
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        """Perform data assimilation on ensemble.
-
-        Args:
-            ensemble: Ensemble of state members
-            observations: Observation data
-
-        Returns:
-            Updated ensemble after assimilation
-
-        Raises:
-            TypeError: If ensemble type is not supported
-        """
         if isinstance(ensemble, torch.Tensor):
             return self._assimilate_tensor_ensemble(ensemble, observations)
         elif isinstance(ensemble, (Data, HeteroData)):
@@ -122,15 +82,6 @@ class KalmanFilterDA(DataAssimilationBase):
 
         ensemble_perts = ensemble_perts * inflation
         inflated_ensemble = ensemble_mean + ensemble_perts  # [batch_size, num_members, ...]
-
-        # Compute observation operator H (identity for direct observations)
-        # For simplicity, assume observations are extracted from state features
-        # In practice, H would be a more complex operator
-        # Here we assume obs_dim is a subset of state features
-
-        # Compute ensemble statistics for Kalman gain calculation
-        # First, create a simplified observation operator for demonstration
-        # In real applications, H would map state space to observation space
         state_dim = int(torch.prod(torch.tensor(orig_shape)))
         obs_dim = observations.size(1)
 
@@ -148,10 +99,6 @@ class KalmanFilterDA(DataAssimilationBase):
         obs_mean = torch.mean(ensemble_obs, dim=1, keepdim=True)  # [batch_size, 1, obs_dim]
         obs_perts = ensemble_obs - obs_mean  # [batch_size, num_members, obs_dim]
 
-        # Compute error covariance matrices
-        # Background error covariance in observation space: P_b = (1/(N-1)) * HH^T
-        # where H is ensemble perturbations in observation space
-        # Observation error covariance: R
         R = (self.observation_error_std**2) * torch.eye(
             obs_dim, device=observations.device, dtype=observations.dtype
         ).unsqueeze(0).expand(
