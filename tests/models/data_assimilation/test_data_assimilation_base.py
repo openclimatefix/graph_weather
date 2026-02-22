@@ -84,6 +84,3 @@ def test_compute_analysis_tensor():
     # Mean should be (1 + 2 + 3) / 3 = 2
     expected = 2 * torch.ones(2, 5, 3)
     assert torch.allclose(analysis, expected)
-
-
-
