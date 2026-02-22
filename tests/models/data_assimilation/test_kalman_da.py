@@ -10,11 +10,18 @@ from torch_geometric.data import Data
 
 def _load_kalman_class():
     """Load KalmanFilterDA directly from file path."""
-    kf_path = os.path.normpath(os.path.join(
-        os.path.dirname(__file__),
-        os.pardir, os.pardir, os.pardir,
-        "graph_weather", "models", "data_assimilation", "kalman_filter_da.py",
-    ))
+    kf_path = os.path.normpath(
+        os.path.join(
+            os.path.dirname(__file__),
+            os.pardir,
+            os.pardir,
+            os.pardir,
+            "graph_weather",
+            "models",
+            "data_assimilation",
+            "kalman_filter_da.py",
+        )
+    )
     spec = importlib.util.spec_from_file_location("kalman_filter_da", kf_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -32,13 +39,15 @@ def test_kalman_filter_initialization():
     assert kf.observation_error_std == 0.1
     assert kf.background_error_std == 0.5
 
-    custom = KalmanFilterDA({
-        "ensemble_size": 30,
-        "inflation_factor": 1.2,
-        "observation_error_std": 0.05,
-        "background_error_std": 0.3,
-        "adaptive_inflation": False,
-    })
+    custom = KalmanFilterDA(
+        {
+            "ensemble_size": 30,
+            "inflation_factor": 1.2,
+            "observation_error_std": 0.05,
+            "background_error_std": 0.3,
+            "adaptive_inflation": False,
+        }
+    )
     assert custom.ensemble_size == 30
     assert custom.inflation_factor == 1.2
     assert custom.observation_error_std == 0.05

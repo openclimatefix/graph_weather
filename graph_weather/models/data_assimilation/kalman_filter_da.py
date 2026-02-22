@@ -1,4 +1,3 @@
-
 from typing import Any, Dict, Optional, Union
 
 import torch
@@ -18,30 +17,35 @@ class EnsembleGenerator(nn.Module):
         background_state: Union[torch.Tensor, Data, HeteroData],
         num_members: int,
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        
+
         if isinstance(background_state, (Data, HeteroData)):
             return self._graph_ensemble(background_state, num_members)
         return self._tensor_ensemble(background_state, num_members)
 
     def _tensor_ensemble(self, state: torch.Tensor, n: int) -> torch.Tensor:
-        noise = torch.randn(
-            state.shape[0], n, state.shape[1],
-            device=state.device, dtype=state.dtype,
-        ) * self.noise_std
+        noise = (
+            torch.randn(
+                state.shape[0],
+                n,
+                state.shape[1],
+                device=state.device,
+                dtype=state.dtype,
+            )
+            * self.noise_std
+        )
         return state.unsqueeze(1).expand(-1, n, -1) + noise
 
-    def _graph_ensemble(
-        self, state: Union[Data, HeteroData], n: int
-    ) -> Union[Data, HeteroData]:
+    def _graph_ensemble(self, state: Union[Data, HeteroData], n: int) -> Union[Data, HeteroData]:
         if isinstance(state, HeteroData):
             result = HeteroData()
             for nt in state.node_types:
                 if hasattr(state[nt], "x") and state[nt].x is not None:
                     x = state[nt].x
                     if x.dim() == 2:
-                        noise = torch.randn(
-                            x.size(0), n, x.size(1), device=x.device, dtype=x.dtype
-                        ) * self.noise_std
+                        noise = (
+                            torch.randn(x.size(0), n, x.size(1), device=x.device, dtype=x.dtype)
+                            * self.noise_std
+                        )
                         result[nt].x = x.unsqueeze(1).expand(-1, n, -1) + noise
                     else:
                         result[nt].x = x
@@ -57,9 +61,10 @@ class EnsembleGenerator(nn.Module):
         if hasattr(state, "x") and state.x is not None:
             x = state.x
             if x.dim() == 2:
-                noise = torch.randn(
-                    x.size(0), n, x.size(1), device=x.device, dtype=x.dtype
-                ) * self.noise_std
+                noise = (
+                    torch.randn(x.size(0), n, x.size(1), device=x.device, dtype=x.dtype)
+                    * self.noise_std
+                )
                 result.x = x.unsqueeze(1).expand(-1, n, -1) + noise
             else:
                 result.x = state.x
@@ -70,7 +75,6 @@ class EnsembleGenerator(nn.Module):
 
 
 class KalmanFilterDA(nn.Module):
-    
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__()
@@ -95,7 +99,7 @@ class KalmanFilterDA(nn.Module):
         observations: torch.Tensor,
         ensemble_members: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, Data, HeteroData]:
-        
+
         if ensemble_members is None:
             ensemble = self.initialize_ensemble(state_in, self.ensemble_size)
         else:
@@ -114,7 +118,7 @@ class KalmanFilterDA(nn.Module):
         ensemble: Union[torch.Tensor, Data, HeteroData],
         observations: torch.Tensor,
     ) -> Union[torch.Tensor, Data, HeteroData]:
-  
+
         if isinstance(ensemble, torch.Tensor):
             return self._assimilate_tensor(ensemble, observations)
         elif isinstance(ensemble, (Data, HeteroData)):
@@ -130,7 +134,7 @@ class KalmanFilterDA(nn.Module):
     def _assimilate_tensor(
         self, ensemble: torch.Tensor, observations: torch.Tensor
     ) -> torch.Tensor:
-       
+
         batch_size, num_members = ensemble.size(0), ensemble.size(1)
         orig_shape = ensemble.shape[2:]
 
@@ -150,7 +154,7 @@ class KalmanFilterDA(nn.Module):
         obs_mean = ensemble_obs.mean(dim=1, keepdim=True)
         obs_perts = ensemble_obs - obs_mean
 
-        R = (self.observation_error_std ** 2) * torch.eye(
+        R = (self.observation_error_std**2) * torch.eye(
             obs_dim, device=observations.device, dtype=observations.dtype
         ).unsqueeze(0).expand(batch_size, -1, -1)
 
