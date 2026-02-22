@@ -2,12 +2,7 @@ import pytest
 import torch
 from torch_geometric.data import Data
 
-import sys
-
-sys.path.insert(0, "../../../graph_weather/models/data_assimilation")
-
-# Execute modules directly to avoid import issues
-exec(open("graph_weather/models/data_assimilation/data_assimilation_base.py").read())
+from graph_weather.models.data_assimilation import DataAssimilationBase, EnsembleGenerator
 
 
 class MockDA(DataAssimilationBase):
@@ -91,9 +86,4 @@ def test_compute_analysis_tensor():
     assert torch.allclose(analysis, expected)
 
 
-if __name__ == "__main__":
-    test_ensemble_generator_tensor()
-    test_ensemble_generator_graph()
-    test_data_assimilation_base_abstract_methods()
-    test_compute_analysis_tensor()
-    print("All tests passed!")
+
