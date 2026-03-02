@@ -85,7 +85,7 @@ class Processor(torch.nn.Module):
                 activate_final=False,
             )
 
-        # Tranformers Blocks
+        # Transformers Blocks
         self.cond_transformers = torch.nn.ModuleList()
         if not sparse:
             for _ in range(num_blocks - 1):

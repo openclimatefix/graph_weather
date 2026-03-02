@@ -288,7 +288,7 @@ class CondTransformerBlock(nn.Module):
                 not be used inside TransformerConv.
             concat (bool): if true concatenate the outputs of each head, otherwise average them.
                 Defaults to True.
-            beta (bool): if true apply the beta weighting described in the paper. Defauls to True.
+            beta (bool): if true apply the beta weighting described in the paper. Defaults to True.
             activation_layer (torch.nn.Module, optional): activation function applied before
                 returning the output. If None skip the activation function. Defaults to nn.ReLU.
         """

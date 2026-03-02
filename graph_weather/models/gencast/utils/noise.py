@@ -17,7 +17,7 @@ def generate_isotropic_noise(num_lon: int, num_lat: int, num_samples=1, isotropi
     Args:
         num_lon (int): number of longitudes in the grid.
         num_lat (int): number of latitudes in the grid.
-        num_samples (int): number of indipendent samples. Defaults to 1.
+        num_samples (int): number of independent samples. Defaults to 1.
         isotropic (bool): if true generates isotropic noise, else flat noise. Defaults to True.
 
     Returns:

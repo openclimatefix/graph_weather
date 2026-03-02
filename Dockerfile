@@ -35,7 +35,7 @@ RUN cuda=$(command -v nvcc > /dev/null && echo "true" || echo "false") \
 # Switch to bash shell
 SHELL ["/bin/bash", "-c"]
 
-# Set ${CONDA_ENV_NAME} to default virutal environment
+# Set ${CONDA_ENV_NAME} to default virtual environment
 RUN echo "source activate ${CONDA_ENV_NAME}" >> ~/.bashrc
 
 # Cp in the development directory and install

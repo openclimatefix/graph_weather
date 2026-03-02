@@ -132,7 +132,7 @@ def get_icosahedron() -> TriangularMesh:
     #      /                                        \            |
     #  /                                                 \      YO-----> X
     # This results in:
-    #  (adjacent faceis now top plane)
+    #  (adjacent face is now top plane)
     #  ----------------------O\  (top arist)
     #                           \
     #                             \

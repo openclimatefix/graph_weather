@@ -50,7 +50,7 @@ class AssimilatorEncoder(torch.nn.Module):
         use_checkpointing: bool = False,
     ):
         """
-        Encode the lat/lon data inot the isohedron graph
+        Encode the lat/lon data into the isohedron graph
 
         Args:
             resolution: H3 resolution level
@@ -208,7 +208,7 @@ class AssimilatorEncoder(torch.nn.Module):
             edge_targets.append(self.h3_mapping[lat_node])
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
 
-        # Use homogenous graph to make it easier
+        # Use homogeneous graph to make it easier
         return Data(edge_index=edge_index, edge_attr=h3_distances)
 
     def create_latent_graph(self) -> Data:
