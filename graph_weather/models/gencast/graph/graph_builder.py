@@ -184,7 +184,7 @@ class GraphBuilder:
 
         # Create some edges according to distance between mesh and grid nodes.
         assert self._grid_lat is not None and self._grid_lon is not None
-        (grid_indices, mesh_indices) = grid_mesh_connectivity.radius_query_indices(
+        grid_indices, mesh_indices = grid_mesh_connectivity.radius_query_indices(
             grid_latitude=self._grid_lat,
             grid_longitude=self._grid_lon,
             mesh=self._mesh,
@@ -198,7 +198,7 @@ class GraphBuilder:
         # Precompute structural node and edge features according to config options.
         # Structural features are those that depend on the fixed values of the
         # latitude and longitudes of the nodes.
-        (senders_node_features, receivers_node_features, edge_features) = (
+        senders_node_features, receivers_node_features, edge_features = (
             model_utils.get_bipartite_graph_spatial_features(
                 senders_node_lat=self._grid_nodes_lat,
                 senders_node_lon=self._grid_nodes_lon,
@@ -265,7 +265,7 @@ class GraphBuilder:
 
         # Create some edges according to how the grid nodes are contained by
         # mesh triangles.
-        (grid_indices, mesh_indices) = grid_mesh_connectivity.in_mesh_triangle_indices(
+        grid_indices, mesh_indices = grid_mesh_connectivity.in_mesh_triangle_indices(
             grid_latitude=self._grid_lat, grid_longitude=self._grid_lon, mesh=self._mesh
         )
 
@@ -275,7 +275,7 @@ class GraphBuilder:
 
         # Precompute structural node and edge features according to config options.
         assert self._mesh_nodes_lat is not None and self._mesh_nodes_lon is not None
-        (senders_node_features, receivers_node_features, edge_features) = (
+        senders_node_features, receivers_node_features, edge_features = (
             model_utils.get_bipartite_graph_spatial_features(
                 senders_node_lat=self._mesh_nodes_lat,
                 senders_node_lon=self._mesh_nodes_lon,
