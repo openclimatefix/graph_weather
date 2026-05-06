@@ -181,9 +181,9 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         sensor_mask=None,
         sensor_values=None,
     ):
-        
+
         batch_size = prev_inputs.shape[0]
-        
+
         if sensor_mask is not None:
             expected_sensor_shape = (
                 batch_size,
@@ -193,9 +193,7 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             )
 
             if sensor_mask.shape != expected_sensor_shape:
-                raise ValueError(
-                    f"Expected sensor_mask shape {expected_sensor_shape}"
-                )
+                raise ValueError(f"Expected sensor_mask shape {expected_sensor_shape}")
 
         if sensor_values is not None:
             expected_sensor_shape = (
@@ -206,9 +204,7 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             )
 
             if sensor_values.shape != expected_sensor_shape:
-                raise ValueError(
-                    f"Expected sensor_values shape {expected_sensor_shape}"
-                )
+                raise ValueError(f"Expected sensor_values shape {expected_sensor_shape}")
         exp_inputs_shape = (batch_size, self.num_lon, self.num_lat, 2 * self.input_features_dim)
         exp_targets_shape = (batch_size, self.num_lon, self.num_lat, self.output_features_dim)
         exp_noise_shape = (batch_size, 1)
@@ -478,7 +474,7 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             self.graphs.m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_index,
             persistent=False,
         )
-        
+
     def guided_forward(
         self,
         corrupted_targets,
