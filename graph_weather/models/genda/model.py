@@ -107,6 +107,8 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             scale_factor (float):  in the Encoder the message passing output is multiplied by the
                 scale factor. This is important when you want to fine-tune a pretrained model to a
                 higher resolution. Defaults to 1.
+            conditioning_dim (int): dimension of the conditioning features used for
+                sensor guidance.
         """
         super().__init__()
         self.num_lon = len(grid_lon)
@@ -193,7 +195,8 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             )
 
             if sensor_mask.shape != expected_sensor_shape:
-                raise ValueError(f"Expected sensor_mask shape {expected_sensor_shape}")
+                raise ValueError(
+                    f"Expected sensor_mask shape {expected_sensor_shape}")
 
         if sensor_values is not None:
             expected_sensor_shape = (
@@ -204,9 +207,12 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             )
 
             if sensor_values.shape != expected_sensor_shape:
-                raise ValueError(f"Expected sensor_values shape {expected_sensor_shape}")
-        exp_inputs_shape = (batch_size, self.num_lon, self.num_lat, 2 * self.input_features_dim)
-        exp_targets_shape = (batch_size, self.num_lon, self.num_lat, self.output_features_dim)
+                raise ValueError(
+                    f"Expected sensor_values shape {expected_sensor_shape}")
+        exp_inputs_shape = (batch_size, self.num_lon,
+                            self.num_lat, 2 * self.input_features_dim)
+        exp_targets_shape = (batch_size, self.num_lon,
+                             self.num_lat, self.output_features_dim)
         exp_noise_shape = (batch_size, 1)
 
         if not all(
@@ -248,8 +254,10 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # restore nodes dimension: [b, n, f]
-        latent_grid_nodes = einops.rearrange(latent_grid_nodes, "(b n) f -> b n f", b=batch_size)
-        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+        latent_grid_nodes = einops.rearrange(
+            latent_grid_nodes, "(b n) f -> b n f", b=batch_size)
+        latent_mesh_nodes = einops.rearrange(
+            latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
 
         assert not torch.isnan(latent_grid_nodes).any()
         assert not torch.isnan(latent_mesh_nodes).any()
@@ -267,8 +275,10 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # load features.
-        input_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
-        input_grid_nodes = einops.rearrange(latent_grid_nodes, "b n f -> (b n) f")
+        input_mesh_nodes = einops.rearrange(
+            latent_mesh_nodes, "b n f -> (b n) f")
+        input_grid_nodes = einops.rearrange(
+            latent_grid_nodes, "b n f -> (b n) f")
         input_edge_attr = batched_edge_attr
         edge_index = batched_edge_index
 
@@ -281,7 +291,8 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # restore nodes dimension: [b, n, f]
-        output_grid_nodes = einops.rearrange(output_grid_nodes, "(b n) f -> b n f", b=batch_size)
+        output_grid_nodes = einops.rearrange(
+            output_grid_nodes, "(b n) f -> b n f", b=batch_size)
 
         assert not torch.isnan(output_grid_nodes).any()
         return output_grid_nodes
@@ -298,12 +309,14 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # load features.
-        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "b n f -> (b n) f")
+        latent_mesh_nodes = einops.rearrange(
+            latent_mesh_nodes, "b n f -> (b n) f")
         input_edge_attr = batched_edge_attr
         edge_index = batched_edge_index
 
         # repeat noise levels for each node.
-        noise_levels = einops.repeat(noise_levels, "b f -> (b n) f", n=num_nodes)
+        noise_levels = einops.repeat(
+            noise_levels, "b f -> (b n) f", n=num_nodes)
 
         # run the processor.
         latent_mesh_nodes = self.processor.forward(
@@ -314,7 +327,8 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # restore nodes dimension: [b, n, f]
-        latent_mesh_nodes = einops.rearrange(latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
+        latent_mesh_nodes = einops.rearrange(
+            latent_mesh_nodes, "(b n) f -> b n f", b=batch_size)
 
         assert not torch.isnan(latent_mesh_nodes).any()
         return latent_mesh_nodes
@@ -322,8 +336,10 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
     def _f_theta(self, grid_features, noise_levels):
         # run encoder, processor and decoder.
         latent_grid_nodes, latent_mesh_nodes = self._run_encoder(grid_features)
-        latent_mesh_nodes = self._run_processor(latent_mesh_nodes, noise_levels)
-        output_grid_nodes = self._run_decoder(latent_mesh_nodes, latent_grid_nodes)
+        latent_mesh_nodes = self._run_processor(
+            latent_mesh_nodes, noise_levels)
+        output_grid_nodes = self._run_decoder(
+            latent_mesh_nodes, latent_grid_nodes)
         return output_grid_nodes
 
     def forward(
@@ -350,6 +366,14 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             prev_inputs (torch.Tensor): the previous two timesteps concatenated across the features'
                 dimension.
             noise_levels (torch.Tensor): the noise level used for corruption.
+            sensor_mask (torch.Tensor, optional): mask indicating available
+                sensor observations.
+
+            sensor_values (torch.Tensor, optional): sensor observation values
+                used for conditioning.
+
+            wind_direction (torch.Tensor, optional): optional wind direction
+                conditioning input.
         """
         # check shapes and noise.
         self._check_shapes(
@@ -363,8 +387,10 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             raise ValueError("All the noise levels must be strictly positive.")
 
         # flatten lon/lat dimensions.
-        prev_inputs = einops.rearrange(prev_inputs, "b lon lat f -> b (lon lat) f")
-        corrupted_targets = einops.rearrange(corrupted_targets, "b lon lat f -> b (lon lat) f")
+        prev_inputs = einops.rearrange(
+            prev_inputs, "b lon lat f -> b (lon lat) f")
+        corrupted_targets = einops.rearrange(
+            corrupted_targets, "b lon lat f -> b (lon lat) f")
         if sensor_mask is not None:
             sensor_mask = einops.rearrange(
                 sensor_mask,
@@ -378,7 +404,8 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             )
 
         # apply preconditioning functions to target and noise.
-        scaled_targets = self.precs.c_in(noise_levels)[:, :, None] * corrupted_targets
+        scaled_targets = self.precs.c_in(
+            noise_levels)[:, :, None] * corrupted_targets
         scaled_noise_levels = self.precs.c_noise(noise_levels)
 
         if (
@@ -421,10 +448,12 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         )
 
         # restore lon/lat dimensions.
-        out = einops.rearrange(out, "b (lon lat) f -> b lon lat f", lon=self.num_lon)
+        out = einops.rearrange(
+            out, "b (lon lat) f -> b lon lat f", lon=self.num_lon)
         return out
 
     def _register_graph(self):
+        """Register graph tensors as non-persistent buffers."""
         # we need to register all the tensors associated with the graph as buffers. In this way they
         # will move to the same device of the model. These tensors won't be part of the state since
         # persistent is set to False.
@@ -446,11 +475,15 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
             persistent=False,
         )
 
-        self.register_buffer("mesh_nodes", self.graphs.mesh_graph.x, persistent=False)
-        self.register_buffer("mesh_edge_attr", self.graphs.mesh_graph.edge_attr, persistent=False)
-        self.register_buffer("mesh_edge_index", self.graphs.mesh_graph.edge_index, persistent=False)
+        self.register_buffer(
+            "mesh_nodes", self.graphs.mesh_graph.x, persistent=False)
+        self.register_buffer(
+            "mesh_edge_attr", self.graphs.mesh_graph.edge_attr, persistent=False)
+        self.register_buffer(
+            "mesh_edge_index", self.graphs.mesh_graph.edge_index, persistent=False)
 
-        self.register_buffer("khop_mesh_nodes", self.graphs.khop_mesh_graph.x, persistent=False)
+        self.register_buffer(
+            "khop_mesh_nodes", self.graphs.khop_mesh_graph.x, persistent=False)
         self.register_buffer(
             "khop_mesh_edge_attr", self.graphs.khop_mesh_graph.edge_attr, persistent=False
         )
@@ -484,6 +517,7 @@ class GenDA(torch.nn.Module, PyTorchModelHubMixin):
         sensor_values,
         gamma=2.0,
     ):
+        """Run conditional diffusion guidance."""
         cond = self.forward(
             corrupted_targets,
             prev_inputs,
