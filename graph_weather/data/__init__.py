@@ -1,9 +1,5 @@
 """Dataloaders and data processing utilities"""
 
 from .anemoi_dataloader import AnemoiDataset
-
-try:
-    from .nnja_ai import SensorDataset
-except ImportError:
-    SensorDataset = None
+from .nnja_ai import SensorDataset
 from .weather_station_reader import WeatherStationReader
