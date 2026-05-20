@@ -1,4 +1,5 @@
 """Tests for the GenDA model."""
+
 import numpy as np
 import torch
 import pytest
@@ -36,10 +37,11 @@ def test_genda_forward():
     )
 
     assert out.shape == corrupted_targets.shape
-    
+
+
 def test_genda_irregular_graph():
     """Test GenDA forward pass on irregular graph points."""
-        
+
     grid_lon = np.array([0.1, 0.7, 0.3, 0.95])
     grid_lat = np.array([0.2, 0.8, 0.4, 0.6])
 
