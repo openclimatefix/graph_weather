@@ -51,9 +51,9 @@ def test_assimilation_encoder_uneven_grid():
     lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 5):
-            lat_lons.append((lat, lon, np.random.random(1)))
+            lat_lons.append((lat, lon, np.random.random()))
         for lon in range(180, 360, 9):
-            lat_lons.append((lat, lon, np.random.random(1)))
+            lat_lons.append((lat, lon, np.random.random()))
     model = AssimilatorEncoder().eval()
 
     features = torch.randn((2, len(lat_lons), 2))
@@ -85,7 +85,7 @@ def test_decoder():
             lat_lons.append((lat, lon))
     model = Decoder(lat_lons).eval()
     features = torch.randn((3, len(lat_lons), 78))
-    processed = torch.randn((3 * h3.num_hexagons(2), 256))
+    processed = torch.randn((3 * h3.get_num_cells(2), 256))
     with torch.no_grad():
         x = model(processed, features)
     assert x.size() == (3, 2592, 78)
@@ -97,7 +97,7 @@ def test_assimilator():
         for lon in range(0, 360, 5):
             lat_lons.append((lat, lon))
     model = AssimilatorDecoder(lat_lons).eval()
-    processed = torch.randn((3 * h3.num_hexagons(2), 256))
+    processed = torch.randn((3 * h3.get_num_cells(2), 256))
     with torch.no_grad():
         x = model(processed, 3)
     assert x.size() == (3, 2592, 78)
@@ -137,9 +137,9 @@ def test_assimilator_model():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
-            obs_lat_lons.append((lat, lon, np.random.random(1)))
+            obs_lat_lons.append((lat, lon, np.random.random()))
         for lon in 360 * np.random.random(100):
-            obs_lat_lons.append((lat, lon, np.random.random(1)))
+            obs_lat_lons.append((lat, lon, np.random.random()))
 
     output_lat_lons = []
     for lat in range(-90, 90, 5):
@@ -196,9 +196,9 @@ def test_assimilator_model_grad_checkpoint():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
         for lon in range(0, 180, 6):
-            obs_lat_lons.append((lat, lon, np.random.random(1)))
+            obs_lat_lons.append((lat, lon, np.random.random()))
         for lon in 360 * np.random.random(100):
-            obs_lat_lons.append((lat, lon, np.random.random(1)))
+            obs_lat_lons.append((lat, lon, np.random.random()))
 
     output_lat_lons = []
     for lat in range(-90, 90, 5):

@@ -71,13 +71,13 @@ class AssimilatorEncoder(torch.nn.Module):
         self.output_dim = output_dim
         self.input_dim = input_dim
         self.resolution = resolution
-        self.base_h3_grid = sorted(list(h3.uncompact(h3.get_res0_indexes(), resolution)))
+        self.base_h3_grid = sorted(list(h3.uncompact_cells(h3.get_res0_cells(), resolution)))
         self.base_h3_map = {h_i: i for i, h_i in enumerate(self.base_h3_grid)}
         self.h3_mapping = {}
         self.latent_graph = self.create_latent_graph()
 
         # Extra starting ones for appending to inputs, could 'learn' good starting points
-        self.h3_nodes = torch.zeros((h3.num_hexagons(resolution), input_dim), dtype=torch.float)
+        self.h3_nodes = torch.zeros((h3.get_num_cells(resolution), input_dim), dtype=torch.float)
         # Output graph
 
         self.node_encoder = MLP(
@@ -180,7 +180,9 @@ class AssimilatorEncoder(torch.nn.Module):
             edge attributes for the input
         """
         num_latlons = lat_lons_heights.shape[0]
-        h3_grid = [h3.geo_to_h3(lat, lon, self.resolution) for lat, lon, height in lat_lons_heights]
+        h3_grid = [
+            h3.latlng_to_cell(lat, lon, self.resolution) for lat, lon, height in lat_lons_heights
+        ]
         h3_mapping = {}
         h_index = len(self.base_h3_grid)
         for h in self.base_h3_grid:
@@ -193,7 +195,9 @@ class AssimilatorEncoder(torch.nn.Module):
         h3_distances = []
         for idx, h3_point in enumerate(h3_grid):
             lat, lon, height = lat_lons_heights[idx]
-            distance = h3.point_dist((lat, lon), h3.h3_to_geo(h3_point), unit="rads")
+            distance = h3.great_circle_distance(
+                (lat, lon), h3.cell_to_latlng(h3_point), unit="rads"
+            )
             # TODO Normalize height by some amount
             h3_distances.append([np.sin(distance), np.cos(distance), height])
         h3_distances = torch.tensor(h3_distances, dtype=torch.float)
@@ -223,9 +227,11 @@ class AssimilatorEncoder(torch.nn.Module):
         edge_targets = []
         edge_attrs = []
         for h3_index in self.base_h3_grid:
-            h_points = h3.k_ring(h3_index, 1)
+            h_points = h3.grid_disk(h3_index, 1)
             for h in h_points:  # Already includes itself
-                distance = h3.point_dist(h3.h3_to_geo(h3_index), h3.h3_to_geo(h), unit="rads")
+                distance = h3.great_circle_distance(
+                    h3.cell_to_latlng(h3_index), h3.cell_to_latlng(h), unit="rads"
+                )
                 edge_attrs.append([np.sin(distance), np.cos(distance)])
                 edge_sources.append(self.base_h3_map[h3_index])
                 edge_targets.append(self.base_h3_map[h])
