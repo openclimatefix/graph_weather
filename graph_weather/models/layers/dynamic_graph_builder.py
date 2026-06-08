@@ -20,6 +20,8 @@ class DynamicGraphBuilder:
     def __init__(self, resolution: int = 2):
         """Initialize the builder."""
         self.resolution = resolution
+        self.all_h3 = sorted(h3.uncompact_cells(h3.get_res0_cells(), self.resolution))
+        self.global_h3_map = {cell: i for i, cell in enumerate(self.all_h3)}
         self._prev_lat_lons: Optional[List[Tuple[float, float]]] = None
         self._cached_encoder_graph: Optional[Data] = None
         self._cached_decoder_graph: Optional[Data] = None
@@ -58,9 +60,7 @@ class DynamicGraphBuilder:
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
         edge_attr = torch.tensor(edge_attrs, dtype=torch.float)
 
-        all_h3 = sorted(h3.uncompact_cells(h3.get_res0_cells(), self.resolution))
-        global_h3_map = {cell: i for i, cell in enumerate(all_h3)}
-        h3_indices = [global_h3_map[cell] for cell in unique_cells]
+        h3_indices = [self.global_h3_map[cell] for cell in unique_cells]
 
         return Data(edge_index=edge_index, edge_attr=edge_attr), h3_indices
 
