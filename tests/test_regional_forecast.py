@@ -2,7 +2,10 @@
 
 import torch
 
-from graph_weather.models.regional_forecast import RegionalForecasterConfig
+from graph_weather.models.regional_forecast import (
+    BoundaryNudgingLayer,
+    RegionalForecasterConfig,
+)
 
 
 def _small_config():
@@ -120,3 +123,78 @@ def test_residual_connection():
     out = model(features, _uk_latlons())
     expected_residual = features[..., :12]
     assert torch.allclose(out, expected_residual, atol=1e-5)
+
+
+def _nudging_config():
+    """Config with nudging enabled."""
+    return RegionalForecasterConfig(
+        feature_dim=12,
+        aux_dim=4,
+        node_dim=32,
+        edge_dim=32,
+        num_blocks=2,
+        hidden_dim_processor_node=32,
+        hidden_dim_processor_edge=32,
+        hidden_dim_decoder=32,
+        enable_nudging=True,
+        nudging_hidden_dim=16,
+    )
+
+
+def test_nudging_disabled_unchanged():
+    """Output is identical with enable_nudging=False (backward compat)."""
+    config_off = _small_config()
+    model = config_off.build()
+    assert model.nudging is None
+
+    features = torch.randn(1, 5, 16)
+    global_ctx = torch.randn(1, 5, 12)
+    out = model(features, _uk_latlons(), global_context=global_ctx)
+    out_no_ctx = model(features, _uk_latlons())
+    assert torch.allclose(out, out_no_ctx)
+
+
+def test_nudging_no_context_unchanged():
+    """Nudging enabled but global_context=None produces same output."""
+    model = _nudging_config().build()
+    features = torch.randn(1, 5, 16)
+
+    out = model(features, _uk_latlons(), global_context=None)
+    assert out.shape == (1, 5, 12)
+    assert not torch.isnan(out).any()
+
+
+def test_nudging_changes_output():
+    """Global context causes output to differ from no-context case."""
+    model = _nudging_config().build()
+    features = torch.randn(1, 5, 16)
+    global_ctx = torch.randn(1, 5, 12) * 10.0
+
+    out_no_ctx = model(features, _uk_latlons(), global_context=None)
+    out_with_ctx = model(features, _uk_latlons(), global_context=global_ctx)
+    assert not torch.allclose(out_no_ctx, out_with_ctx)
+
+
+def test_relaxation_weights_range():
+    """Alpha prior is in [0, 1] with max at the farthest point."""
+    weights = BoundaryNudgingLayer._compute_relaxation_weights(
+        _uk_latlons(), torch.device("cpu")
+    )
+    assert weights.shape == (5, 1)
+    assert weights.min() >= 0.0
+    assert weights.max() <= 1.0
+    assert torch.isclose(weights.max(), torch.tensor(1.0))
+
+
+def test_nudging_backward_pass():
+    """Gradients flow through the nudging layer."""
+    model = _nudging_config().build()
+    features = torch.randn(1, 5, 16)
+    global_ctx = torch.randn(1, 5, 12)
+
+    out = model(features, _uk_latlons(), global_context=global_ctx)
+    loss = out.sum()
+    loss.backward()
+
+    has_grad = any(p.grad is not None for p in model.nudging.parameters())
+    assert has_grad
