@@ -177,9 +177,7 @@ def test_nudging_changes_output():
 
 def test_relaxation_weights_range():
     """Alpha prior is in [0, 1] with max at the farthest point."""
-    weights = BoundaryNudgingLayer._compute_relaxation_weights(
-        _uk_latlons(), torch.device("cpu")
-    )
+    weights = BoundaryNudgingLayer._compute_relaxation_weights(_uk_latlons(), torch.device("cpu"))
     assert weights.shape == (5, 1)
     assert weights.min() >= 0.0
     assert weights.max() <= 1.0
