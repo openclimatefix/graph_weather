@@ -124,9 +124,7 @@ class RegionalDataset(Dataset):
         lon_idx = np.flatnonzero(np.abs(self.lon - lon_c) <= half)
 
         glat, glon = np.meshgrid(self.lat[lat_idx], self.lon[lon_idx], indexing="ij")
-        giy, gix = np.meshgrid(
-            np.arange(len(lat_idx)), np.arange(len(lon_idx)), indexing="ij"
-        )
+        giy, gix = np.meshgrid(np.arange(len(lat_idx)), np.arange(len(lon_idx)), indexing="ij")
         flat_lat, flat_lon = glat.ravel(), glon.ravel()
         flat_iy, flat_ix = giy.ravel(), gix.ravel()
 
@@ -145,9 +143,7 @@ class RegionalDataset(Dataset):
         """Stack standardised variables at the sampled points for timestep t."""
         cols = []
         for v in self.variables:
-            arr = self.data[v].isel(
-                time=t, latitude=lat_idx, longitude=lon_idx
-            ).values
+            arr = self.data[v].isel(time=t, latitude=lat_idx, longitude=lon_idx).values
             col = (arr[iy, ix] - self.mean[v]) / self.std[v]
             cols.append(col)
         feat = np.stack(cols, axis=-1).astype(np.float32)
