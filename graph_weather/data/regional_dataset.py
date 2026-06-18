@@ -190,8 +190,6 @@ class RegionalDataset(Dataset):
 
         features = torch.from_numpy(self._extract(idx, lat_idx, lon_idx, iy, ix))
         target = torch.from_numpy(self._extract(idx + 1, lat_idx, lon_idx, iy, ix))
-        global_context = torch.from_numpy(
-            self._extract(idx, lat_idx, lon_idx, iy, ix, coarse=True)
-        )
+        global_context = torch.from_numpy(self._extract(idx, lat_idx, lon_idx, iy, ix, coarse=True))
         lat_lons = [(float(a), float(b)) for a, b in zip(plat, plon)]
         return features, lat_lons, target, global_context
