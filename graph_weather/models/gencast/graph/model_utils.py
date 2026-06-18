@@ -173,7 +173,7 @@ def lat_lon_deg_to_spherical(
     node_lat: np.ndarray,
     node_lon: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Convert lat and lon to spherical coordiantes."""
+    """Convert lat and lon to spherical coordinates."""
     phi = np.deg2rad(node_lon)
     theta = np.deg2rad(90 - node_lat)
     return phi, theta
@@ -221,7 +221,7 @@ def get_relative_position_in_receiver_local_coordinates(
 
     The relative positions will be computed in a rotated space for a local
     coordinate system as defined by the receiver. The relative positions are
-    simply obtained by subtracting sender position minues receiver position in
+    simply obtained by subtracting sender position minus receiver position in
     that local coordinate system after the rotation in R^3.
 
     Args:
@@ -526,7 +526,7 @@ def get_bipartite_relative_position_in_receiver_local_coordinates(
 
     The relative positions will be computed in a rotated space for a local
     coordinate system as defined by the receiver. The relative positions are
-    simply obtained by subtracting sender position minues receiver position in
+    simply obtained by subtracting sender position minus receiver position in
     that local coordinate system after the rotation in R^3.
 
     Args:
@@ -641,7 +641,7 @@ def dataset_to_stacked(
 ) -> xarray.DataArray:
     """Converts an xarray.Dataset to a single stacked array.
 
-    This takes each consistuent data_var, converts it into BHWC layout
+    This takes each constituent data_var, converts it into BHWC layout
     using `variable_to_stacked`, then concats them all along the channels axis.
 
     Args:

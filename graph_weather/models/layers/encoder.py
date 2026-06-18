@@ -52,7 +52,7 @@ class Encoder(torch.nn.Module):
         efficient_batching: bool = False,
     ):
         """
-        Encode the lat/lon data inot the isohedron graph
+        Encode the lat/lon data into the isohedron graph
 
         Args:
             lat_lons: List of (lat,lon) points
@@ -103,7 +103,7 @@ class Encoder(torch.nn.Module):
             edge_targets.append(self.h3_mapping[lat_node])
         edge_index = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
 
-        # Use homogenous graph to make it easier
+        # Use homogeneous graph to make it easier
         self.graph = Data(edge_index=edge_index, edge_attr=self.h3_distances)
 
         self.latent_graph = self.create_latent_graph()
