@@ -2,8 +2,8 @@
 
 Each sample is a bounding box at a random location and timestep, drawn from the
 regular lat/lon IFS ``hres_analysis`` grid. It yields a ``(features, lat_lons,
-target)`` tuple shaped for ``RegionalForecaster.forward``: a region that can move
-anywhere on the globe per sample (Issue #3).
+target, global_context)`` tuple shaped for ``RegionalForecaster.forward``: a
+region that can move anywhere on the globe per sample (Issue #3).
 """
 
 import numpy as np
@@ -85,6 +85,13 @@ class RegionalDataset(Dataset):
         seed: Base seed; sample ``idx`` uses ``seed + idx`` so boxes move per idx.
         mean: Per-variable means for standardisation.
         std: Per-variable standard deviations for standardisation.
+        global_coarsen: Block-average factor for the coarse global context.
+
+    Note:
+        ``global_context`` is a coarse (block-averaged) low-resolution view of the
+        same IFS field at the same points, returned for the BoundaryNudgingLayer.
+        It is a Phase-1 stand-in: it does NOT yet inject true outside-domain
+        weather, which needs a separate host model or a unified mesh (later).
     """
 
     def __init__(
@@ -97,6 +104,7 @@ class RegionalDataset(Dataset):
         seed: int = 0,
         mean: dict = None,
         std: dict = None,
+        global_coarsen: int = 8,
     ):
         """Open the source grid and record sampling configuration."""
         super().__init__()
@@ -107,6 +115,7 @@ class RegionalDataset(Dataset):
         self.seed = seed
         self.mean = mean if mean is not None else CORE_SURFACE_MEAN
         self.std = std if std is not None else CORE_SURFACE_STD
+        self.global_coarsen = global_coarsen
         self.lat = self.data["latitude"].values
         self.lon = self.data["longitude"].values
 
@@ -139,22 +148,48 @@ class RegionalDataset(Dataset):
             flat_lon[pick],
         )
 
-    def _extract(self, t, lat_idx, lon_idx, iy, ix):
-        """Stack standardised variables at the sampled points for timestep t."""
+    def _coarsen(self, arr):
+        """Block-average a 2D crop into kxk blocks, broadcast back to its shape."""
+        k = self.global_coarsen
+        if k <= 1:
+            return arr
+        ny, nx = arr.shape
+        out = np.empty_like(arr)
+        for by in range(0, ny, k):
+            for bx in range(0, nx, k):
+                block = arr[by : by + k, bx : bx + k]
+                out[by : by + k, bx : bx + k] = (
+                    np.nanmean(block) if np.isfinite(block).any() else np.nan
+                )
+        return out
+
+    def _extract(self, t, lat_idx, lon_idx, iy, ix, coarse=False):
+        """Stack standardised variables at the sampled points for timestep t.
+
+        When ``coarse`` is set, each variable's crop is block-averaged first, so
+        the sampled values form a low-resolution (global-context) view.
+        """
         cols = []
         for v in self.variables:
             arr = self.data[v].isel(time=t, latitude=lat_idx, longitude=lon_idx).values
+            if coarse:
+                arr = self._coarsen(arr)
             col = (arr[iy, ix] - self.mean[v]) / self.std[v]
             cols.append(col)
         feat = np.stack(cols, axis=-1).astype(np.float32)
         return np.nan_to_num(feat, nan=0.0)
 
     def __getitem__(self, idx):
-        """Return (features [N, F], lat_lons list, target [N, F]) for one box."""
+        """Return (features, lat_lons, target, global_context) for one box.
+
+        features/target/global_context are [N, F]; lat_lons is a list of
+        (lat, lon) tuples. global_context is the coarse view at the same points.
+        """
         rng = np.random.default_rng(self.seed + idx)
         lat_idx, lon_idx, iy, ix, plat, plon = self._sample_box(rng)
 
         features = torch.from_numpy(self._extract(idx, lat_idx, lon_idx, iy, ix))
         target = torch.from_numpy(self._extract(idx + 1, lat_idx, lon_idx, iy, ix))
+        global_context = torch.from_numpy(self._extract(idx, lat_idx, lon_idx, iy, ix, coarse=True))
         lat_lons = [(float(a), float(b)) for a, b in zip(plat, plon)]
-        return features, lat_lons, target
+        return features, lat_lons, target, global_context
