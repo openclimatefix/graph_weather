@@ -3,7 +3,10 @@
 import h3
 import pytest
 
-from graph_weather.models.layers.stretched_mesh import build_variable_resolution_mesh
+from graph_weather.models.layers.stretched_mesh import (
+    assign_points_to_mesh,
+    build_variable_resolution_mesh,
+)
 
 # Bounding box (lat_min, lat_max, lon_min, lon_max) over the UK, large enough that
 # polygon_to_cells finds region cells at coarse_res=2.
@@ -69,3 +72,45 @@ def test_fine_res_must_exceed_coarse_res():
     """A fine resolution that is not finer than the coarse one is rejected."""
     with pytest.raises(ValueError):
         build_variable_resolution_mesh(BBOX, coarse_res=4, fine_res=4)
+
+
+def test_assignment_one_cell_per_point():
+    """Each input point gets exactly one assigned cell, order preserved."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    points = [(52.5, 0.5), (-40.0, 150.0), (0.0, 0.0)]
+    assigned = assign_points_to_mesh(points, mesh, coarse_res=2, fine_res=4)
+    assert len(assigned) == len(points)
+
+
+def test_point_in_region_assigned_fine_cell():
+    """A point inside the refined region is assigned its fine cell."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    assigned = assign_points_to_mesh([(52.5, 0.5)], mesh, coarse_res=2, fine_res=4)
+    assert h3.get_resolution(assigned[0]) == 4
+    assert assigned[0] == h3.latlng_to_cell(52.5, 0.5, 4)
+
+
+def test_point_outside_region_assigned_coarse_cell():
+    """A point outside the region is assigned its coarse cell."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    assigned = assign_points_to_mesh([(-40.0, 150.0)], mesh, coarse_res=2, fine_res=4)
+    assert h3.get_resolution(assigned[0]) == 2
+    assert assigned[0] == h3.latlng_to_cell(-40.0, 150.0, 2)
+
+
+def test_every_assigned_cell_is_in_mesh():
+    """Every assigned cell is a member of the mesh (fine inside, coarse outside)."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    points = [(52.5, 0.5), (53.0, 1.0), (-40.0, 150.0), (0.0, 0.0), (80.0, -100.0)]
+    assigned = assign_points_to_mesh(points, mesh, coarse_res=2, fine_res=4)
+    mesh_set = set(mesh)
+    assert all(cell in mesh_set for cell in assigned)
+
+
+def test_assigned_cell_contains_its_point():
+    """The assigned cell is the H3 cell that actually contains the point."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    points = [(52.5, 0.5), (-40.0, 150.0), (0.0, 0.0), (80.0, -100.0)]
+    assigned = assign_points_to_mesh(points, mesh, coarse_res=2, fine_res=4)
+    for (lat, lon), cell in zip(points, assigned):
+        assert h3.latlng_to_cell(lat, lon, h3.get_resolution(cell)) == cell
