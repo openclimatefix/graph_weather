@@ -3,7 +3,10 @@
 import h3
 import pytest
 
-from graph_weather.models.layers.stretched_mesh import build_variable_resolution_mesh
+from graph_weather.models.layers.stretched_mesh import (
+    build_variable_resolution_mesh,
+    mixed_resolution_embedding_indices,
+)
 
 # Bounding box (lat_min, lat_max, lon_min, lon_max) over the UK, large enough that
 # polygon_to_cells finds region cells at coarse_res=2.
@@ -69,3 +72,64 @@ def test_fine_res_must_exceed_coarse_res():
     """A fine resolution that is not finer than the coarse one is rejected."""
     with pytest.raises(ValueError):
         build_variable_resolution_mesh(BBOX, coarse_res=4, fine_res=4)
+
+
+def test_index_one_entry_per_cell_with_matching_resolution():
+    """Each mesh cell gets one (resolution, row) entry, resolution matching the cell."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    indices = mixed_resolution_embedding_indices(mesh, coarse_res=2, fine_res=4)
+
+    assert len(indices) == len(mesh)
+    for cell, (res, _row) in zip(mesh, indices):
+        assert res == h3.get_resolution(cell)
+
+
+def test_index_row_within_resolution_table():
+    """Every row sits inside its own resolution's global table range."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    indices = mixed_resolution_embedding_indices(mesh, coarse_res=2, fine_res=4)
+
+    for res, row in indices:
+        assert 0 <= row < h3.get_num_cells(res)
+
+
+def test_index_matches_global_cell_numbering():
+    """A row equals the cell's position in the sorted global cell set at its resolution."""
+    mesh = build_variable_resolution_mesh(BBOX, coarse_res=2, fine_res=4)
+    indices = mixed_resolution_embedding_indices(mesh, coarse_res=2, fine_res=4)
+
+    coarse_globe = sorted(h3.uncompact_cells(h3.get_res0_cells(), 2))
+    fine_globe = sorted(h3.uncompact_cells(h3.get_res0_cells(), 4))
+    coarse_map = {c: i for i, c in enumerate(coarse_globe)}
+    fine_map = {c: i for i, c in enumerate(fine_globe)}
+
+    for cell, (res, row) in zip(mesh, indices):
+        expected = coarse_map[cell] if res == 2 else fine_map[cell]
+        assert row == expected
+
+
+def test_coarse_index_persists_when_region_moves():
+    """A coarse cell keeps its row when the refined region moves elsewhere."""
+    uk = build_variable_resolution_mesh((50.0, 55.0, -2.0, 3.0), coarse_res=2, fine_res=4)
+    japan = build_variable_resolution_mesh((30.0, 40.0, 135.0, 145.0), coarse_res=2, fine_res=4)
+
+    uk_idx = dict(zip(uk, mixed_resolution_embedding_indices(uk, 2, 4)))
+    japan_idx = dict(zip(japan, mixed_resolution_embedding_indices(japan, 2, 4)))
+
+    common_coarse = [c for c in set(uk) & set(japan) if h3.get_resolution(c) == 2]
+    assert common_coarse
+    for cell in common_coarse:
+        assert uk_idx[cell] == japan_idx[cell]
+
+
+def test_fine_index_persists_across_different_regions():
+    """A fine cell shared by two meshes keeps the same row in both."""
+    small = build_variable_resolution_mesh((50.0, 55.0, -2.0, 3.0), coarse_res=2, fine_res=4)
+    large = build_variable_resolution_mesh((48.0, 57.0, -4.0, 5.0), coarse_res=2, fine_res=4)
+
+    fine_cell = h3.latlng_to_cell(52.5, 0.5, 4)
+    small_idx = dict(zip(small, mixed_resolution_embedding_indices(small, 2, 4)))
+    large_idx = dict(zip(large, mixed_resolution_embedding_indices(large, 2, 4)))
+
+    assert fine_cell in small_idx and fine_cell in large_idx
+    assert small_idx[fine_cell] == large_idx[fine_cell]
