@@ -52,3 +52,42 @@ def build_variable_resolution_mesh(
 
     mesh = (coarse_globe - region_coarse) | fine_cells
     return sorted(mesh)
+
+
+def _global_row_map(res: int) -> dict[str, int]:
+    """Map every H3 cell at ``res`` to its row in the sorted global cell set."""
+    return {cell: i for i, cell in enumerate(sorted(h3.uncompact_cells(h3.get_res0_cells(), res)))}
+
+
+def mixed_resolution_embedding_indices(
+    cells: list[str],
+    coarse_res: int,
+    fine_res: int,
+) -> list[tuple[int, int]]:
+    """Map each mesh cell to its row in a global, per-resolution embedding table.
+
+    A stretched mesh mixes coarse and fine cells, so one table indexed by a single
+    resolution no longer fits. Each cell is placed in the table for its own resolution, at
+    the row given by its position in ``sorted(uncompact_cells(get_res0_cells(), res))`` - the
+    same global numbering ``DynamicGraphBuilder`` uses. Because the row depends only on the
+    cell, a location keeps its learned vector as the refined region moves rather than
+    relearning it.
+
+    Args:
+        cells: H3 cell indices of the mesh, e.g. from ``build_variable_resolution_mesh``.
+        coarse_res: H3 resolution used outside the refined region.
+        fine_res: H3 resolution used inside the refined region.
+
+    Returns:
+        One ``(resolution, row)`` per input cell, in the same order. ``row`` indexes the
+        global table for that cell's resolution.
+    """
+    coarse_rows = _global_row_map(coarse_res)
+    fine_rows = _global_row_map(fine_res)
+
+    indices = []
+    for cell in cells:
+        res = h3.get_resolution(cell)
+        row = fine_rows[cell] if res == fine_res else coarse_rows[cell]
+        indices.append((res, row))
+    return indices
