@@ -178,17 +178,15 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
     def _create_grid_mapping(self, unique_lats, unique_lons):
         """Create (row,col) mapping for original node order"""
         self.node_to_grid = []
+        lat_min, lat_max = min(unique_lats), max(unique_lats)
+        lon_min, lon_max = min(unique_lons), max(unique_lons)
+        lat_range = lat_max - lat_min
+        lon_range = lon_max - lon_min
         for lat, lon in self.original_lat_lons:
-            row = int(
-                (lat - min(unique_lats))
-                / (max(unique_lats) - min(unique_lats))
-                * (len(unique_lats) - 1)
-            )
-            col = int(
-                (lon - min(unique_lons))
-                / (max(unique_lons) - min(unique_lons))
-                * (len(unique_lons) - 1)
-            )
+            # A degenerate axis (single unique lat or lon) has no spread to
+            # normalize against, so every node maps to the same row/col.
+            row = int((lat - lat_min) / lat_range * (len(unique_lats) - 1)) if lat_range else 0
+            col = int((lon - lon_min) / lon_range * (len(unique_lons) - 1)) if lon_range else 0
             self.node_to_grid.append((row, col))
 
     def graph_to_grid(self, graph_tensor):
