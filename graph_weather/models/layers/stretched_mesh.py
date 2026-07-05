@@ -52,3 +52,34 @@ def build_variable_resolution_mesh(
 
     mesh = (coarse_globe - region_coarse) | fine_cells
     return sorted(mesh)
+
+
+def assign_points_to_mesh(
+    lat_lons: list[tuple[float, float]],
+    mesh: list[str],
+    coarse_res: int,
+    fine_res: int,
+) -> list[str]:
+    """Assign each lat/lon point to the cell it belongs to in a variable-resolution mesh.
+
+    A point inside the refined region lands on its fine cell; a point outside lands on its
+    coarse cell. The fine cell is tried first and used when it is present in ``mesh``,
+    otherwise the point's coarse cell is used. Because the mesh refines whole coarse cells
+    into all of their children, the fine cell is present exactly when the point sits in the
+    region, so every returned cell is a member of ``mesh`` and contains its point.
+
+    Args:
+        lat_lons: Observation points as ``(lat, lon)`` in degrees.
+        mesh: H3 cell indices of the mesh, e.g. from ``build_variable_resolution_mesh``.
+        coarse_res: H3 resolution used outside the refined region.
+        fine_res: H3 resolution used inside the refined region.
+
+    Returns:
+        One H3 cell index per input point, in the same order.
+    """
+    mesh_set = set(mesh)
+    assigned = []
+    for lat, lon in lat_lons:
+        fine = h3.latlng_to_cell(lat, lon, fine_res)
+        assigned.append(fine if fine in mesh_set else h3.latlng_to_cell(lat, lon, coarse_res))
+    return assigned
