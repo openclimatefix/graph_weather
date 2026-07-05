@@ -4,6 +4,9 @@ try:
     from .data.nnja_ai import SensorDataset
 except ImportError:
     SensorDataset = None
-from .data.weather_station_reader import WeatherStationReader
+try:
+    from .data.weather_station_reader import WeatherStationReader
+except ImportError:
+    WeatherStationReader = None
 from .models.analysis import GraphWeatherAssimilator
 from .models.forecast import GraphWeatherForecaster
