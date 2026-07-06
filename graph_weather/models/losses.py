@@ -6,6 +6,38 @@ import torch.nn as nn
 import torch_harmonics as th
 
 
+def regional_weighted_mse(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    region_mask: torch.Tensor,
+    region_weight: float,
+) -> torch.Tensor:
+    """Mean squared error that upweights points inside the refined region.
+
+    On a stretched mesh most points sit in the coarse global area and only a few sit in the
+    fine region, so a plain mean is dominated by the global points and the region we refined
+    the mesh for barely drives training. This scales each in-region point's error by
+    ``region_weight`` before a weighted average, so getting the region right counts for more.
+    The average is normalized by the total weight, so ``region_weight`` sets only the balance,
+    not the loss magnitude.
+
+    Args:
+        pred: Predictions ``[B, N, C]``.
+        target: Targets ``[B, N, C]``.
+        region_mask: Boolean ``[N]``, True for points inside the refined region, e.g. points
+            assigned to a fine cell by ``assign_points_to_mesh``.
+        region_weight: Multiplier for in-region points. Points outside keep weight 1.
+
+    Returns:
+        Scalar weighted mean-squared-error loss.
+    """
+    per_point = ((pred - target) ** 2).mean(dim=-1)  # [B, N]
+    weights = torch.ones(region_mask.shape[0], dtype=per_point.dtype, device=per_point.device)
+    weights[region_mask.to(weights.device)] = region_weight
+    weighted = (per_point * weights).sum(dim=-1) / weights.sum()  # [B]
+    return weighted.mean()
+
+
 class NormalizedMSELoss(torch.nn.Module):
     """Loss function described in the paper"""
 
