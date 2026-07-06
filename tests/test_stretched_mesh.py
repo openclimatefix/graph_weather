@@ -176,3 +176,18 @@ def test_fine_index_persists_across_different_regions():
 
     assert fine_cell in small_idx and fine_cell in large_idx
     assert small_idx[fine_cell] == large_idx[fine_cell]
+
+
+def test_assignment_stays_in_mesh_at_h3_parent_child_boundary():
+    """A point is assigned an in-mesh cell even where H3 geometry and hierarchy disagree.
+
+    At (13.33, 105.0) the point's geometric coarse cell (latlng_to_cell) is refined away by
+    this bbox, but its fine cell nests under a different, unrefined coarse cell. The coarse
+    fallback must land on a cell that is actually in the mesh.
+    """
+    bbox = (13.0, 27.0, 95.0, 110.0)
+    mesh = build_variable_resolution_mesh(bbox, coarse_res=2, fine_res=3)
+
+    assigned = assign_points_to_mesh([(13.33, 105.0)], mesh, coarse_res=2, fine_res=3)
+
+    assert assigned[0] in set(mesh)

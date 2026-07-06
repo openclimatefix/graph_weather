@@ -62,11 +62,13 @@ def assign_points_to_mesh(
 ) -> list[str]:
     """Assign each lat/lon point to the cell it belongs to in a variable-resolution mesh.
 
-    A point inside the refined region lands on its fine cell; a point outside lands on its
+    A point inside the refined region lands on its fine cell; a point outside lands on a
     coarse cell. The fine cell is tried first and used when it is present in ``mesh``,
-    otherwise the point's coarse cell is used. Because the mesh refines whole coarse cells
-    into all of their children, the fine cell is present exactly when the point sits in the
-    region, so every returned cell is a member of ``mesh`` and contains its point.
+    otherwise the point's coarse cell is used. Near coarse-cell boundaries H3 geometry and
+    hierarchy can disagree - a point's fine cell may nest under a different coarse cell than
+    the one geometrically over the point - so when that geometric coarse cell is not in the
+    mesh (it was refined away), the fine cell's parent is used instead. Either way every
+    returned cell is a member of ``mesh``.
 
     Args:
         lat_lons: Observation points as ``(lat, lon)`` in degrees.
@@ -81,7 +83,11 @@ def assign_points_to_mesh(
     assigned = []
     for lat, lon in lat_lons:
         fine = h3.latlng_to_cell(lat, lon, fine_res)
-        assigned.append(fine if fine in mesh_set else h3.latlng_to_cell(lat, lon, coarse_res))
+        if fine in mesh_set:
+            assigned.append(fine)
+        else:
+            coarse = h3.latlng_to_cell(lat, lon, coarse_res)
+            assigned.append(coarse if coarse in mesh_set else h3.cell_to_parent(fine, coarse_res))
     return assigned
 
 
