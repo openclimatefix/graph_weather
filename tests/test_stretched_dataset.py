@@ -145,9 +145,7 @@ def test_global_lat_lons_are_cell_centres():
 
     coarse_cells = sorted(h3.uncompact_cells(h3.get_res0_cells(), COARSE_RES))
     mesh_set = set(mesh)
-    kept_centres = [
-        h3.cell_to_latlng(c) for c in coarse_cells if c in mesh_set
-    ]
+    kept_centres = [h3.cell_to_latlng(c) for c in coarse_cells if c in mesh_set]
     for (lat, lon), (clat, clon) in zip(global_lls, kept_centres):
         assert abs(lat - clat) < 1e-6
         assert abs(lon - clon) < 1e-6
