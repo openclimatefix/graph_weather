@@ -118,33 +118,37 @@ class StretchedDataset(Dataset):
         feat = np.stack(cols, axis=-1).astype(np.float32)
         return np.nan_to_num(feat, nan=0.0)
 
-    def _extract_scalar(self, t, lat_i, lon_i):
-        """Extract standardised variables at a single grid point for timestep t."""
-        vals = []
-        for v in self.variables:
-            raw = float(self.data[v].isel(time=t, latitude=lat_i, longitude=lon_i).values)
-            vals.append((raw - self.mean[v]) / self.std[v])
-        arr = np.array(vals, dtype=np.float32)
-        return np.nan_to_num(arr, nan=0.0)
+    def _kept_coarse(self, bbox):
+        """Coarse cells still in the mesh for this bbox: grid indices and cell centres.
 
-    def _global_observations(self, t, bbox):
-        """One IFS observation per coarse cell not refined away by the bbox.
-
-        Returns (features_array [N_global, F], lat_lons list of tuples).
+        Cells refined away by the region are dropped, so the region is covered by the
+        dense regional crop instead of a coarse observation.
         """
-        mesh_set = set(
-            build_variable_resolution_mesh(bbox, self.coarse_res, self.fine_res)
-        )
-        feats, lls = [], []
+        mesh_set = set(build_variable_resolution_mesh(bbox, self.coarse_res, self.fine_res))
+        lat_is, lon_is, centres = [], [], []
         for cell in self._coarse_cells:
             if cell not in mesh_set:
-                # This coarse cell was refined away — skip it.
                 continue
             lat_i, lon_i = self._cell_grid_idx[cell]
-            feats.append(self._extract_scalar(t, lat_i, lon_i))
+            lat_is.append(lat_i)
+            lon_is.append(lon_i)
             clat, clon = h3.cell_to_latlng(cell)
-            lls.append((float(clat), float(clon)))
-        return np.stack(feats, axis=0), lls
+            centres.append((float(clat), float(clon)))
+        return np.array(lat_is, dtype=int), np.array(lon_is, dtype=int), centres
+
+    def _extract_global(self, t, lat_is, lon_is):
+        """Stack standardised variables at scattered global grid points for timestep t.
+
+        Loads each variable's full field once and indexes all points together, rather than
+        reading one point at a time, which would be thousands of separate reads on the store.
+        """
+        cols = []
+        for v in self.variables:
+            field = self.data[v].isel(time=t).values
+            col = (field[lat_is, lon_is] - self.mean[v]) / self.std[v]
+            cols.append(col)
+        feat = np.stack(cols, axis=-1).astype(np.float32)
+        return np.nan_to_num(feat, nan=0.0)
 
     def __getitem__(self, idx):
         """Return (features, lat_lons, target, bbox) for one sample.
@@ -159,8 +163,9 @@ class StretchedDataset(Dataset):
         reg_target = self._extract_points(idx + 1, lat_idx, lon_idx, iy, ix)
         reg_lls = [(float(a), float(b)) for a, b in zip(plat, plon)]
 
-        glob_feat, glob_lls = self._global_observations(idx, bbox)
-        glob_target_feat, _ = self._global_observations(idx + 1, bbox)
+        glob_lat_is, glob_lon_is, glob_lls = self._kept_coarse(bbox)
+        glob_feat = self._extract_global(idx, glob_lat_is, glob_lon_is)
+        glob_target_feat = self._extract_global(idx + 1, glob_lat_is, glob_lon_is)
 
         features = torch.from_numpy(np.concatenate([glob_feat, reg_feat], axis=0))
         target = torch.from_numpy(np.concatenate([glob_target_feat, reg_target], axis=0))

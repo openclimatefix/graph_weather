@@ -62,7 +62,7 @@ def test_lat_lons_is_list_of_tuples():
 
 
 def test_bbox_is_explicit_tuple():
-    """bbox is a 4-tuple of floats, not derived from lat_lons."""
+    """The bbox is a 4-tuple of floats, not derived from lat_lons."""
     _, lat_lons, _, bbox = _dataset()[0]
     assert isinstance(bbox, tuple) and len(bbox) == 4
     assert all(isinstance(x, float) for x in bbox)
@@ -80,7 +80,6 @@ def test_global_points_cover_coarse_cells():
     """Every non-refined coarse cell has at least one observation assigned to it."""
     features, lat_lons, _, bbox = _dataset()[0]
     mesh = build_variable_resolution_mesh(bbox, COARSE_RES, FINE_RES)
-    mesh_set = set(mesh)
     assigned = assign_points_to_mesh(lat_lons, mesh, COARSE_RES, FINE_RES)
 
     coarse_in_mesh = {c for c in mesh if h3.get_resolution(c) == COARSE_RES}
