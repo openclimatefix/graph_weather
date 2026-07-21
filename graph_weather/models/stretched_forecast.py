@@ -236,12 +236,15 @@ class StretchedForecaster(nn.Module):
             nodes = torch.cat([features[i], mesh_embeds], dim=0)
             nodes = self.node_encoder(nodes)
             nodes, _ = self.encoder_gnn(nodes, enc_graph.edge_index, enc_edge_attr)
+            obs_features = nodes[:num_obs]
             cell_features = nodes[num_obs:]
 
             cell_features = self.processor(cell_features, lat_graph.edge_index, latent_edge_attr)
 
-            obs_placeholders = torch.zeros(num_obs, self.config.node_dim, device=device)
-            dec_nodes = torch.cat([obs_placeholders, cell_features], dim=0)
+            # Seed the decoder's observation nodes with their own encoded features rather than
+            # zeros, so the predicted delta can specialize per observation instead of only
+            # seeing its cell's pooled feature.
+            dec_nodes = torch.cat([obs_features, cell_features], dim=0)
             dec_nodes, _ = self.decoder_gnn(dec_nodes, dec_edge_index, dec_edge_attr)
             obs_out = self.node_decoder(dec_nodes[:num_obs])
             batch_outputs.append(obs_out)
