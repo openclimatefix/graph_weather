@@ -125,6 +125,28 @@ def test_residual_connection():
     assert torch.allclose(out, expected_residual, atol=1e-5)
 
 
+def test_decoder_seeded_with_encoder_obs_features():
+    """The decoder's observation nodes carry the encoder's per-obs features, not zeros.
+
+    Seeding them with zeros collapses the model toward persistence, since the predicted delta
+    then only sees cell-level context. This guards that regression.
+    """
+    model = _small_config().build()
+    features = torch.randn(1, 5, 16)
+
+    captured = {}
+
+    def capture(_module, inputs, _output):
+        captured["dec_input"] = inputs[0].detach()
+
+    handle = model.decoder_gnn.register_forward_hook(capture)
+    model(features, _uk_latlons())
+    handle.remove()
+
+    obs_rows = captured["dec_input"][:5]
+    assert obs_rows.abs().sum() > 0
+
+
 def _nudging_config():
     """Config with nudging enabled."""
     return RegionalForecasterConfig(
