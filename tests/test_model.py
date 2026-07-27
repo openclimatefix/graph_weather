@@ -133,6 +133,31 @@ def test_forecaster():
     assert not torch.isnan(out).any()
 
 
+def test_forecaster_single_lat():
+    # Grid with only one unique latitude used to raise ZeroDivisionError in
+    # _create_grid_mapping, since max(unique_lats) == min(unique_lats).
+    lat_lons = [(45.0, lon) for lon in range(0, 20, 5)]
+    model = GraphWeatherForecaster(lat_lons)
+    assert model.grid_shape == (1, len(lat_lons))
+    assert model.node_to_grid == [(0, i) for i in range(len(lat_lons))]
+
+    features = torch.randn((1, len(lat_lons), 78 + 24))
+    out = model(features)
+    assert not torch.isnan(out).any()
+
+
+def test_forecaster_single_lon():
+    # Same degenerate-axis bug, mirrored onto longitude.
+    lat_lons = [(lat, 10.0) for lat in range(-10, 10, 5)]
+    model = GraphWeatherForecaster(lat_lons)
+    assert model.grid_shape == (len(lat_lons), 1)
+    assert model.node_to_grid == [(i, 0) for i in range(len(lat_lons))]
+
+    features = torch.randn((1, len(lat_lons), 78 + 24))
+    out = model(features)
+    assert not torch.isnan(out).any()
+
+
 def test_assimilator_model():
     obs_lat_lons = []
     for lat in range(-90, 90, 7):
