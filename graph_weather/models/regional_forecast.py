@@ -274,14 +274,17 @@ class RegionalForecaster(nn.Module):
             nodes = torch.cat([features[i], regional_h3], dim=0)
             nodes = self.node_encoder(nodes)
             nodes, _ = self.encoder_gnn(nodes, enc_graph.edge_index, enc_edge_attr)
+            obs_features = nodes[:num_obs]
             h3_features = nodes[num_obs:]
 
             # Process: N rounds of H3 message passing
             h3_features = self.processor(h3_features, lat_graph.edge_index, latent_edge_attr)
 
-            # Decode: H3 -> obs through reversed bipartite GNN
-            obs_placeholders = torch.zeros(num_obs, self.config.node_dim, device=features.device)
-            dec_nodes = torch.cat([obs_placeholders, h3_features], dim=0)
+            # Decode: H3 -> obs through reversed bipartite GNN.
+            # Seed the decoder's observation nodes with their own encoded features rather
+            # than zeros, so the predicted delta can specialize per observation instead of
+            # only seeing its cell's pooled feature (mirrors the StretchedForecaster fix).
+            dec_nodes = torch.cat([obs_features, h3_features], dim=0)
             dec_nodes, _ = self.decoder_gnn(dec_nodes, dec_edge_index, dec_edge_attr)
             obs_out = self.node_decoder(dec_nodes[:num_obs])
             batch_outputs.append(obs_out)
