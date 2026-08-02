@@ -45,7 +45,7 @@ platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.dependencies]
 python = "3.12.*"
-pytorch = "2.10.*"
+pytorch = "2.10.0"
 pip = "*"
 pytest = "*"
 pre-commit = "*"
