@@ -193,10 +193,30 @@ def test_interpolator_reproduces_constant_field():
     interpolator = CrossAttentionInterpolator(dim=8, num_neighbors=3)
     source_coords = torch.nn.functional.normalize(torch.randn(20, 3), dim=-1)
     target_coords = torch.nn.functional.normalize(torch.randn(7, 3), dim=-1)
-    source = torch.randn(2, 20, 8)
-    out = interpolator(source, source_coords, target_coords)
+
+    # Bypass the value and output projections so the convex combination is
+    # observable directly in the returned features.
+    with torch.no_grad():
+        interpolator.v_proj.weight.copy_(torch.eye(8))
+        interpolator.out_proj.weight.copy_(torch.eye(8))
+        interpolator.norm.weight.fill_(1.0)
+        constant = torch.full((2, 20, 8), 0.75)
+        out = interpolator(constant, source_coords, target_coords)
+
     assert out.shape == (2, 7, 8)
-    assert torch.isfinite(out).all()
+    normalised = torch.nn.functional.rms_norm(constant, (8,))
+    assert torch.allclose(out, normalised[:, :7], atol=1e-5)
+
+
+def test_interpolator_gradient_is_finite_at_coincident_points():
+    """A target sitting exactly on a source point keeps gradients bounded."""
+    torch.manual_seed(0)
+    interpolator = CrossAttentionInterpolator(dim=8, num_neighbors=2)
+    source_coords = torch.nn.functional.normalize(torch.randn(5, 3), dim=-1)
+    target_coords = source_coords[:2].clone().requires_grad_(True)
+    interpolator(torch.randn(1, 5, 8), source_coords, target_coords).sum().backward()
+    assert torch.isfinite(target_coords.grad).all()
+    assert target_coords.grad.abs().max() < 1e3
 
 
 def test_coarsen_refine_roundtrip_shapes():

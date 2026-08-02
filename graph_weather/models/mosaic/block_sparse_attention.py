@@ -111,6 +111,13 @@ class BlockSparseAttention(nn.Module):
     caller must provide tokens in a locality-preserving order. The sequence
     is padded internally so its length is a multiple of block_size and
     padded positions are masked out of every softmax.
+
+    Cost follows the paper: with n tokens, block size b and top_n = k, the
+    selection and local branches are linear in n, while the compression
+    branch attends between all (n / b) block representations and so is
+    quadratic in the block count. Choose block_size to grow with the token
+    count to keep that term small; at n = 1e6 and b = 64 the block scores
+    alone need about 1GB per head in float32.
     """
 
     def __init__(

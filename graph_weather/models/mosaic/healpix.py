@@ -23,6 +23,12 @@ except ImportError:
     healpy = None
 
 
+def _check_nside(nside: int) -> None:
+    """Validate that nside is a positive power of two, as NESTED requires."""
+    if nside < 1 or (nside & (nside - 1)) != 0:
+        raise ValueError(f"nside must be a positive power of two, got {nside}")
+
+
 def _require_healpy() -> None:
     """Raise a helpful error when healpy is needed but not installed."""
     if healpy is None:
@@ -45,6 +51,7 @@ def healpix_grid(nside: int, dtype: torch.dtype = torch.float32) -> torch.Tensor
         Tensor of shape (12 * nside ** 2, 2) holding (lat, lon) in radians.
     """
     _require_healpy()
+    _check_nside(nside)
     n_pixels = 12 * nside * nside
     lon_deg, lat_deg = healpy.pix2ang(nside, torch.arange(n_pixels).numpy(), nest=True, lonlat=True)
     lat = torch.deg2rad(torch.as_tensor(lat_deg, dtype=dtype))
@@ -77,6 +84,8 @@ def nested_order(coords: torch.Tensor, nside: Optional[int] = None) -> torch.Ten
         nside = 1
         while 12 * nside * nside < n_points:
             nside *= 2
+    else:
+        _check_nside(nside)
     lat_deg = torch.rad2deg(coords[:, 0]).double().numpy()
     lon_deg = torch.rad2deg(coords[:, 1]).double().numpy()
     pixels = healpy.ang2pix(nside, lon_deg, lat_deg, nest=True, lonlat=True)

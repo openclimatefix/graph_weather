@@ -93,7 +93,14 @@ class CrossAttentionInterpolator(nn.Module):
 
         # Relative positions target -> neighbouring source points (Eq. 6).
         rel = source_coords[neighbor_idx] - target_coords.unsqueeze(1)
-        rel = rel / rel.norm(dim=-1, keepdim=True).clamp(min=1e-6)
+        # A target that coincides with a source point gives a zero vector,
+        # where the direction is undefined and the derivative of the
+        # normalisation diverges. Coordinates lie on the unit sphere, so
+        # softening the length with 1e-6 under the square root bounds the
+        # derivative without affecting well-separated points. Clamping the
+        # norm after the fact would not: the derivative would still pass
+        # through norm() at zero.
+        rel = rel * (rel.pow(2).sum(-1, keepdim=True) + 1e-6).rsqrt()
         queries = self.q_proj(rel)
 
         feats = self.norm(source_feats)
