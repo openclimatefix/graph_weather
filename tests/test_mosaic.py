@@ -79,8 +79,13 @@ def test_padding_never_influences_real_tokens():
 
     def poisoned_pad(tensor, pad, *args, **kwargs):
         padded = original_pad(tensor, pad, *args, **kwargs)
-        if pad[-1] > 0:
-            padded[:, tensor.shape[1] :] = 1234.5
+        # Features are padded along dim 1 and coordinates along dim 0, so
+        # locate the padded rows from the size change rather than assuming.
+        for axis, (before, after) in enumerate(zip(tensor.shape, padded.shape)):
+            if after > before:
+                index = [slice(None)] * padded.ndim
+                index[axis] = slice(before, after)
+                padded[tuple(index)] = 1234.5
         return padded
 
     bsa.F.pad = poisoned_pad
@@ -134,24 +139,30 @@ def test_selection_matches_naive_loop_when_sparse():
     assert torch.allclose(out, reference, atol=1e-4)
 
 
-def test_training_memory_is_not_quadratic():
-    """Doubling the token count must not quadruple the backward memory."""
-    import resource
+def test_selection_branch_never_materialises_the_block_square():
+    """No allocation reaches the size of the (n_blocks, n_blocks) expansion.
 
-    def peak_delta(n_tokens: int) -> float:
-        torch.manual_seed(0)
-        attention = BlockSparseAttention(dim=64, num_heads=2, block_size=64, top_n=2)
-        x = torch.randn(1, n_tokens, 64, requires_grad=True)
-        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    Selecting key blocks by gathering from an expanded view makes the
+    backward pass allocate a buffer shaped like that expansion, which grows
+    quadratically with the block count. Measuring the largest single
+    allocation catches that directly, where comparing process memory at two
+    sizes does not: the linear terms dominate at test scale.
+    """
+    torch.manual_seed(0)
+    n_tokens, block, dim, heads, top_n = 512, 32, 32, 2, 2
+    attention = BlockSparseAttention(dim=dim, num_heads=heads, block_size=block, top_n=top_n)
+    x = torch.randn(1, n_tokens, dim, requires_grad=True)
+
+    with torch.autograd.profiler.profile(profile_memory=True) as prof:
         attention(x).pow(2).mean().backward()
-        after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        return max(after - before, 1)
+    largest = max(event.cpu_memory_usage for event in prof.function_events)
 
-    small = peak_delta(2048)
-    large = peak_delta(4096)
-    # Quadratic growth would be about 4x; allow generous headroom while
-    # still failing if the (n_blocks, n_blocks) expansion is materialised.
-    assert large < small * 3
+    n_blocks = n_tokens // block
+    head_dim = dim // heads
+    block_square_bytes = heads * n_blocks * n_blocks * block * head_dim * 4
+    assert largest < block_square_bytes // 2, (
+        f"largest allocation {largest} approaches the block-square buffer " f"{block_square_bytes}"
+    )
 
 
 def test_grouped_query_attention():

@@ -49,16 +49,19 @@ def knn_indices(
 class CrossAttentionInterpolator(nn.Module):
     """Interpolate features from one point set to another (Eq. 6-7)."""
 
-    def __init__(self, dim: int, num_neighbors: int = 4):
+    def __init__(self, dim: int, num_neighbors: int = 4, eps: float = 1e-12):
         """Initialize the interpolator.
 
         Args:
             dim: Feature dimension of source and target features.
             num_neighbors: Number of source neighbours attended per target.
+            eps: Squared length below which a target and a source point are
+                treated as coincident and the relative direction is zero.
         """
         super().__init__()
         self.dim = dim
         self.num_neighbors = num_neighbors
+        self.eps = eps
         self.q_proj = nn.Linear(3, dim, bias=False)
         self.k_proj = nn.Linear(dim, dim, bias=False)
         self.v_proj = nn.Linear(dim, dim, bias=False)
@@ -95,12 +98,17 @@ class CrossAttentionInterpolator(nn.Module):
         rel = source_coords[neighbor_idx] - target_coords.unsqueeze(1)
         # A target that coincides with a source point gives a zero vector,
         # where the direction is undefined and the derivative of the
-        # normalisation diverges. Coordinates lie on the unit sphere, so
-        # softening the length with 1e-6 under the square root bounds the
-        # derivative without affecting well-separated points. Clamping the
-        # norm after the fact would not: the derivative would still pass
-        # through norm() at zero.
-        rel = rel * (rel.pow(2).sum(-1, keepdim=True) + 1e-6).rsqrt()
+        # normalisation diverges. Points closer than sqrt(eps) are treated
+        # as coincident and get a zero direction; everything else is
+        # normalised exactly, so short-range neighbours on a fine grid are
+        # not distorted. Substituting the length before the reciprocal
+        # square root, rather than clamping afterwards, is what keeps the
+        # derivative of the degenerate branch finite.
+        length_sq = rel.pow(2).sum(-1, keepdim=True)
+        degenerate = length_sq <= self.eps
+        safe_length_sq = torch.where(degenerate, torch.ones_like(length_sq), length_sq)
+        rel = rel * safe_length_sq.rsqrt()
+        rel = torch.where(degenerate, torch.zeros_like(rel), rel)
         queries = self.q_proj(rel)
 
         feats = self.norm(source_feats)
