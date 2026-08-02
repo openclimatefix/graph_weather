@@ -15,8 +15,16 @@ import torch
 from torch import nn
 
 
-def knn_indices(source_coords: torch.Tensor, target_coords: torch.Tensor, k: int) -> torch.Tensor:
+def knn_indices(
+    source_coords: torch.Tensor,
+    target_coords: torch.Tensor,
+    k: int,
+    chunk_size: int = 4096,
+) -> torch.Tensor:
     """Find the k nearest source points for each target point.
+
+    The pairwise distances are computed in chunks over the target points so
+    the full (n_target, n_source) matrix is never held at once.
 
     Args:
         source_coords: Tensor of shape (n_source, 3) of unit-sphere
@@ -24,13 +32,18 @@ def knn_indices(source_coords: torch.Tensor, target_coords: torch.Tensor, k: int
         target_coords: Tensor of shape (n_target, 3) of unit-sphere
             Cartesian coordinates.
         k: Number of neighbours per target point.
+        chunk_size: Number of target points handled per chunk.
 
     Returns:
         Long tensor of shape (n_target, k) of source indices.
     """
     k = min(k, source_coords.shape[0])
-    distances = torch.cdist(target_coords, source_coords)
-    return distances.topk(k, dim=-1, largest=False).indices
+    chunks = []
+    for start in range(0, target_coords.shape[0], chunk_size):
+        block = target_coords[start : start + chunk_size]
+        distances = torch.cdist(block, source_coords)
+        chunks.append(distances.topk(k, dim=-1, largest=False).indices)
+    return torch.cat(chunks, dim=0)
 
 
 class CrossAttentionInterpolator(nn.Module):

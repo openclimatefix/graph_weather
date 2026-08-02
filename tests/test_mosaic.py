@@ -63,19 +63,95 @@ def test_selection_branch_matches_dense_attention():
     assert torch.allclose(out, expected, atol=1e-4)
 
 
-def test_padding_is_masked_out():
-    """Padded positions do not leak into the outputs of real tokens."""
+def test_padding_never_influences_real_tokens():
+    """Whatever the padding holds, outputs for real tokens are unchanged."""
     torch.manual_seed(0)
     attention = BlockSparseAttention(dim=16, num_heads=2, block_size=8, top_n=2)
     x = torch.randn(1, 12, 16)
-    out_a = attention(x)
-    perturbed = x.clone()
-    perturbed[:, -1] += 100.0
-    out_b = attention(perturbed)
-    # Tokens in the untouched first block must be unaffected by the change
-    # in the padded second block only through real tokens, never padding.
-    assert torch.isfinite(out_a).all()
-    assert not torch.allclose(out_a[:, :8], out_b[:, :8])
+    coords = _random_coords(12)
+    baseline = attention(x, coords)
+
+    # The module pads internally with zeros; replace the padding with a
+    # large value to prove masked positions cannot leak into the result.
+    import graph_weather.models.mosaic.block_sparse_attention as bsa
+
+    original_pad = bsa.F.pad
+
+    def poisoned_pad(tensor, pad, *args, **kwargs):
+        padded = original_pad(tensor, pad, *args, **kwargs)
+        if pad[-1] > 0:
+            padded[:, tensor.shape[1] :] = 1234.5
+        return padded
+
+    bsa.F.pad = poisoned_pad
+    try:
+        poisoned = attention(x, coords)
+    finally:
+        bsa.F.pad = original_pad
+
+    assert torch.allclose(baseline, poisoned, atol=1e-6)
+
+
+def test_selection_matches_naive_loop_when_sparse():
+    """The gathered blocks match a loop reference for top_n < n_blocks."""
+    torch.manual_seed(3)
+    batch, heads, n_tokens, dim, block, top_n = 2, 2, 24, 16, 4, 2
+    attention = BlockSparseAttention(
+        dim=dim, num_heads=heads, block_size=block, top_n=top_n, use_rope=False
+    )
+    x = torch.randn(batch, n_tokens, dim)
+    head_dim = dim // heads
+    n_blocks = n_tokens // block
+
+    with torch.no_grad():
+        shape = (batch, n_tokens, heads, head_dim)
+        q = attention.q_proj(x).view(shape).transpose(1, 2)
+        k = attention.k_proj(x).view(shape).transpose(1, 2)
+        v = attention.v_proj(x).view(shape).transpose(1, 2)
+        q = q.reshape(batch, heads, n_blocks, block, head_dim)
+        k = k.reshape(batch, heads, n_blocks, block, head_dim)
+        v = v.reshape(batch, heads, n_blocks, block, head_dim)
+        scale = head_dim**-0.5
+        scores = torch.einsum("bhid,bhjd->bhij", q.mean(3), k.mean(3)) * scale
+        selected = scores.mean(dim=1).topk(top_n, dim=-1).indices
+
+        reference = torch.zeros(batch, heads, n_blocks, block, head_dim)
+        for b in range(batch):
+            for h in range(heads):
+                for i in range(n_blocks):
+                    keys = torch.cat([k[b, h, j] for j in selected[b, i]], dim=0)
+                    values = torch.cat([v[b, h, j] for j in selected[b, i]], dim=0)
+                    weights = ((q[b, h, i] @ keys.T) * scale).softmax(-1)
+                    reference[b, h, i] = weights @ values
+
+        attention.gate.weight.zero_()
+        attention.gate.bias.copy_(torch.tensor([-40.0, 40.0, -40.0]))
+        attention.out_proj.weight.copy_(torch.eye(dim))
+        out = attention(x)
+
+    reference = reference.reshape(batch, heads, n_tokens, head_dim)
+    reference = reference.permute(0, 2, 1, 3).reshape(batch, n_tokens, dim)
+    assert torch.allclose(out, reference, atol=1e-4)
+
+
+def test_training_memory_is_not_quadratic():
+    """Doubling the token count must not quadruple the backward memory."""
+    import resource
+
+    def peak_delta(n_tokens: int) -> float:
+        torch.manual_seed(0)
+        attention = BlockSparseAttention(dim=64, num_heads=2, block_size=64, top_n=2)
+        x = torch.randn(1, n_tokens, 64, requires_grad=True)
+        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        attention(x).pow(2).mean().backward()
+        after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return max(after - before, 1)
+
+    small = peak_delta(2048)
+    large = peak_delta(4096)
+    # Quadratic growth would be about 4x; allow generous headroom while
+    # still failing if the (n_blocks, n_blocks) expansion is materialised.
+    assert large < small * 3
 
 
 def test_grouped_query_attention():
@@ -126,8 +202,8 @@ def test_interpolator_reproduces_constant_field():
 def test_coarsen_refine_roundtrip_shapes():
     """Pooling and unpooling recover the original token count."""
     torch.manual_seed(0)
-    coarsen = HealpixCoarsen(in_dim=8, out_dim=8)
-    refine = HealpixRefine(in_dim=8, out_dim=8)
+    coarsen = HealpixCoarsen(in_dim=8, out_dim=8, use_positions=False)
+    refine = HealpixRefine(in_dim=8, out_dim=8, use_positions=False)
     x = torch.randn(2, 48, 8)
     pooled = coarsen(x)
     assert pooled.shape == (2, 12, 8)
@@ -136,17 +212,30 @@ def test_coarsen_refine_roundtrip_shapes():
         coarsen(torch.randn(2, 47, 8))
 
 
-def test_coarsen_uses_relative_positions():
-    """The relative-position term of Eq. 12 changes the pooled output."""
+def test_coarsen_position_contract():
+    """Positions change the output and the layer refuses mismatched use."""
     torch.manual_seed(0)
-    coarsen = HealpixCoarsen(in_dim=8, out_dim=8)
     x = torch.randn(1, 16, 8)
     rel_pos = torch.nn.functional.normalize(torch.randn(16, 3), dim=-1)
-    assert not torch.allclose(coarsen(x), coarsen(x, rel_pos))
+
+    with_positions = HealpixCoarsen(in_dim=8, out_dim=8)
     without = HealpixCoarsen(in_dim=8, out_dim=8, use_positions=False)
     assert without.position_proj is None
+    assert not torch.allclose(with_positions(x, rel_pos), without(x))
+
+    # A layer built for positions must be given them, and vice versa, so
+    # no projection can silently sit unused.
+    with pytest.raises(ValueError):
+        with_positions(x)
     with pytest.raises(ValueError):
         without(x, rel_pos)
+
+
+def test_processor_rejects_bad_token_count():
+    """The error names the input size and the required divisor."""
+    processor = MosaicProcessor(dim=16, depths=(1, 1, 1), num_heads=2, block_size=8, top_n=2)
+    with pytest.raises(ValueError, match="52 must be divisible by 16"):
+        processor(torch.randn(1, 52, 16))
 
 
 def test_processor_forward_and_backward():

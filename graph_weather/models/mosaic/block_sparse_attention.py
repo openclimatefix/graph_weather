@@ -41,6 +41,13 @@ class RotaryEmbedding2D(nn.Module):
     The head dimension is split in half; the first half is rotated with the
     latitude angle and the second half with the longitude angle
     (arXiv:2604.16429, Section 4.3).
+
+    The embedding treats latitude and longitude as independent linear axes,
+    so it is not continuous on the sphere: two points one degree apart score
+    differently across the +/-180 degree meridian than elsewhere, and points
+    that coincide physically at the poles but differ in longitude are not
+    identified. This is inherent to axial rotary embeddings and matters most
+    for polar and date-line regions.
     """
 
     def __init__(self, head_dim: int, theta: float = 10000.0):
@@ -220,16 +227,21 @@ class BlockSparseAttention(nn.Module):
         # Fine-grained selection branch (Eq. 11): the top-n key blocks are
         # chosen per query block and shared by all tokens in that block.
         top_n = min(self.top_n, m)
+        # Selection is shared across heads: the block scores are averaged
+        # over heads so every query head reads the same key blocks.
         sel_scores = scores.mean(dim=1)
         sel_idx = sel_scores.topk(top_n, dim=-1).indices
-        sel_idx_e = sel_idx.view(batch, 1, m, top_n, 1, 1).expand(batch, heads, m, top_n, block, dh)
-        k_sel = k_b.unsqueeze(2).expand(batch, heads, m, m, block, dh)
-        k_sel = torch.gather(k_sel, 3, sel_idx_e).flatten(3, 4)
-        v_sel = v_b.unsqueeze(2).expand(batch, heads, m, m, block, dh)
-        v_sel = torch.gather(v_sel, 3, sel_idx_e).flatten(3, 4)
-        valid_sel = valid_b.unsqueeze(2).expand(batch, 1, m, m, block)
-        idx_mask = sel_idx.view(batch, 1, m, top_n, 1).expand(batch, 1, m, top_n, block)
-        valid_sel = torch.gather(valid_sel, 3, idx_mask).flatten(3, 4)
+        # Advanced indexing rather than gather on an expanded view. The
+        # backward pass of gather allocates a buffer shaped like the (m, m)
+        # expansion, which would make training memory quadratic in n_tokens.
+        batch_idx = torch.arange(batch, device=x.device).view(batch, 1, 1, 1)
+        head_idx = torch.arange(heads, device=x.device).view(1, heads, 1, 1)
+        block_idx = sel_idx.view(batch, 1, m, top_n)
+        k_sel = k_b[batch_idx, head_idx, block_idx].flatten(3, 4)
+        v_sel = v_b[batch_idx, head_idx, block_idx].flatten(3, 4)
+        valid_flat = valid_b.view(batch, m, block)
+        valid_sel = valid_flat[batch_idx.view(batch, 1, 1), sel_idx]
+        valid_sel = valid_sel.reshape(batch, 1, m, top_n * block)
         fg_scores = torch.einsum("bhitd,bhisd->bhits", q_b, k_sel) * scale
         fg_scores = fg_scores.masked_fill(~valid_sel.unsqueeze(3), float("-inf"))
         o_fg = torch.einsum("bhits,bhisd->bhitd", fg_scores.softmax(dim=-1), v_sel)

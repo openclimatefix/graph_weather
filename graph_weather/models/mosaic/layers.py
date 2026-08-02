@@ -166,6 +166,12 @@ class MosaicProcessor(nn.Module):
         Returns:
             Tensor of shape (batch, n_tokens, dim).
         """
+        required = 4 ** (len(self.depths) - 1)
+        if x.shape[1] % required != 0:
+            raise ValueError(
+                f"n_tokens {x.shape[1]} must be divisible by {required} for "
+                f"{len(self.depths)} stages"
+            )
         skips = []
         level_coords = coords
         for index, blocks in enumerate(self.stages):

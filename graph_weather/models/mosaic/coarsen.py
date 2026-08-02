@@ -52,9 +52,17 @@ class HealpixCoarsen(nn.Module):
         n_parent = n_tokens // self.factor
         grouped = x.reshape(batch, n_parent, self.factor * self.in_dim)
         out = self.feature_proj(grouped)
-        if rel_pos is not None:
-            if self.position_proj is None:
-                raise ValueError("rel_pos given but the layer was built with use_positions=False")
+        if self.position_proj is None:
+            if rel_pos is not None:
+                raise ValueError(
+                    "rel_pos was given but the layer was built with use_positions=False"
+                )
+        else:
+            if rel_pos is None:
+                raise ValueError(
+                    "rel_pos is required when use_positions=True; pass positions or "
+                    "build the layer with use_positions=False"
+                )
             pos = rel_pos.reshape(n_parent, self.factor * 3)
             out = out + self.position_proj(pos).unsqueeze(0)
         return self.norm(out)
@@ -95,8 +103,16 @@ class HealpixRefine(nn.Module):
         """
         batch, n_parent, _ = x.shape
         out = self.feature_proj(x).reshape(batch, n_parent * self.factor, self.out_dim)
-        if rel_pos is not None:
-            if self.position_proj is None:
-                raise ValueError("rel_pos given but the layer was built with use_positions=False")
+        if self.position_proj is None:
+            if rel_pos is not None:
+                raise ValueError(
+                    "rel_pos was given but the layer was built with use_positions=False"
+                )
+        else:
+            if rel_pos is None:
+                raise ValueError(
+                    "rel_pos is required when use_positions=True; pass positions or "
+                    "build the layer with use_positions=False"
+                )
             out = out + self.position_proj(rel_pos).unsqueeze(0)
         return self.norm(out)
