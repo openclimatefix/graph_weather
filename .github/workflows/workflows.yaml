@@ -28,6 +28,7 @@ jobs:
           pixi run -e ${{ matrix.environment }} installpyg
           pixi run -e ${{ matrix.environment }} pip install coverage==7.4.3 pytest-cov
           pixi run -e ${{ matrix.environment }} installnat
+          pixi run -e ${{ matrix.environment }} installnnja
           pixi run -e ${{ matrix.environment }} install
       - name: Setup with pytest-cov
         run: |
