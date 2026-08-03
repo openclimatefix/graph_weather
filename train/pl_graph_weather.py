@@ -206,7 +206,7 @@ def process_data(data):
         )
     ]
     for when in pd.date_range(
-        date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
+        date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1h"
     ):
         solar_times.append(
             np.array(

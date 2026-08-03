@@ -7,13 +7,15 @@ from graph_weather.data import AnemoiDataset
 
 
 def fake_open_dataset(config):
-    # Create a small, synthetic xarray.Dataset for testing
+    # Create a small, synthetic xarray.Dataset for testing. The generator is seeded so the
+    # tests below do not depend on the global numpy random state.
+    rng = np.random.default_rng(0)
     data = xr.Dataset(
         {
-            "temperature": (("time", "lat", "lon"), np.random.rand(3, 2, 2)),
-            "geopotential": (("time", "lat", "lon"), np.random.rand(3, 2, 2)),
-            "u_component_of_wind": (("time", "lat", "lon"), np.random.rand(3, 2, 2)),
-            "v_component_of_wind": (("time", "lat", "lon"), np.random.rand(3, 2, 2)),
+            "temperature": (("time", "lat", "lon"), rng.random((3, 2, 2))),
+            "geopotential": (("time", "lat", "lon"), rng.random((3, 2, 2))),
+            "u_component_of_wind": (("time", "lat", "lon"), rng.random((3, 2, 2))),
+            "v_component_of_wind": (("time", "lat", "lon"), rng.random((3, 2, 2))),
         },
         coords={
             "time": pd.date_range("2020-01-01", periods=3),
@@ -74,7 +76,11 @@ def test_normalization():
             features=["temperature"],
             max_samples=3,
             means={"temperature": 0.5},
-            stds={"temperature": 0.2},
+            # The synthetic data is uniform on [0, 1), so its standard deviation is
+            # 1/sqrt(12). Declaring 0.2 instead put the expected normalised spread at 1.44,
+            # right against the 1.5 bound asserted below, and the twelve-value sample went
+            # over it often enough to make this test flaky.
+            stds={"temperature": float(1 / np.sqrt(12))},
         )
         samples = []
         for i in range(min(3, len(dataset))):
