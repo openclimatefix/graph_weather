@@ -6,6 +6,7 @@ import torch
 from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import AssimilatorDecoder, AssimilatorEncoder, Processor
+from graph_weather.models.validation import validate_features_shape
 
 
 @dataclass
@@ -138,12 +139,20 @@ class GraphWeatherAssimilator(torch.nn.Module, PyTorchModelHubMixin):
         Compute the analysis output
 
         Args:
-            features: The input features, aligned with the order of lat_lons_heights
-            obs_lat_lon_heights: Observation lat/lon/heights in same order as features
+            features: The input features, aligned with the order of lat_lons_heights.
+                Expected shape: [batch, nodes, features]
+            obs_lat_lon_heights: Observation lat/lon/heights in same order as features.
+                Expected shape: [batch, nodes, 3]
 
         Returns:
             The next state in the forecast
+
+        Raises:
+            ValueError: If features tensor is not 3D with shape [batch, nodes, features]
         """
+        # Validate input shape at API boundary for clear error messages
+        validate_features_shape(features)
+
         x, edge_idx, edge_attr = self.encoder(features, obs_lat_lon_heights)
         x = self.processor(x, edge_idx, edge_attr)
         x = self.decoder(x, features.shape[0])

@@ -9,6 +9,7 @@ from huggingface_hub import PyTorchModelHubMixin
 
 from graph_weather.models import Decoder, Encoder, Processor
 from graph_weather.models.layers.constraint_layer import PhysicalConstraintLayer
+from graph_weather.models.validation import validate_features_shape
 
 
 @dataclass
@@ -217,12 +218,19 @@ class GraphWeatherForecaster(torch.nn.Module, PyTorchModelHubMixin):
         Compute the new state of the forecast
 
         Args:
-            features: The input features, aligned with the order of lat_lons_heights
+            features: The input features, aligned with the order of lat_lons_heights.
+                Expected shape: [batch, nodes, features]
             t: Timestep for the thermalizer
 
         Returns:
             The next state in the forecast
+
+        Raises:
+            ValueError: If features tensor is not 3D with shape [batch, nodes, features]
         """
+        # Validate input shape at API boundary for clear error messages
+        validate_features_shape(features)
+
         x, edge_idx, edge_attr = self.encoder(features)
         x = self.processor(x, edge_idx, edge_attr, t)
         x = self.decoder(x, features[..., : self.feature_dim])
