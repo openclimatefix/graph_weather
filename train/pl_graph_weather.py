@@ -422,7 +422,7 @@ class LitGraphForecaster(pl.LightningModule):
 )
 def run(num_blocks, hidden, batch, gpus):
     """
-    Trainig process.
+    Training process.
 
     Args:
         num_blocks : Number of blocks.

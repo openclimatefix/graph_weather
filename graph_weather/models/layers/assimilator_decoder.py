@@ -5,7 +5,7 @@ In the original paper the decoder is described as
 The Decoder maps back to physical data defined on a latitude/longitude grid. The underlying graph is
 again bipartite, this time mapping icosahedron→lat/lon.
 The inputs to the Decoder come from the Processor, plus a skip connection back to the original
-state of the 78 atmospheric variables onthe latitude/longitude grid.
+state of the 78 atmospheric variables on the latitude/longitude grid.
 The output of the Decoder is the predicted 6-hour change in the 78 atmospheric variables,
 which is then added to the initial state to produce the new state. We found 6 hours to be a good
 balance between shorter time steps (simpler dynamics to model but more iterations required during
@@ -185,7 +185,7 @@ class AssimilatorDecoder(torch.nn.Module):
                 dim=1,
             )
 
-            # Readd nodes to match graph node number
+            # Re-add nodes to match graph node number
             features = einops.rearrange(processor_features, "(b n) f -> b n f", b=batch_size)
             features = torch.cat(
                 [features, einops.repeat(self.latlon_nodes, "n f -> b n f", b=batch_size)], dim=1
