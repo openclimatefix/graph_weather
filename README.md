@@ -20,6 +20,24 @@ Microsoft's [Aurora](https://arxiv.org/abs/2405.13063) forecasting model
 And [FengWu-GHR](https://arxiv.org/abs/2402.00059) forecasting, using LoRA to correct for per-forecast step errors
 
 The components of these models should be fairly modular and be able to be swapped around to experiment with graph-based weather forecasting.
+## Common Installation Notes
+
+### Python / PyTorch compatibility
+- CUDA-enabled PyTorch is generally most stable with Python 3.10–3.11.
+- Python 3.12 may require installing PyTorch via pip wheels rather than conda.
+
+### Common errors
+- `ModuleNotFoundError: graph_weather.data.ninja_wrapp`
+  - This can indicate missing optional dependencies or an incomplete install.
+- Some dataset utilities depend on external packages (e.g. `anemoi.datasets`)
+  which are not installed by default.
+
+### GNN vs CNN expectations
+- GNN-based models are particularly helpful for:
+  - Irregular grids
+  - Sparse or point-based observations
+  - Global / spherical domains
+- For limited-area models on regular grids, CNNs may perform similarly or better.
 
 ## Installation
 
