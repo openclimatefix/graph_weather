@@ -6117,3 +6117,77 @@ ERA5_DIFF_STD = {
     "mean_sea_level_pressure": 394.80682,
     "total_precipitation_12hr": 0.0017966998,
 }
+
+# OpenMeteo variable normalization statistics
+# Based on typical global ranges for common meteorological variables
+OPENMETEO_MEANS = {
+    "temperature_2m": 15.0,  # Celsius, global mean ~15C
+    "relative_humidity_2m": 70.0,  # Percent
+    "dew_point_2m": 10.0,  # Celsius
+    "apparent_temperature": 15.0,  # Celsius
+    "pressure_msl": 1013.25,  # hPa
+    "surface_pressure": 985.0,  # hPa
+    "cloud_cover": 50.0,  # Percent
+    "cloud_cover_low": 30.0,  # Percent
+    "cloud_cover_mid": 25.0,  # Percent
+    "cloud_cover_high": 30.0,  # Percent
+    "wind_speed_10m": 5.0,  # m/s
+    "wind_speed_100m": 8.0,  # m/s
+    "wind_direction_10m": 180.0,  # degrees
+    "wind_direction_100m": 180.0,  # degrees
+    "wind_gusts_10m": 8.0,  # m/s
+    "precipitation": 0.1,  # mm/h
+    "rain": 0.08,  # mm/h
+    "snowfall": 0.02,  # cm/h
+    "snow_depth": 5.0,  # cm
+    "weather_code": 50.0,  # WMO code
+    "shortwave_radiation": 200.0,  # W/m^2
+    "direct_radiation": 150.0,  # W/m^2
+    "diffuse_radiation": 80.0,  # W/m^2
+    "direct_normal_irradiance": 200.0,  # W/m^2
+    "terrestrial_radiation": 350.0,  # W/m^2
+    "et0_fao_evapotranspiration": 0.15,  # mm/h
+    "vapour_pressure_deficit": 0.8,  # kPa
+    "soil_temperature_0_to_7cm": 15.0,  # Celsius
+    "soil_temperature_7_to_28cm": 14.0,  # Celsius
+    "soil_temperature_28_to_100cm": 13.0,  # Celsius
+    "soil_moisture_0_to_7cm": 0.3,  # m^3/m^3
+    "soil_moisture_7_to_28cm": 0.3,  # m^3/m^3
+    "soil_moisture_28_to_100cm": 0.3,  # m^3/m^3
+}
+
+OPENMETEO_STD = {
+    "temperature_2m": 20.0,  # Celsius
+    "relative_humidity_2m": 20.0,  # Percent
+    "dew_point_2m": 15.0,  # Celsius
+    "apparent_temperature": 22.0,  # Celsius
+    "pressure_msl": 15.0,  # hPa
+    "surface_pressure": 50.0,  # hPa
+    "cloud_cover": 35.0,  # Percent
+    "cloud_cover_low": 35.0,  # Percent
+    "cloud_cover_mid": 30.0,  # Percent
+    "cloud_cover_high": 35.0,  # Percent
+    "wind_speed_10m": 4.0,  # m/s
+    "wind_speed_100m": 5.0,  # m/s
+    "wind_direction_10m": 100.0,  # degrees
+    "wind_direction_100m": 100.0,  # degrees
+    "wind_gusts_10m": 6.0,  # m/s
+    "precipitation": 1.0,  # mm/h
+    "rain": 0.8,  # mm/h
+    "snowfall": 0.3,  # cm/h
+    "snow_depth": 20.0,  # cm
+    "weather_code": 30.0,  # WMO code
+    "shortwave_radiation": 280.0,  # W/m^2
+    "direct_radiation": 220.0,  # W/m^2
+    "diffuse_radiation": 100.0,  # W/m^2
+    "direct_normal_irradiance": 300.0,  # W/m^2
+    "terrestrial_radiation": 50.0,  # W/m^2
+    "et0_fao_evapotranspiration": 0.15,  # mm/h
+    "vapour_pressure_deficit": 1.0,  # kPa
+    "soil_temperature_0_to_7cm": 12.0,  # Celsius
+    "soil_temperature_7_to_28cm": 10.0,  # Celsius
+    "soil_temperature_28_to_100cm": 8.0,  # Celsius
+    "soil_moisture_0_to_7cm": 0.15,  # m^3/m^3
+    "soil_moisture_7_to_28cm": 0.12,  # m^3/m^3
+    "soil_moisture_28_to_100cm": 0.10,  # m^3/m^3
+}
