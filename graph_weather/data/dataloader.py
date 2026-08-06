@@ -99,7 +99,7 @@ class AnalysisDataset(Dataset):
         np.cos(day_of_year)
         solar_times = [np.array([extraterrestrial_irrad(date, lat, lon) for lat, lon in lat_lons])]
         for when in pd.date_range(
-            date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1H"
+            date - pd.Timedelta("12 hours"), date + pd.Timedelta("12 hours"), freq="1h"
         ):
             solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])
@@ -112,7 +112,7 @@ class AnalysisDataset(Dataset):
             np.array([extraterrestrial_irrad(end_date, lat, lon) for lat, lon in lat_lons])
         ]
         for when in pd.date_range(
-            end_date - pd.Timedelta("12 hours"), end_date + pd.Timedelta("12 hours"), freq="1H"
+            end_date - pd.Timedelta("12 hours"), end_date + pd.Timedelta("12 hours"), freq="1h"
         ):
             end_solar_times.append(
                 np.array([extraterrestrial_irrad(when, lat, lon) for lat, lon in lat_lons])

@@ -38,11 +38,16 @@ def generate_isotropic_noise(num_lon: int, num_lat: int, num_samples=1, isotropi
     if isotropic:
         lmax = num_lat - 1 if extend else num_lat
         mmax = lmax + 1
-        coeffs = torch.randn(num_samples, lmax, mmax, dtype=torch.complex64) / np.sqrt(
-            (num_lat**2) // 2
-        )
         isht = th.InverseRealSHT(
             nlat=num_lat, nlon=num_lon, lmax=lmax, mmax=mmax, grid="equiangular"
+        )
+        # torch-harmonics >= 0.9.0 applies triangular truncation, which clamps mmax down
+        # to lmax, so the transform can keep fewer modes than were requested. Read the
+        # retained mode counts back off the transform instead of assuming lmax/mmax are
+        # honoured verbatim. The discarded coefficients have m > l, where the associated
+        # Legendre functions vanish, so this does not change the generated noise.
+        coeffs = torch.randn(num_samples, isht.lmax, isht.mmax, dtype=torch.complex64) / np.sqrt(
+            (num_lat**2) // 2
         )
         noise = isht(coeffs) * np.sqrt(2 * np.pi)
         noise = einops.rearrange(noise, "b lat lon -> lon lat b").numpy()
