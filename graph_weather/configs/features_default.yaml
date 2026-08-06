@@ -1,0 +1,188 @@
+# config replicates the original 78+24 feature set
+# var names based on ERA5 dataset gs://weatherbench2/datasets/era5/1959-2022-6h-64x32_equiangular_conservative.zarr
+features:
+  # --------------------------------------------------------------------------
+  # 78 Dynamic Features (6 Variables @ 13 Pressure Levels)
+  # --------------------------------------------------------------------------
+  - name: "geopotential"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  - name: "specific_humidity"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  - name: "temperature"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  - name: "u_component_of_wind"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  - name: "v_component_of_wind"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  - name: "vertical_velocity"
+    type: "dynamic"
+    source: "era5"
+    levels:
+      - 50
+      - 100
+      - 150
+      - 200
+      - 250
+      - 300
+      - 400
+      - 500
+      - 600
+      - 700
+      - 850
+      - 925
+      - 1000
+  # --------------------------------------------------------------------------
+  # 24 Static F& Single-Level Features ("non-NWP")
+  # --------------------------------------------------------------------------
+  # 14 Static contants
+  - name: "angle_of_sub_gridscale_orography"
+    type: "static"
+    source: "constants"
+  - name: "anisotropy_of_sub_gridscale_orography"
+    type: "static"
+    source: "constants"
+  - name: "geopotential_at_surface"
+    type: "static"
+    source: "constants"
+  - name: "high_vegetation_cover"
+    type: "static"
+    source: "constants"
+  - name: "lake_cover"
+    type: "static"
+    source: "constants"
+  - name: "lake_depth"
+    type: "static"
+    source: "constants"
+  - name: "land_sea_mask"
+    type: "static"
+    source: "constants"
+  - name: "low_vegetation_cover"
+    type: "static"
+    source: "constants"
+  - name: "slope_of_sub_gridscale_orography"
+    type: "static"
+    source: "constants"
+  - name: "soil_type"
+    type: "static"
+    source: "constants"
+  - name: "standard_deviation_of_filtered_subgrid_orography"
+    type: "static"
+    source: "constants"
+  - name: "standard_deviation_of_orography"
+    type: "static"
+    source: "constants"
+  - name: "type_of_high_vegetation"
+    type: "static"
+    source: "constants"
+  - name: "type_of_low_vegetation"
+    type: "static"
+    source: "constants"
+
+  # 6 Single-Level Variables
+  - name: "10m_u_component_of_wind"
+    type: "static" # Treated as static input for the model's purpose
+    source: "era5"
+  - name: "10m_v_component_of_wind"
+    type: "static"
+    source: "era5"
+  - name: "2m_temperature"
+    type: "static"
+    source: "era5"
+  - name: "mean_sea_level_pressure"
+    type: "static"
+    source: "era5"
+  - name: "surface_pressure"
+    type: "static"
+    source: "era5"
+  - name: "toa_incident_solar_radiation"
+    type: "static"
+    source: "era5"
+
+  # 4 Derived Temporal Encodings
+  - name: "year_progress_sin"
+    type: "static"
+    source: "derived"
+  - name: "year_progress_cos"
+    type: "static"
+    source: "derived"
+  - name: "day_progress_sin"
+    type: "static"
+    source: "derived"
+  - name: "day_progress_cos"
+    type: "static"
+    source: "derived"
