@@ -24,7 +24,7 @@ class LitFengWuGHR(pl.LightningModule):
     LightningModule for graph-based weather forecasting.
 
     Attributes:
-        model (GraphWeatherForecaster): Graph weather forecaster model.
+        model (MetaModel): Image-based meta model used for the forecast step.
         criterion (NormalizedMSELoss): Loss criterion for training.
         lr : Learning rate for optimizer.
 

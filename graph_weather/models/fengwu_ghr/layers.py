@@ -4,7 +4,8 @@ This module gathers the layers used to run a vision-transformer backbone over we
 interpolation between an irregular set of lat/lon points and a regular grid, fixed sine-cosine
 positional embeddings, the attention and feed-forward blocks, the `ImageMetaModel` backbone and
 its lat/lon counterpart `MetaModel`, the wrappers that run either of them at a higher
-resolution by splitting the input into sub-images, and LoRA layers for fine-tuning.
+resolution by splitting the input into interleaved sub-images, and LoRA layers for
+fine-tuning.
 """
 
 import torch
@@ -411,7 +412,9 @@ class WrapperImageModel(nn.Module):
     """
     Run an `ImageMetaModel` on an image `scale_factor` times larger than its own.
 
-    The image is cut into `s_h * s_w` sub-images that are stacked along the batch dimension, a
+    The image is split into `s_h * s_w` interleaved sub-images, each taking every `s_h`-th row
+    and every `s_w`-th column rather than a contiguous tile, which are stacked along the
+    batch dimension, a
     copy of the given model built with `res=True` is applied to them, and the sub-images are
     then put back together. The weights of the given model are loaded into that copy.
     """
@@ -438,7 +441,7 @@ class WrapperImageModel(nn.Module):
 
     def forward(self, x):
         """
-        Split the image into sub-images, run the wrapped model and reassemble them.
+        Split the image into interleaved sub-images, run the wrapped model and reassemble.
 
         Args:
             x: Input tensor of shape `(batch, channels, height * s_h, width * s_w)`.
@@ -627,7 +630,13 @@ class LoRALayer(nn.Module):
 
 
 class LoRAModule(nn.Module):
-    """Model whose linear layers are replaced by `LoRALayer` and set to evaluation mode."""
+    """
+    Wrap a model, put it in evaluation mode and attach `LoRALayer` for its linear layers.
+
+    The wrapping uses `setattr(model, name, ...)` with the dotted names returned by
+    `named_modules`, so only linear layers that are direct attributes of `model` are
+    substituted; nested ones gain a sibling attribute and keep running unchanged.
+    """
 
     def __init__(self, model, r=4):
         """

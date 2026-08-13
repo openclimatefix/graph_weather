@@ -233,8 +233,9 @@ class EarthSystemLoss(nn.Module):
             points (torch.Tensor): Coordinates of shape (batch_size, num_points, 2).
 
         Returns:
-            torch.Tensor: Scalar tensor with the mean squared difference taken over the
-            neighboring point pairs.
+            torch.Tensor: Scalar tensor. Squared differences are zeroed outside the
+            neighborhood and then averaged over every pair, so the value scales with
+            the fraction of pairs that are neighboring.
         """
         batch_size, num_points, _ = points.shape
         points_flat = points.view(-1, 2)

@@ -27,7 +27,8 @@ class LitLoRAFengWuGHR(pl.LightningModule):
     ``self.models`` holds one entry per lead time: the pretrained single-step
     :class:`~graph_weather.models.fengwu_ghr.layers.MetaModel` first, followed by
     ``time_step - 1`` :class:`~graph_weather.models.fengwu_ghr.layers.LoRAModule` wrappers
-    built from it, each replacing the linear layers with rank-``rank`` LoRA layers. The
+    built from it, each attaching rank-``rank`` LoRA layers to the linear layers it can
+    reach as direct attributes (see `LoRAModule`). The
     forward pass applies them one after another, feeding each step its predecessor's output.
 
     Attributes:

@@ -23,15 +23,21 @@ class ProcessorConfig:
         input_dim: Number of channels of the incoming features, matching the Swin3D output.
         latent_dim: Number of channels of the projected output.
         d_model: Working width of the transformer encoder.
-        max_seq_len: Maximum supported sequence length.
+        max_seq_len: Upper bound validated in ``__post_init__``. It is not consulted
+            when the encoder is built.
         num_self_attention_layers: Number of transformer encoder layers.
-        num_cross_attention_layers: Number of cross-attention layers.
+        num_cross_attention_layers: Kept as part of the configuration. This
+            implementation has no cross-attention stack and never reads it.
         num_attention_heads: Number of attention heads per layer.
         hidden_dropout: Dropout probability used inside the encoder layers.
-        attention_dropout: Dropout probability applied to the attention weights.
-        qk_head_dim: Optional per-head dimension of the query and key projections.
+        attention_dropout: Validated in ``__post_init__`` but not applied. The
+            encoder layers use ``hidden_dropout`` for both attention and
+            feed-forward dropout.
+        qk_head_dim: Kept as part of the configuration; currently unused. The head
+            dimension follows from ``d_model`` and ``num_attention_heads``.
         activation_fn: Name of the activation function used in the feed-forward blocks.
-        layer_norm_eps: Epsilon of the layer normalization.
+        layer_norm_eps: Kept as part of the configuration; currently unused. The
+            encoder layers use the PyTorch default of 1e-5.
 
     Raises:
         ValueError: If ``input_dim``, ``max_seq_len`` or ``num_attention_heads`` is not

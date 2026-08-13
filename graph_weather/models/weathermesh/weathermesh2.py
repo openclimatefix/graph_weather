@@ -101,6 +101,11 @@ class WeatherMeshConfig:
 
         Returns:
             A dictionary with one entry per dataclass field.
+
+        Note:
+            ``dacite`` does not provide ``asdict``, so this currently raises
+            ``AttributeError``. Flagged in the pull request that added this
+            docstring; the change itself touches docstrings only.
         """
         return dacite.asdict(self)
 
