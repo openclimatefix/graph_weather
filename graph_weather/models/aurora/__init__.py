@@ -1,5 +1,6 @@
 """
 Aurora: A Foundation Model for Earth System Science
+
 - Combines 3D Swin Transformer encoding
 - Perceiver processing for efficient computation
 - 3D decoding for spatial-temporal predictions

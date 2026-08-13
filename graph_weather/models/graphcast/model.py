@@ -125,7 +125,8 @@ class GraphCast(torch.nn.Module):
         Disables all other hierarchical checkpointing when enabled.
 
         Args:
-            checkpoint_flag: If True, checkpoint entire model. If False, use hierarchical checkpointing.
+            checkpoint_flag: If True, checkpoint entire model. If False, use
+                hierarchical checkpointing.
         """
         self._checkpoint_model = checkpoint_flag
         if checkpoint_flag:

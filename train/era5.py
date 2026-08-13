@@ -1,3 +1,10 @@
+"""Train a MetaModel forecaster on ARCO-ERA5 reanalysis data.
+
+Running this file as a script downloads a slice of the public ARCO-ERA5 zarr store, coarsens
+it onto a reduced lat/lon grid, trains :class:`LitFengWuGHR` for a single time step with
+Lightning, and writes the resulting weights to ``./checkpoints/best.pt``.
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -44,12 +51,24 @@ class LitFengWuGHR(pl.LightningModule):
         """
         Initialize the LitFengWuGHR object with the required args.
 
+        All arguments other than ``lr`` and ``feature_dim`` are forwarded to
+        :class:`~graph_weather.models.fengwu_ghr.layers.MetaModel`, which interpolates the
+        point cloud onto a regular grid and runs a vision-transformer backbone over it.
+
         Args:
-            lat_lons : List of latitude and longitude values.
-            feature_dim : Dimensionality of the input features.
-            aux_dim : Dimensionality of auxiliary features.
-            hidden_dim : Dimensionality of hidden layers in the model.
-            num_blocks : Number of graph convolutional blocks in the model.
+            lat_lons : List of latitude and longitude values, one pair per node of the input
+                point cloud.
+            channels (int): Number of physical variables carried by each node.
+            image_size : Height and width of the regular grid the point cloud is interpolated
+                onto. A single int is used for both dimensions.
+            patch_size : Height and width of the patches the grid is split into before the
+                transformer. Both grid dimensions must be divisible by it.
+            depth : Number of transformer layers in the backbone.
+            heads : Number of attention heads per transformer layer.
+            mlp_dim : Hidden dimensionality of the feed-forward block in each transformer
+                layer.
+            feature_dim : Length of the per-feature variance vector handed to
+                :class:`NormalizedMSELoss`; a vector of ones of this length is used.
             lr (float): Learning rate for optimizer.
         """
         super().__init__()
@@ -114,8 +133,14 @@ class Era5Dataset(Dataset):
 
     def __init__(self, xarr, transform=None):
         """
-        Arguments:
-            #TODO
+        Initialize the dataset by eagerly loading and normalizing the whole slice.
+
+        Args:
+            xarr (xarray.Dataset): Reanalysis slice to train on. It is stacked into a dense
+                array of shape ``[C, T, H, W]``, min-max scaled using the minimum and maximum
+                taken over the leading axis, and then rearranged to ``[T, H * W, C]`` so that
+                each time frame is a flat point cloud.
+            transform (callable, optional): Currently unused.
         """
         ds = np.asarray(xarr.to_array())
         ds = torch.from_numpy(ds)

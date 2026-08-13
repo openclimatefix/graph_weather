@@ -15,6 +15,21 @@ from graph_weather.models.weathermesh.layers import ConvUpBlock
 
 @dataclass
 class WeatherMeshDecoderConfig:
+    """
+    Configuration for `WeatherMeshDecoder`.
+
+    Attributes:
+        latent_dim: Channel width of the latent volume fed to the decoder.
+        output_channels_2d: Number of channels of the reconstructed surface field.
+        output_channels_3d: Number of channels of the reconstructed pressure level field.
+        n_conv_blocks: Number of `ConvUpBlock` stages in each of the two paths.
+        hidden_dim: Base channel width. The latent is first widened to
+            ``hidden_dim * 2 ** n_conv_blocks`` channels.
+        kernel_size: Neighborhood attention window as ``(depth, height, width)``.
+        num_heads: Number of attention heads per neighborhood attention layer.
+        num_transformer_layers: Number of neighborhood attention layers applied to the latent.
+    """
+
     latent_dim: int
     output_channels_2d: int
     output_channels_3d: int
@@ -26,13 +41,37 @@ class WeatherMeshDecoderConfig:
 
     @staticmethod
     def from_json(json: dict) -> "WeatherMeshDecoder":
+        """
+        Build the decoder configuration from a plain dictionary.
+
+        Args:
+            json: Mapping whose keys match the fields of this dataclass.
+
+        Returns:
+            The `WeatherMeshDecoderConfig` deserialized by dacite.
+        """
         return dacite.from_dict(data_class=WeatherMeshDecoderConfig, data=json)
 
     def to_json(self) -> dict:
+        """
+        Convert the configuration into a plain dictionary.
+
+        Returns:
+            A dictionary with one entry per dataclass field.
+        """
         return dacite.asdict(self)
 
 
 class WeatherMeshDecoder(nn.Module):
+    """
+    Decoder that turns a latent volume back into surface and pressure level fields.
+
+    The latent is first refined by a stack of 3D neighborhood attention layers and widened by
+    a 1x1x1 convolution. It is then split along the depth axis: every level but the last feeds
+    the 3D upsampling path, and the last level is squeezed to 2D and feeds the surface path.
+    Both paths are stacks of `ConvUpBlock` layers that reverse the encoder downsampling.
+    """
+
     def __init__(
         self,
         latent_dim,
@@ -44,6 +83,21 @@ class WeatherMeshDecoder(nn.Module):
         num_heads: int = 8,
         num_transformer_layers: int = 3,
     ):
+        """
+        Build the latent attention stack, the split projection and the two upsampling paths.
+
+        Args:
+            latent_dim: Channel width of the latent volume fed to the decoder.
+            output_channels_2d: Number of channels of the reconstructed surface field.
+            output_channels_3d: Number of channels of the reconstructed pressure level field.
+            n_conv_blocks: Number of `ConvUpBlock` stages in each of the two paths.
+            hidden_dim: Base channel width. The latent is widened to
+                ``hidden_dim * 2 ** n_conv_blocks`` channels before the upsampling paths.
+            kernel_size: Neighborhood attention window as ``(depth, height, width)``.
+            num_heads: Number of attention heads per neighborhood attention layer.
+            num_transformer_layers: Number of neighborhood attention layers applied to the
+                latent.
+        """
         super().__init__()
 
         # Transformer layers for initial decoding
@@ -83,6 +137,19 @@ class WeatherMeshDecoder(nn.Module):
         )
 
     def forward(self, latent: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Decode a latent volume into a surface field and a pressure level field.
+
+        Args:
+            latent: Latent tensor of shape ``(B, D, H, W, latent_dim)`` with depth ``D``
+                covering the pressure levels plus one trailing surface level.
+
+        Returns:
+            A tuple ``(surface, pressure)``. ``surface`` has shape
+            ``(B, output_channels_2d, H', W')`` and ``pressure`` has shape
+            ``(B, output_channels_3d, D - 1, H', W')``, where ``H'`` and ``W'`` are the
+            horizontal sizes after ``n_conv_blocks`` upsampling stages.
+        """
         # Needs to be (B,D,H,W,C) with Batch, Depth (vertical levels), Height, Width, Channels
         # Apply transformer layers
         for transformer in self.transformer_layers:

@@ -10,6 +10,7 @@ import torch.nn.functional as F
 class ConvDownBlock(nn.Module):
     """
     Downsampling convolutional block with residual connection.
+
     Can handle both 2D and 3D inputs.
     """
 
@@ -24,6 +25,23 @@ class ConvDownBlock(nn.Module):
         groups: int = 1,
         activation: nn.Module = nn.GELU(),
     ):
+        """
+        Build the two convolutions, their normalizations and the residual projection.
+
+        Args:
+            in_channels: Number of channels of the input tensor.
+            out_channels: Number of channels produced by the block.
+            is_3d: If True use `nn.Conv3d` and `nn.BatchNorm3d`, otherwise their 2D versions.
+            kernel_size: Kernel size of both convolutions.
+            stride: Stride of the second convolution and of the residual projection, so it
+                also sets how much the block downsamples. Accepts a tuple such as
+                ``(1, 2, 2)`` to keep the depth of a 3D input.
+            padding: Padding of both convolutions.
+            groups: Number of groups of both convolutions.
+            activation: Module applied after the first convolution and after the residual
+                addition. The default value is shared by every block that does not override
+                it, which is safe because `nn.GELU` holds no parameters.
+        """
         super().__init__()
 
         Conv = nn.Conv3d if is_3d else nn.Conv2d
@@ -58,6 +76,17 @@ class ConvDownBlock(nn.Module):
         self.bn_down = Norm(out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Downsample the input and add the projected residual.
+
+        Args:
+            x: Input tensor of shape ``(B, in_channels, H, W)``, or
+                ``(B, in_channels, D, H, W)`` when the block was built with ``is_3d=True``.
+
+        Returns:
+            A tensor with ``out_channels`` channels whose strided dimensions have been
+            divided by ``stride``.
+        """
         identity = self.bn_down(self.downsample(x))
 
         out = self.conv1(x)
@@ -89,6 +118,23 @@ class ConvUpBlock(nn.Module):
         groups: int = 1,
         activation: nn.Module = nn.GELU(),
     ):
+        """
+        Build the two convolutions, their normalizations and the residual projection.
+
+        Args:
+            in_channels: Number of channels of the input tensor.
+            out_channels: Number of channels produced by the block.
+            is_3d: If True use `nn.Conv3d` and `nn.BatchNorm3d`, otherwise their 2D versions,
+                and interpolate the height and width only so that depth is preserved.
+            kernel_size: Kernel size of both convolutions.
+            scale_factor: Factor by which the height and width are interpolated before the
+                convolutions.
+            padding: Padding of both convolutions.
+            groups: Number of groups of both convolutions.
+            activation: Module applied after the first convolution and after the residual
+                addition. The default value is shared by every block that does not override
+                it, which is safe because `nn.GELU` holds no parameters.
+        """
         super().__init__()
 
         Conv = nn.Conv3d if is_3d else nn.Conv2d
@@ -125,6 +171,18 @@ class ConvUpBlock(nn.Module):
         self.bn_up = Norm(out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Interpolate the input, run the convolutions and add the projected residual.
+
+        Args:
+            x: Input tensor of shape ``(B, in_channels, H, W)``, or
+                ``(B, in_channels, D, H, W)`` when the block was built with ``is_3d=True``.
+
+        Returns:
+            A tensor with ``out_channels`` channels whose height and width have been
+            multiplied by ``scale_factor``. A 3D input keeps its depth, because the
+            interpolation uses a scale of ``(1, scale_factor, scale_factor)``.
+        """
         # Upsample input
         if self.is_3d:
             x = F.interpolate(

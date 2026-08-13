@@ -1,3 +1,5 @@
+"""Processor for the CaFA (Climate-Aware Factorized Attention) model."""
+
 import torch
 import torch.nn as nn
 from einops import rearrange
@@ -7,7 +9,8 @@ from .factorize import FactorizedTransformerBlock
 
 class CaFAProcessor(nn.Module):
     """
-    Processor module for CaFA
+    Processor module for CaFA.
+
     Handles latent feature map through multiple layers of self-attention,
     allowing information to propagate across the entire global grid.
     """
@@ -22,6 +25,8 @@ class CaFAProcessor(nn.Module):
         dropout: float = 0.0,
     ):
         """
+        Initialize the processor.
+
         Args:
             dim: No. of input channels/ features
             depth: No. of FactorizedTransformerBlocks to stack
@@ -40,8 +45,12 @@ class CaFAProcessor(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
+        Run the latent feature map through the stack of transformer blocks.
+
+        The channel axis is moved last for the blocks and restored on the way out.
+
         Args:
-            x: Input tensor of shape (batch, height, width, channels)
+            x: Input tensor of shape (batch, channels, height, width)
 
         Returns:
             Refined tensor of same shape

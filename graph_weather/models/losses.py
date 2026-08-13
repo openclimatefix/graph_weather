@@ -62,7 +62,8 @@ class NormalizedMSELoss(torch.nn.Module):
             device: checks for device whether it supports gpu or not
             normalize: option for normalize
         """
-        # TODO Rescale by nominal static air density at each pressure level, could be 1/pressure level or something similar
+        # TODO Rescale by nominal static air density at each pressure level, could be
+        # 1/pressure level or something similar
         super().__init__()
         self.feature_variance = torch.tensor(feature_variance)
         assert not torch.isnan(self.feature_variance).any()
@@ -140,15 +141,33 @@ class AMSENormalizedLoss(nn.Module):
     2. Decorrelation Error (phase misalignment/coherence loss).
 
     This implementation follows the formulation in:
-    "Fixing the Double Penalty in Data-Driven Weather Forecasting Through a Modified Spherical Harmonic Loss Function"
+    "Fixing the Double Penalty in Data-Driven Weather Forecasting Through a Modified
+    Spherical Harmonic Loss Function"
     (ICML 2025 Poster).
 
     Args:
-        feature_variance (list or torch.Tensor): Variance of each physical feature for normalization (length C).
+        feature_variance (list or torch.Tensor): Variance of each physical feature, used to
+            normalize the per-feature spectral loss (length C).
         epsilon (float): Small constant for numerical stability.
     """
 
     def __init__(self, feature_variance: list | torch.Tensor, epsilon: float = 1e-9):
+        """
+        Initialize the AMSE loss.
+
+        The feature variances are stored as a float32 buffer so that they follow the module
+        across devices. The spherical harmonic transforms themselves are not built here; they
+        are created lazily and cached per ``(nlat, nlon, device)`` by ``_get_sht``.
+
+        Args:
+            feature_variance (list or torch.Tensor): Variance of each physical feature, used
+                to normalize the per-feature spectral loss (length C). A non-tensor input is
+                converted with ``torch.tensor``; a tensor input is cloned, detached and cast
+                to float32, so the tensor passed in by the caller is left untouched.
+            epsilon (float): Small constant for numerical stability. It is added to the power
+                spectral densities before the square root in the amplitude term, to the
+                coherence denominator, and to the feature variance used for normalization.
+        """
         super().__init__()
         if not isinstance(feature_variance, torch.Tensor):
             feature_variance = torch.tensor(feature_variance, dtype=torch.float32)
@@ -157,14 +176,26 @@ class AMSENormalizedLoss(nn.Module):
 
         self.register_buffer("feature_variance", feature_variance)
 
-        # SHT cache to avoid re-initializing on every forward pass since object performs some expensive pre-computation when it's initialized. Doing this repeatedly inside the training loop can add unnecessary overhead.
+        # SHT cache to avoid re-initializing on every forward pass since object performs
+        # some expensive pre-computation when it's initialized. Doing this repeatedly
+        # inside the training loop can add unnecessary overhead.
         self.epsilon = epsilon
         self.sht_cache = {}
 
     def _get_sht(self, nlat: int, nlon: int, device: torch.device) -> th.RealSHT:
         """
         Helper to get a cached SHT object, creating it if it doesn't exist.
+
         This prevents re-initializing the SHT object on every forward pass.
+
+        Args:
+            nlat (int): Number of latitude points of the grid.
+            nlon (int): Number of longitude points of the grid.
+            device (torch.device): Device the transform is moved to. It is part of the cache
+                key, so each device keeps its own instance.
+
+        Returns:
+            th.RealSHT: Transform for an ``equiangular`` grid of shape ``(nlat, nlon)``.
         """
         key = (nlat, nlon, device)
         if key not in self.sht_cache:

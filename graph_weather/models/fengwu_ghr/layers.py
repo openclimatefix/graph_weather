@@ -1,3 +1,12 @@
+"""Building blocks for the FengWu-GHR model.
+
+This module gathers the layers used to run a vision-transformer backbone over weather data:
+interpolation between an irregular set of lat/lon points and a regular grid, fixed sine-cosine
+positional embeddings, the attention and feed-forward blocks, the `ImageMetaModel` backbone and
+its lat/lon counterpart `MetaModel`, the wrappers that run either of them at a higher
+resolution by splitting the input into sub-images, and LoRA layers for fine-tuning.
+"""
+
 import torch
 from einops import rearrange
 from einops.layers.torch import Rearrange
@@ -7,12 +16,37 @@ from torch_geometric.utils import scatter
 
 
 def pair(t):
+    """
+    Return `t` as a two-element tuple.
+
+    Args:
+        t: A tuple, which is returned unchanged, or any other value, which is duplicated.
+
+    Returns:
+        `t` itself if it is already a tuple, otherwise `(t, t)`.
+    """
     return t if isinstance(t, tuple) else (t, t)
 
 
 def knn_interpolate(
     x: torch.Tensor, pos_x: torch.Tensor, pos_y: torch.Tensor, k: int = 4, num_workers: int = 1
 ):
+    """
+    Interpolate features from one set of positions onto another.
+
+    Every target position takes the weighted mean of the features of its `k` nearest source
+    positions, weighted by the inverse of the squared distance between them.
+
+    Args:
+        x: Features of the source nodes, of shape `(num_source_nodes, num_features)`.
+        pos_x: Coordinates of the source nodes, of shape `(num_source_nodes, num_dims)`.
+        pos_y: Coordinates of the target nodes, of shape `(num_target_nodes, num_dims)`.
+        k: Number of nearest source nodes used for each target node.
+        num_workers: Number of workers used by the k-nearest-neighbor search.
+
+    Returns:
+        The interpolated features, of shape `(num_target_nodes, num_features)`.
+    """
     with torch.no_grad():
         assign_index = knn(pos_x, pos_y, k, num_workers=num_workers)
         y_idx, x_idx = assign_index[0], assign_index[1]
@@ -32,6 +66,22 @@ def knn_interpolate(
 
 
 def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
+    """
+    Build a fixed two-dimensional sine-cosine positional embedding.
+
+    Args:
+        h: Number of positions along the height of the grid.
+        w: Number of positions along the width of the grid.
+        dim: Size of the embedding. Must be a multiple of 4.
+        temperature: Base of the geometric progression used for the frequencies.
+        dtype: Data type of the returned embedding.
+
+    Returns:
+        The positional embedding, of shape `(h * w, dim)`.
+
+    Raises:
+        AssertionError: If `dim` is not a multiple of 4.
+    """
     y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
     assert (dim % 4) == 0, "feature dimension must be multiple of 4 for sincos emb"
     omega = torch.arange(dim // 4) / (dim // 4 - 1)
@@ -47,7 +97,16 @@ def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
 
 
 class FeedForward(nn.Module):
+    """Pre-norm position-wise feed-forward block."""
+
     def __init__(self, dim, hidden_dim):
+        """
+        Initialize FeedForward.
+
+        Args:
+            dim: Size of the input and of the output features.
+            hidden_dim: Size of the hidden layer.
+        """
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -57,11 +116,30 @@ class FeedForward(nn.Module):
         )
 
     def forward(self, x):
+        """
+        Apply the feed-forward network.
+
+        Args:
+            x: Input tensor whose last dimension is `dim`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+        """
         return self.net(x)
 
 
 class Attention(nn.Module):
+    """Pre-norm multi-head self-attention block."""
+
     def __init__(self, dim, heads=8, dim_head=64):
+        """
+        Initialize Attention.
+
+        Args:
+            dim: Size of the input and of the output features.
+            heads: Number of attention heads.
+            dim_head: Size of each attention head.
+        """
         super().__init__()
         inner_dim = dim_head * heads
         self.heads = heads
@@ -74,6 +152,15 @@ class Attention(nn.Module):
         self.to_out = nn.Linear(inner_dim, dim, bias=False)
 
     def forward(self, x):
+        """
+        Apply multi-head self-attention along the sequence dimension.
+
+        Args:
+            x: Input tensor of shape `(batch, sequence, dim)`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+        """
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
@@ -89,9 +176,36 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
+    """
+    Stack of residual attention and feed-forward blocks, followed by a layer norm.
+
+    When `res` is True the batch is assumed to hold the `s_h * s_w` sub-images of a single
+    image, and each block is followed by an extra attention layer applied across those
+    sub-images: the sequence is regrouped so that attention runs over the `s_h * s_w` axis for
+    each patch position, and is then restored to its original layout.
+    """
+
     def __init__(
         self, dim, depth, heads, dim_head, mlp_dim, res=False, image_size=None, scale_factor=None
     ):
+        """
+        Initialize Transformer.
+
+        Args:
+            dim: Size of the input and of the output features.
+            depth: Number of attention and feed-forward blocks.
+            heads: Number of attention heads.
+            dim_head: Size of each attention head.
+            mlp_dim: Size of the hidden layer of the feed-forward blocks.
+            res: Whether to add the extra attention layers acting across sub-images.
+            image_size: Size `(h, w)` in patches of one sub-image, or a single int if it is
+                square. Only used when `res` is True.
+            scale_factor: Number `(s_h, s_w)` of sub-images along each axis, or a single int
+                for the same value on both axes. Only used when `res` is True.
+
+        Raises:
+            AssertionError: If `res` is True and `image_size` or `scale_factor` is None.
+        """
         super().__init__()
         self.depth = depth
         self.res = res
@@ -136,6 +250,15 @@ class Transformer(nn.Module):
                 )
 
     def forward(self, x):
+        """
+        Run every block over the input sequence.
+
+        Args:
+            x: Input tensor of shape `(batch, sequence, dim)`.
+
+        Returns:
+            The normalized output tensor, of the same shape as `x`.
+        """
         for i in range(self.depth):
             attn, ff = self.layers[i]
             x = attn(x) + x
@@ -149,6 +272,15 @@ class Transformer(nn.Module):
 
 
 class ImageMetaModel(nn.Module):
+    """
+    Vision-transformer backbone mapping an image to an image of the same shape.
+
+    The input is cut into non-overlapping patches, each patch is embedded, a fixed sine-cosine
+    positional embedding is added, a `Transformer` is applied and the patches are folded back
+    into an image. The embedding size is the flattened size of one patch, so the number of
+    channels is preserved.
+    """
+
     def __init__(
         self,
         *,
@@ -163,6 +295,27 @@ class ImageMetaModel(nn.Module):
         scale_factor=None,
         **kwargs,
     ):
+        """
+        Initialize ImageMetaModel.
+
+        Args:
+            image_size: Size `(height, width)` of the image, or a single int if it is square.
+            patch_size: Size `(height, width)` of a patch, or a single int if it is square.
+            depth: Number of transformer blocks.
+            heads: Number of attention heads.
+            mlp_dim: Size of the hidden layer of the feed-forward blocks.
+            channels: Number of channels of the image.
+            dim_head: Size of each attention head.
+            res: Whether the transformer gets the extra attention layers across sub-images.
+            scale_factor: Number `(s_h, s_w)` of sub-images along each axis, or a single int
+                for the same value on both axes.
+            **kwargs: Ignored. Lets the attributes of an existing `ImageMetaModel` be passed
+                straight through when a rescaled copy of it is built.
+
+        Raises:
+            AssertionError: If `res` is True while `scale_factor` is None, or if the image size
+                is not divisible by the patch size.
+        """
         super().__init__()
         # TODO this can probably be done better
         self.image_size = image_size
@@ -229,6 +382,18 @@ class ImageMetaModel(nn.Module):
         )
 
     def forward(self, x):
+        """
+        Embed the image into patches, run the transformer and rebuild the image.
+
+        Args:
+            x: Input tensor of shape `(batch, channels, height, width)`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+
+        Raises:
+            AssertionError: If `x` does not have `channels` channels.
+        """
         assert x.shape[1] == self.channels, "Wrong number of channels"
         device = x.device
         dtype = x.dtype
@@ -243,7 +408,23 @@ class ImageMetaModel(nn.Module):
 
 
 class WrapperImageModel(nn.Module):
+    """
+    Run an `ImageMetaModel` on an image `scale_factor` times larger than its own.
+
+    The image is cut into `s_h * s_w` sub-images that are stacked along the batch dimension, a
+    copy of the given model built with `res=True` is applied to them, and the sub-images are
+    then put back together. The weights of the given model are loaded into that copy.
+    """
+
     def __init__(self, image_meta_model: ImageMetaModel, scale_factor):
+        """
+        Initialize WrapperImageModel.
+
+        Args:
+            image_meta_model: Model whose settings and weights are reused by the `res=True` copy.
+            scale_factor: Number `(s_h, s_w)` of sub-images along each axis, or a single int
+                for the same value on both axes.
+        """
         super().__init__()
         s_h, s_w = pair(scale_factor)
         self.batcher = Rearrange("b c (h s_h) (w s_w) -> (b s_h s_w) c h w", s_h=s_h, s_w=s_w)
@@ -256,6 +437,15 @@ class WrapperImageModel(nn.Module):
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)", s_h=s_h, s_w=s_w)
 
     def forward(self, x):
+        """
+        Split the image into sub-images, run the wrapped model and reassemble them.
+
+        Args:
+            x: Input tensor of shape `(batch, channels, height * s_h, width * s_w)`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+        """
         x = self.batcher(x)
         x = self.image_meta_model(x)
         x = self.debatcher(x)
@@ -263,6 +453,13 @@ class WrapperImageModel(nn.Module):
 
 
 class MetaModel(nn.Module):
+    """
+    Apply an `ImageMetaModel` to data defined on an irregular set of lat/lon points.
+
+    The point values are interpolated onto a regular lat/lon grid, the image backbone is run on
+    that grid, and the output is interpolated back onto the original points.
+    """
+
     def __init__(
         self,
         lat_lons: list,
@@ -275,6 +472,19 @@ class MetaModel(nn.Module):
         channels,
         dim_head=64,
     ):
+        """
+        Initialize MetaModel.
+
+        Args:
+            lat_lons: List of `(lat, lon)` coordinates of the input points.
+            image_size: Size `(height, width)` of the grid, or a single int if it is square.
+            patch_size: Size `(height, width)` of a patch, or a single int if it is square.
+            depth: Number of transformer blocks.
+            heads: Number of attention heads.
+            mlp_dim: Size of the hidden layer of the feed-forward blocks.
+            channels: Number of channels of the gridded data.
+            dim_head: Size of each attention head.
+        """
         super().__init__()
         self.i_h, self.i_w = pair(image_size)
 
@@ -295,6 +505,15 @@ class MetaModel(nn.Module):
         )
 
     def forward(self, x):
+        """
+        Interpolate onto the grid, run the image model and interpolate back to the points.
+
+        Args:
+            x: Input tensor of shape `(batch, num_points, channels)`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+        """
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
@@ -309,7 +528,25 @@ class MetaModel(nn.Module):
 
 
 class WrapperMetaModel(nn.Module):
+    """
+    Run a `MetaModel` on a lat/lon grid `scale_factor` times finer than its own.
+
+    The points are interpolated onto the finer grid, that grid is cut into `s_h * s_w`
+    sub-images, a copy of the wrapped image backbone built with `res=True` is applied to them,
+    and the result is reassembled and interpolated back onto the original points.
+    """
+
     def __init__(self, lat_lons: list, meta_model: MetaModel, scale_factor):
+        """
+        Initialize WrapperMetaModel.
+
+        Args:
+            lat_lons: List of `(lat, lon)` coordinates of the input points.
+            meta_model: Model whose grid size is scaled up and whose image backbone settings
+                and weights are reused by the `res=True` copy.
+            scale_factor: Number `(s_h, s_w)` of sub-images along each axis, or a single int
+                for the same value on both axes.
+        """
         super().__init__()
         s_h, s_w = pair(scale_factor)
         self.i_h, self.i_w = meta_model.i_h * s_h, meta_model.i_w * s_w
@@ -331,6 +568,15 @@ class WrapperMetaModel(nn.Module):
         self.debatcher = Rearrange("(b s_h s_w) c h w -> b c (h s_h) (w s_w)", s_h=s_h, s_w=s_w)
 
     def forward(self, x):
+        """
+        Interpolate onto the finer grid, run the wrapped image model and interpolate back.
+
+        Args:
+            x: Input tensor of shape `(batch, num_points, channels)`.
+
+        Returns:
+            A tensor with the same shape as `x`.
+        """
         b, n, c = x.shape
 
         x = rearrange(x, "b n c -> n (b c)")
@@ -349,6 +595,8 @@ class WrapperMetaModel(nn.Module):
 
 
 class LoRALayer(nn.Module):
+    """Linear layer with an added low-rank term of rank `r`."""
+
     def __init__(self, linear_layer: nn.Module, r: int):
         """
         Initialize LoRALayer.
@@ -365,11 +613,22 @@ class LoRALayer(nn.Module):
         self.linear_layer = linear_layer
 
     def forward(self, x):
+        """
+        Add the low-rank term to the output of the wrapped linear layer.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            The sum of the linear layer output and of the low-rank term.
+        """
         out = self.linear_layer(x) + self.B @ self.A @ x
         return out
 
 
 class LoRAModule(nn.Module):
+    """Model whose linear layers are replaced by `LoRALayer` and set to evaluation mode."""
+
     def __init__(self, model, r=4):
         """
         Initialize LoRAModule.
@@ -387,4 +646,13 @@ class LoRAModule(nn.Module):
         self.model = model
 
     def forward(self, x):
+        """
+        Run the wrapped model.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            The output of the wrapped model.
+        """
         return self.model(x)

@@ -10,7 +10,7 @@ import torch.nn as nn
 
 
 class PhysicalConstraintLayer(nn.Module):
-    """
+    """Apply a physical constraint to a network's high-resolution output.
 
     This module implements several constraint types on the network’s intermediate outputs ỹ,
     given the corresponding low-resolution input x. The following equations are implemented
@@ -98,7 +98,8 @@ class PhysicalConstraintLayer(nn.Module):
         return self.model.grid_to_graph(result)
 
     def additive_constraint(self, hr, lr):
-        """Enforces local conservation using an additive correction:
+        """Enforces local conservation using an additive correction.
+
         y = ỹ + ( x - avg(ỹ) )
         where avg(ỹ) is computed per patch (via an average-pooling layer).
 

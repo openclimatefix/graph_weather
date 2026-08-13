@@ -1,3 +1,5 @@
+"""End-to-end CaFA (Climate-Aware Factorized Attention) forecaster."""
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -9,8 +11,9 @@ from .processor import CaFAProcessor
 
 class CaFAForecaster(nn.Module):
     """
-    CaFA (Climate-Aware Factorized Attention) model
-    Puts together Encoder, Processor and Decoder into an end-to-end model
+    CaFA (Climate-Aware Factorized Attention) model.
+
+    Puts together Encoder, Processor and Decoder into an end-to-end model.
     """
 
     def __init__(
@@ -26,6 +29,8 @@ class CaFAForecaster(nn.Module):
         dropout: float = 0.0,
     ):
         """
+        Initialize the forecaster.
+
         Args:
             input_channels: No. of input channels/features
             output_channels: No. of channels to predict
@@ -64,6 +69,11 @@ class CaFAForecaster(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
+        Encode, process and decode one input state, restoring the input grid size.
+
+        Odd-sized inputs are zero-padded to a multiple of the downsampling factor
+        and the padding is cropped off again before the output is returned.
+
         Args:
             x: Input tensor of shape (batch, input_channels, height, width)
 

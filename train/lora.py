@@ -1,3 +1,10 @@
+"""Fine-tune a pretrained single-step forecaster into a multi-step one with LoRA.
+
+Running this file as a script loads the single-step ``MetaModel`` checkpoint written by
+``train/era5.py``, stacks one LoRA-adapted copy per additional lead time on top of it, and
+trains the resulting rollout on a slice of the public ARCO-ERA5 zarr store.
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +21,21 @@ from graph_weather.models.losses import NormalizedMSELoss
 
 
 class LitLoRAFengWuGHR(pl.LightningModule):
+    """
+    LightningModule that rolls a single-step forecaster out over several lead times.
+
+    ``self.models`` holds one entry per lead time: the pretrained single-step
+    :class:`~graph_weather.models.fengwu_ghr.layers.MetaModel` first, followed by
+    ``time_step - 1`` :class:`~graph_weather.models.fengwu_ghr.layers.LoRAModule` wrappers
+    built from it, each replacing the linear layers with rank-``rank`` LoRA layers. The
+    forward pass applies them one after another, feeding each step its predecessor's output.
+
+    Attributes:
+        models (nn.ModuleList): The per-step models applied in sequence.
+        criterion (NormalizedMSELoss): Loss criterion for training.
+        lr : Learning rate for optimizer.
+    """
+
     def __init__(
         self,
         lat_lons: list,
@@ -30,6 +52,34 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         feature_dim: int = 605,  # TODO where does this come from?
         lr: float = 3e-4,
     ):
+        """
+        Build the single-step backbone and the LoRA-adapted models stacked on top of it.
+
+        The keyword arguments describing the architecture must match the ones used to train
+        ``single_step_model_state_dict``, since that state dict is loaded into a freshly
+        constructed :class:`~graph_weather.models.fengwu_ghr.layers.MetaModel`.
+
+        Args:
+            lat_lons (list): List of latitude and longitude values, one pair per node of the
+                input point cloud.
+            single_step_model_state_dict (dict): State dict of an already trained single-step
+                model, loaded into the backbone before the LoRA wrappers are built.
+            time_step (int): Number of lead times to roll out. Must be greater than 1, since
+                1 is the plain single-step model.
+            rank (int): Rank of the LoRA layers.
+            channels (int): Number of physical variables carried by each node.
+            image_size : Height and width of the regular grid the point cloud is interpolated
+                onto. A single int is used for both dimensions.
+            patch_size : Height and width of the patches the grid is split into before the
+                transformer. Both grid dimensions must be divisible by it.
+            depth : Number of transformer layers in the backbone.
+            heads : Number of attention heads per transformer layer.
+            mlp_dim : Hidden dimensionality of the feed-forward block in each transformer
+                layer.
+            feature_dim (int): Length of the per-feature variance vector handed to
+                :class:`NormalizedMSELoss`; a vector of ones of this length is used.
+            lr (float): Learning rate for optimizer.
+        """
         super().__init__()
         assert (
             time_step > 1
@@ -54,6 +104,17 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         self.save_hyperparameters()
 
     def forward(self, x):
+        """
+        Roll the chain of models out, feeding each step the previous step's prediction.
+
+        Args:
+            x (torch.Tensor): Input frame of shape ``[B, N, C]``, where ``N`` is the number of
+                lat/lon nodes and ``C`` the number of physical variables.
+
+        Returns:
+            torch.Tensor: Prediction of every lead time, stacked along a new axis at dim 1,
+            giving shape ``[B, time_step, N, C]``.
+        """
         ys = []
         for t, model in enumerate(self.models):
             x = model(x)
@@ -61,6 +122,20 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         return torch.stack(ys, dim=1)
 
     def training_step(self, batch, batch_idx):
+        """
+        Run one training step over a window of consecutive frames.
+
+        Batches holding any NaN are skipped by returning ``None``, which tells Lightning to
+        drop the step.
+
+        Args:
+            batch (torch.Tensor): Frames of shape ``[B, time_step + 1, N, C]``. The first
+                frame is the input and the remaining ones are the targets, one per lead time.
+            batch_idx (int): Index of the current batch.
+
+        Returns:
+            torch.Tensor: Loss tensor, or ``None`` when the batch contained NaN values.
+        """
         if torch.isnan(batch).any():
             return None
         x, ys = batch[:, 0, ...], batch[:, 1:, ...]
@@ -71,11 +146,33 @@ class LitLoRAFengWuGHR(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
+        """
+        Configure the optimizer.
+
+        Returns:
+            torch.optim.Optimizer: ``AdamW`` over every parameter of this module, using the
+            learning rate given to the constructor.
+        """
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
 
 class Era5Dataset(Dataset):
+    """Era5 dataset yielding windows of consecutive time frames."""
+
     def __init__(self, xarr, time_step=1, transform=None):
+        """
+        Initialize the dataset by eagerly loading and normalizing the whole slice.
+
+        Args:
+            xarr (xarray.Dataset): Reanalysis slice to train on. It is stacked into a dense
+                array of shape ``[C, T, H, W]``, min-max scaled using the minimum and maximum
+                taken over the leading axis, and then rearranged to ``[T, H * W, C]`` so that
+                each time frame is a flat point cloud.
+            time_step (int): Number of lead times per sample. Must be greater than 0. It
+                shortens the reported length, so that the frames following an index are
+                always available as targets.
+            transform (callable, optional): Currently unused.
+        """
         assert time_step > 0, "Time step must be greater than 0."
         ds = np.asarray(xarr.to_array())
         ds = torch.from_numpy(ds)

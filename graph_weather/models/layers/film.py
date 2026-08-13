@@ -1,3 +1,5 @@
+"""FiLM (Feature-wise Linear Modulation) layers conditioned on a lead-time index."""
+
 import torch
 import torch.nn as nn
 
@@ -16,6 +18,14 @@ class FiLMGenerator(nn.Module):
     """
 
     def __init__(self, num_lead_times: int, hidden_dim: int, feature_dim: int):
+        """Build the MLP that maps a one-hot lead time to FiLM parameters.
+
+        Args:
+            num_lead_times (int): Number of possible lead-time categories, which is also
+                the size of the one-hot input vector.
+            hidden_dim (int): Hidden size of the internal MLP.
+            feature_dim (int): Output dimensionality of each of gamma and beta.
+        """
         super().__init__()
         self.num_lead_times = num_lead_times
         self.feature_dim = feature_dim

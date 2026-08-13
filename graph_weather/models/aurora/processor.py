@@ -1,5 +1,6 @@
 """
-Perceiver Transformer Processor:
+Perceiver Transformer Processor
+
 - Takes encoded features and processes them using latent space mapping.
 - Uses a latent-space bottleneck to compress input dimensions.
 - Provides an efficient way to extract long-range dependencies.
@@ -15,6 +16,28 @@ import torch.nn as nn
 
 @dataclass
 class ProcessorConfig:
+    """
+    Architecture configuration for ``PerceiverProcessor``.
+
+    Attributes:
+        input_dim: Number of channels of the incoming features, matching the Swin3D output.
+        latent_dim: Number of channels of the projected output.
+        d_model: Working width of the transformer encoder.
+        max_seq_len: Maximum supported sequence length.
+        num_self_attention_layers: Number of transformer encoder layers.
+        num_cross_attention_layers: Number of cross-attention layers.
+        num_attention_heads: Number of attention heads per layer.
+        hidden_dropout: Dropout probability used inside the encoder layers.
+        attention_dropout: Dropout probability applied to the attention weights.
+        qk_head_dim: Optional per-head dimension of the query and key projections.
+        activation_fn: Name of the activation function used in the feed-forward blocks.
+        layer_norm_eps: Epsilon of the layer normalization.
+
+    Raises:
+        ValueError: If ``input_dim``, ``max_seq_len`` or ``num_attention_heads`` is not
+            positive, or if ``hidden_dropout`` or ``attention_dropout`` lies outside [0, 1].
+    """
+
     input_dim: int = 256  # Match Swin3D output
     latent_dim: int = 512
     d_model: int = 256  # Match input_dim for consistency
@@ -43,7 +66,22 @@ class ProcessorConfig:
 
 
 class PerceiverProcessor(nn.Module):
+    """
+    Process encoded features and pool them into a single latent vector per sample.
+
+    The input is projected to ``d_model``, passed through a stack of self-attention
+    transformer encoder layers, projected to ``latent_dim`` and finally averaged over the
+    sequence dimension.
+    """
+
     def __init__(self, config: Optional[ProcessorConfig] = None):
+        """
+        Initialize the processor.
+
+        Args:
+            config (Optional[ProcessorConfig]): Architecture configuration. A default
+                ``ProcessorConfig`` is used when ``None`` is given.
+        """
         super().__init__()
         self.config = config or ProcessorConfig()
 
@@ -66,6 +104,17 @@ class PerceiverProcessor(nn.Module):
         self.output_projection = nn.Linear(self.config.d_model, self.config.latent_dim)
 
     def forward(self, x, attention_mask=None):
+        """
+        Encode a batch of features and pool it into a latent representation.
+
+        Args:
+            x (torch.Tensor): Input features of shape (batch, seq_len, input_dim).
+            attention_mask (Optional[torch.Tensor]): Boolean mask of shape (batch, seq_len).
+                Positions that are ``False`` are masked out of the attention.
+
+        Returns:
+            torch.Tensor: Pooled latent representation of shape (batch, latent_dim).
+        """
         # Handle 4D input using einops for clearer reshaping
         if len(x.shape) == 4:
             # Rearrange from (batch, seq, height, width) to (batch, seq*height*width, features)

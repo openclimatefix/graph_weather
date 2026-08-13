@@ -74,7 +74,8 @@ class Processor(torch.nn.Module):
 
         Args:
             checkpoint_segments: Number of checkpointing segments for gradient computation.
-                - 0: Use processor's internal per-block checkpointing (controlled by use_checkpointing)
+                - 0: Use processor's internal per-block checkpointing (controlled
+                  by use_checkpointing)
                 - -1: Checkpoint entire processor as one segment (handled at GraphCast level)
                 - N > 0: Checkpoint every N blocks (not yet implemented)
         """

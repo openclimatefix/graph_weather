@@ -11,6 +11,14 @@ long_description = (this_directory / "README.md").read_text()
 
 # Read version from pyproject.toml (single source of truth)
 def get_version():
+    """Read the package version from pyproject.toml.
+
+    Returns:
+        str: The version declared by the ``version`` field of pyproject.toml.
+
+    Raises:
+        RuntimeError: If no version string is found in pyproject.toml.
+    """
     pyproject_path = this_directory / "pyproject.toml"
     content = pyproject_path.read_text()
     match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)

@@ -1,3 +1,10 @@
+"""PyTorch dataset wrapper around Anemoi datasets.
+
+Loads an Anemoi dataset through ``anemoi.datasets.open_dataset``, normalizes the requested
+atmospheric variables with caller-supplied means and standard deviations, and appends
+sine/cosine clock features for the day of year and the hour of day.
+"""
+
 import logging
 
 import numpy as np
@@ -31,6 +38,23 @@ class AnemoiDataset(Dataset):
         max_samples: int = None,
         **kwargs,
     ):
+        """Open the Anemoi dataset and validate the features and grid coordinates.
+
+        Args:
+            dataset_name: Name of the Anemoi dataset (e.g. "era5-o48-2020-2021-6h-v1").
+            features: List of atmospheric variables to use.
+            means: Dict of means for each feature; an entry is required for every feature.
+            stds: Dict of standard deviations for each feature; one is required per feature.
+            time_range: Optional tuple of (start_date, end_date) added to the dataset config.
+            time_step: Number of time indices between the input sample and the target sample.
+            max_samples: Optional cap on the number of samples reported by ``__len__``.
+            **kwargs: Extra keys merged into the ``open_dataset`` configuration.
+
+        Raises:
+            ValueError: If normalization statistics are missing, a requested feature is not
+                present in the dataset, or latitude/longitude coordinates cannot be found.
+            RuntimeError: If the underlying Anemoi dataset fails to load.
+        """
         super().__init__()
 
         self.features = features

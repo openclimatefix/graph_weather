@@ -1,20 +1,25 @@
+"""Decoder for the CaFA (Climate-Aware Factorized Attention) model."""
+
 import torch
 from torch import nn
 
 
 class CaFADecoder(nn.Module):
     """
-    Decoder for for CaFA
+    Decoder for CaFA.
+
     After the Processor and FactorizedTransformer generated a prediction
     in the latent space, the decoder's role is to translate this abstract
-    representation back into a physical prediction
+    representation back into a physical prediction.
     """
 
     def __init__(self, model_dim: int, output_channels: int, upsampling_factor: int = 1):
         """
+        Initialize the decoder.
+
         Args:
+            model_dim: Dimensions of the model's hidden layers (input channels)
             output_channels: No. of channels/features in output prediction
-            model_dim: Dimensions of the model's hidden layers (output channels)
             upsampling_factor: Factor to upsample the spatial dimensions.
                 Must match the downsampling factor in encoder.
         """
@@ -28,6 +33,8 @@ class CaFADecoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
+        Project the latent representation back to the physical output variables.
+
         Args:
             x: Input tensor of shape (batch, model_dim, height, width).
 

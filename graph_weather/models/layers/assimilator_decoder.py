@@ -61,6 +61,9 @@ class AssimilatorDecoder(torch.nn.Module):
             mlp_norm_type: Type of norm for the MLPs
                 one of 'LayerNorm', 'GraphNorm', 'InstanceNorm', 'BatchNorm', 'MessageNorm', or None
             use_checkpointing: Whether to use gradient checkpointing to reduce model size
+            efficient_batching: Whether to decode each batch element separately against the
+                single shared graph instead of replicating that graph and its edge
+                attributes batch_size times, which uses less memory
         """
         super().__init__()
         self.use_checkpointing = use_checkpointing
