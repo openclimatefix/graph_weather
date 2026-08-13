@@ -20,7 +20,9 @@ class ProcessorConfig:
     Architecture configuration for ``PerceiverProcessor``.
 
     Attributes:
-        input_dim: Number of channels of the incoming features, matching the Swin3D output.
+        input_dim: Number of channels of the incoming features. It has to match the width
+            produced by the encoder, which `Swin3DEncoder` defaults to 96, so one of the
+            two defaults must be overridden for the pair to compose.
         latent_dim: Number of channels of the projected output.
         d_model: Working width of the transformer encoder.
         max_seq_len: Upper bound validated in ``__post_init__``. It is not consulted

@@ -23,8 +23,9 @@ To make NATTEN work on a sphere, we implement our own circular padding. At the p
 the bump attention behavior from NATTEN. For position encoding of tokens, we use Rotary
 Embeddings.
 
-In the default configuration of WeatherMesh 2, the NATTEN window is 5,7,7 in depth, width,
-height, corresponding to a physical size of 14 degrees longitude and latitude. WeatherMesh 2
+In the default configuration of WeatherMesh 2, the NATTEN window is 5,7,7 in depth, height,
+and width, corresponding to a physical size of 14 degrees longitude and latitude.
+WeatherMesh 2
 contains two processors: a 6hr and a 1hr processor. Each is 10 NATTEN layers deep.
 
 Training: distributed shampoo: https://github.com/facebookresearch/optimizers/blob/main/distributed_shampoo/README.md

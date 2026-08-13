@@ -8,7 +8,7 @@ class CaFADecoder(nn.Module):
     """
     Decoder for CaFA.
 
-    After the Processor and FactorizedTransformer generated a prediction
+    After `CaFAProcessor` and its factorized transformer blocks generated a prediction
     in the latent space, the decoder's role is to translate this abstract
     representation back into a physical prediction.
     """

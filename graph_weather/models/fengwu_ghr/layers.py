@@ -73,7 +73,9 @@ def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype=torch.float32):
     Args:
         h: Number of positions along the height of the grid.
         w: Number of positions along the width of the grid.
-        dim: Size of the embedding. Must be a multiple of 4.
+        dim: Size of the embedding. Must be a multiple of 4, and at least 8: the
+            assertion admits `dim == 4`, but then `dim // 4 - 1` is zero and the
+            frequencies are not finite.
         temperature: Base of the geometric progression used for the frequencies.
         dtype: Data type of the returned embedding.
 

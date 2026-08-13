@@ -12,9 +12,10 @@ class PointEncoder(nn.Module):
     """
     Embed unstructured points and their features into a common latent space.
 
-    Coordinates and features are embedded by two separate multi-layer perceptrons and are
-    combined by addition, an order-invariant operation. No positional embeddings are used,
-    so the result does not depend on the ordering of the points.
+    Coordinates and features are embedded by two separate point-wise multi-layer
+    perceptrons and combined by addition. No positional embeddings are used, so the
+    mapping is permutation-equivariant: reordering the input points reorders the output
+    embeddings and changes nothing else.
     """
 
     def __init__(self, input_features: int, embed_dim: int, max_seq_len: int = 1024):
@@ -373,7 +374,10 @@ class AuroraModel(nn.Module):
                 positions are zeroed in the inputs and in the output.
 
         Returns:
-            torch.Tensor: Predictions of shape (batch_size, num_points, output_features).
+            torch.Tensor: Predictions of shape
+            (batch_size, min(num_points, max_seq_len), output_features). The encoder
+            truncates to ``max_seq_len``, which may be smaller than ``max_points``, so a
+            longer ``mask`` does not line up with the output.
 
         Raises:
             ValueError: If the number of points exceeds ``max_points``.

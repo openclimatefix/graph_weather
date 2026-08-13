@@ -13,7 +13,10 @@ class Decoder3D(nn.Module):
     3D Decoder
 
     - Takes processed latent representations and reconstructs the spatial-temporal output.
-    - Uses transposed convolutions to upscale latent features to the original format.
+    - Uses a transposed convolution to map latent features to the output channels. With
+      ``kernel_size=3``, ``stride=1`` and ``padding=1`` the depth, height and width of the
+      reshaped latent are preserved, so the spatial-temporal size comes from
+      ``target_shape``.
     """
 
     def __init__(self, output_channels=1, embed_dim=96, target_shape=(32, 32, 32)):
