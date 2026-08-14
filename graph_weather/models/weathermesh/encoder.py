@@ -2,7 +2,7 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import dacite
 import einops
@@ -30,7 +30,7 @@ class WeatherMeshEncoderConfig:
         return dacite.from_dict(data_class=WeatherMeshEncoderConfig, data=json)
 
     def to_json(self) -> dict:
-        return dacite.asdict(self)
+        return asdict(self)
 
 
 class WeatherMeshEncoder(nn.Module):

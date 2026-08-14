@@ -130,12 +130,8 @@ class EarthSystemLoss(nn.Module):
     def spatial_correlation_loss(
         self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor
     ) -> torch.Tensor:
-        batch_size, num_points, _ = points.shape
-        points_flat = points.view(-1, 2)
-
-        # Compute pairwise distances
-        dists = torch.cdist(points_flat, points_flat)
-        dists = dists.view(batch_size, num_points, num_points)
+        # Compute pairwise distances within each batch element
+        dists = torch.cdist(points, points)
 
         # Create mask for nearby points (5 degrees threshold)
         nearby_mask = (dists < 5.0).float().unsqueeze(-1)

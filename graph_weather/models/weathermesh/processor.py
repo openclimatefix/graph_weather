@@ -2,7 +2,7 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import dacite
 import torch.nn as nn
@@ -21,7 +21,7 @@ class WeatherMeshProcessorConfig:
         return dacite.from_dict(data_class=WeatherMeshProcessorConfig, data=json)
 
     def to_json(self) -> dict:
-        return dacite.asdict(self)
+        return asdict(self)
 
 
 class WeatherMeshProcessor(nn.Module):

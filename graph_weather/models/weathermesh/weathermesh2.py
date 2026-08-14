@@ -2,7 +2,7 @@
 Implementation based off the technical report and this repo: https://github.com/Brayden-Zhang/WeatherMesh
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import List
 
 import dacite
@@ -57,7 +57,7 @@ class WeatherMeshConfig:
         return dacite.from_dict(data_class=WeatherMeshConfig, data=json)
 
     def to_json(self) -> dict:
-        return dacite.asdict(self)
+        return asdict(self)
 
 
 @dataclass
@@ -106,17 +106,19 @@ class WeatherMesh(nn.Module):
             assert len(processors) == len(
                 timesteps
             ), "Number of processors must match number of timesteps"
-            self.processors = processors
+            self.processors = nn.ModuleList(processors)
         else:
-            self.processors = [
-                WeatherMeshProcessor(
-                    latent_dim=latent_dim,
-                    n_layers=processor_num_layers,
-                    kernel=kernel,
-                    num_heads=num_heads,
-                )
-                for _ in range(len(timesteps))
-            ]
+            self.processors = nn.ModuleList(
+                [
+                    WeatherMeshProcessor(
+                        latent_dim=latent_dim,
+                        n_layers=processor_num_layers,
+                        kernel=kernel,
+                        num_heads=num_heads,
+                    )
+                    for _ in range(len(timesteps))
+                ]
+            )
         if decoder is not None:
             self.decoder = decoder
         else:
