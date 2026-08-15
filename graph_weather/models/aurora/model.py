@@ -130,6 +130,9 @@ class EarthSystemLoss(nn.Module):
     def spatial_correlation_loss(
         self, pred: torch.Tensor, target: torch.Tensor, points: torch.Tensor
     ) -> torch.Tensor:
+        if points.dim() != 3:
+            raise ValueError(f"points must be (batch, num_points, 2), got {tuple(points.shape)}")
+
         # Compute pairwise distances within each batch element
         dists = torch.cdist(points, points)
 

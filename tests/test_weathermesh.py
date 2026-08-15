@@ -1,3 +1,5 @@
+import json
+
 import torch
 import torch.nn as nn
 
@@ -221,6 +223,10 @@ def test_weathermesh_configs_round_trip():
         as_json = original.to_json()
         assert isinstance(as_json, dict)
         assert config_class.from_json(as_json) == original
+
+        # Through real JSON as well, where the tuple fields come back as lists.
+        through_json = json.loads(json.dumps(as_json))
+        assert config_class.from_json(through_json) == original
 
     nested = config.to_json()
     assert isinstance(nested["encoder"], dict)

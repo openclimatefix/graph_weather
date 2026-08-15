@@ -54,7 +54,9 @@ class WeatherMeshConfig:
 
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh":
-        return dacite.from_dict(data_class=WeatherMeshConfig, data=json)
+        return dacite.from_dict(
+            data_class=WeatherMeshConfig, data=json, config=dacite.Config(cast=[tuple])
+        )
 
     def to_json(self) -> dict:
         return asdict(self)

@@ -682,3 +682,16 @@ def test_earth_system_loss_forward_accepts_batches():
     losses = loss_fn(pred, target, points)
     for value in losses.values():
         assert torch.isfinite(value)
+
+
+def test_spatial_correlation_loss_rejects_unbatched_points():
+    """Un-batched points must still fail loudly rather than broadcast into a wrong number."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(4)
+    num_points = 4
+    points = torch.rand(num_points, 2) * 10
+    pred = torch.rand(num_points, num_points)
+    target = torch.rand(num_points, num_points)
+
+    with pytest.raises(ValueError, match="points must be"):
+        loss_fn.spatial_correlation_loss(pred, target, points)
