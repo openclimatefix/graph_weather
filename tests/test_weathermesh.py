@@ -1,3 +1,10 @@
+"""Tests for the WeatherMesh model.
+
+On CPU, NATTEN falls back to the flex-attention backend, which requires a head
+dimension of at least 8 and materialises the full attention mask. These tests therefore
+keep ``latent_dim // num_heads >= 8`` and use small grids so the mask stays small.
+"""
+
 import json
 
 import torch
@@ -27,19 +34,21 @@ def test_weathermesh_encoder():
     x_2d = torch.randn(1, 2, 32, 64)
     x_3d = torch.randn(1, 1, 25, 32, 64)
     out = encoder(x_2d, x_3d)
-    assert out.shape == (1, 5, 4, 8, 8)
+    # The pressure path uses stride=(1, 2, 2) so the vertical depth is preserved: the
+    # latent depth is the 25 pressure levels plus the single surface level.
+    assert out.shape == (1, 26, 4, 8, 8)
 
 
 def test_weathermesh_processor():
     processor = WeatherMeshProcessor(latent_dim=8, n_layers=2, num_heads=1)
-    x = torch.randn(1, 26, 32, 64, 8)
+    x = torch.randn(1, 6, 8, 16, 8)
     out = processor(x)
-    assert out.shape == (1, 26, 32, 64, 8)
+    assert out.shape == (1, 6, 8, 16, 8)
 
 
 def test_weathermesh_decoder():
     decoder = WeatherMeshDecoder(
-        latent_dim=8,
+        latent_dim=16,
         output_channels_2d=8,
         output_channels_3d=4,
         kernel_size=(3, 3, 3),
@@ -47,10 +56,10 @@ def test_weathermesh_decoder():
         hidden_dim=8,
         num_transformer_layers=1,
     )
-    x = torch.randn(1, 6, 32, 64, 8)
+    x = torch.randn(1, 6, 8, 16, 16)
     out = decoder(x)
-    assert out[0].shape == (1, 8, 256, 512)
-    assert out[1].shape == (1, 4, 5, 256, 512)
+    assert out[0].shape == (1, 8, 64, 128)
+    assert out[1].shape == (1, 4, 5, 64, 128)
 
 
 def test_weathermesh():
@@ -62,7 +71,7 @@ def test_weathermesh():
         surface_channels=8,
         pressure_channels=4,
         pressure_levels=5,
-        latent_dim=4,
+        latent_dim=8,
         encoder_num_conv_blocks=1,
         encoder_num_transformer_layers=1,
         encoder_hidden_dim=4,

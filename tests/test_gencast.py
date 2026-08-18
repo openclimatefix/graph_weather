@@ -52,17 +52,24 @@ def test_gencast_graph():
     grid_lon = np.arange(0, 360, 1)
     graphs = GraphBuilder(grid_lon=grid_lon, grid_lat=grid_lat, splits=4, num_hops=8)
 
-    # compare khop sparse implementation with pyg.
-    transform = TwoHop()
-    khop_mesh_graph_pyg = graphs.mesh_graph
-    for i in range(3):  # 8-hop mesh
-        khop_mesh_graph_pyg = transform(khop_mesh_graph_pyg)
-
     assert graphs.mesh_graph.x.shape[0] == 2562
     assert graphs.g2m_graph["grid_nodes"].x.shape[0] == 360 * 180
     assert graphs.m2g_graph["mesh_nodes"].x.shape[0] == 2562
     assert not torch.isnan(graphs.mesh_graph.edge_attr).any()
     assert graphs.khop_mesh_graph.x.shape[0] == 2562
+
+    # Compare the khop sparse implementation with pyg. TwoHop multiplies two sparse CSR
+    # matrices, which torch only implements on CPU when it is built against MKL - the macOS
+    # arm64 build is not. graph_weather's own khop builder uses torch.sparse.mm and works
+    # either way, so only this cross-check has to stand down.
+    if not torch.backends.mkl.is_available():
+        pytest.skip("sparse @ sparse matmul on CPU needs a PyTorch build with MKL")
+
+    transform = TwoHop()
+    khop_mesh_graph_pyg = graphs.mesh_graph
+    for i in range(3):  # 8-hop mesh
+        khop_mesh_graph_pyg = transform(khop_mesh_graph_pyg)
+
     assert torch.allclose(graphs.khop_mesh_graph.x, khop_mesh_graph_pyg.x)
     assert torch.allclose(graphs.khop_mesh_graph.edge_index, khop_mesh_graph_pyg.edge_index)
 
