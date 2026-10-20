@@ -6,7 +6,6 @@ Trains a WeatherMesh-6 model on surface + pressure-level data with a latent roll
 import os
 import sys
 
-import numpy as np
 import torch
 import torch.optim as optim
 
@@ -19,8 +18,9 @@ from graph_weather.models.weathermesh.weathermesh6 import WeatherMesh6, WeatherM
 class SyntheticWM6Dataset(torch.utils.data.Dataset):
     """Synthetic surface + pressure dataset for smoke-testing WM-6 training."""
 
-    def __init__(self, n_samples=16, surface_channels=4, pressure_channels=2,
-                 pressure_levels=5, h=32, w=64):
+    def __init__(
+        self, n_samples=16, surface_channels=4, pressure_channels=2, pressure_levels=5, h=32, w=64
+    ):
         self.n_samples = n_samples
         self.surface_channels = surface_channels
         self.pressure_channels = pressure_channels
