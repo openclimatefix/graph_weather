@@ -1,3 +1,5 @@
+"""Tests for the WeatherMesh-4 model."""
+
 import torch
 
 from graph_weather.models.weathermesh.weathermesh4 import (
@@ -8,6 +10,7 @@ from graph_weather.models.weathermesh.weathermesh4 import (
 
 
 def test_weathermesh4_forward():
+    """WM-4 forward pass produces correctly-shaped surface and pressure outputs."""
     model = WeatherMesh4(
         weather_resolution=0.25,
         latent_resolution=1.8,
@@ -40,6 +43,7 @@ def test_weathermesh4_forward():
 
 
 def test_weathermesh4_latent_rollout():
+    """WM-4 latent rollout over multiple forecast steps preserves output shapes."""
     model = WeatherMesh4(
         weather_resolution=0.25,
         latent_resolution=1.8,
@@ -71,6 +75,7 @@ def test_weathermesh4_latent_rollout():
 
 
 def test_weathermesh4_ensemble():
+    """WM-4 ensemble members produce stacked [B, E, ...] outputs."""
     model = WeatherMesh4(
         weather_resolution=0.25,
         latent_resolution=1.8,
@@ -102,6 +107,7 @@ def test_weathermesh4_ensemble():
 
 
 def test_weathermesh4_config_roundtrip():
+    """WM-4 config serializes to JSON and back without loss."""
     config = WeatherMesh4Config(
         weather_resolution=0.25,
         latent_resolution=1.8,

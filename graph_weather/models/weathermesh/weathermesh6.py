@@ -54,14 +54,18 @@ class WeatherMesh6Config:
 
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh6Config":
+        """Build a config from a JSON-compatible dict."""
         return dacite.from_dict(data_class=WeatherMesh6Config, data=json)
 
     def to_json(self) -> dict:
+        """Serialize the config to a JSON-compatible dict."""
         return dacite.asdict(self)
 
 
 @dataclass
 class WeatherMesh6Output:
+    """Output of a WeatherMesh-6 forward pass."""
+
     surface: torch.Tensor
     pressure: torch.Tensor
 
@@ -76,6 +80,8 @@ def _checkpoint(module: nn.Module, x: torch.Tensor, use_matepoint: bool) -> torc
 
 
 class WeatherMesh6(nn.Module):
+    """WeatherMesh-6 global weather model with latent-space ensembles and latent rollout."""
+
     def __init__(
         self,
         resolution: float = 0.25,
@@ -97,6 +103,7 @@ class WeatherMesh6(nn.Module):
         ensemble_size: int | None = 1,
         use_matepoint: bool | None = False,
     ):
+        """Initialize the WeatherMesh-6 encoder, processor, and decoder."""
         super().__init__()
         self.resolution = resolution
         self.timesteps = timesteps if timesteps is not None else [1, 6]

@@ -2,16 +2,11 @@
 
 Trains a WeatherMesh-4 model on surface + pressure-level data with a latent rollout loss.
 WM-4 uses a HEALPix mesh: weather state at depth 8 (~0.25-deg), latent at depth 5 (~1.8-deg).
+Requires graph_weather to be installed (`pixi run install` / `pip install --editable .`).
 """
-
-import os
-import sys
 
 import torch
 import torch.optim as optim
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
 
 from graph_weather.models.weathermesh.weathermesh4 import WeatherMesh4, WeatherMesh4Config
 
@@ -20,8 +15,16 @@ class SyntheticWM4Dataset(torch.utils.data.Dataset):
     """Synthetic surface + pressure dataset for smoke-testing WM-4 training."""
 
     def __init__(
-        self, n_samples=16, surface_channels=4, pressure_channels=2, pressure_levels=5, h=32, w=64
+        self,
+        n_samples=16,
+        surface_channels=4,
+        pressure_channels=2,
+        pressure_levels=5,
+        h=32,
+        w=64,
     ):
+        """Initialize the synthetic dataset."""
+        super().__init__()
         self.n_samples = n_samples
         self.surface_channels = surface_channels
         self.pressure_channels = pressure_channels
@@ -41,6 +44,7 @@ class SyntheticWM4Dataset(torch.utils.data.Dataset):
 
 
 def main():
+    """Run a short WM-4 training loop on synthetic data."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     config = WeatherMesh4Config(

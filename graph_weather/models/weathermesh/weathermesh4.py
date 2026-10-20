@@ -66,14 +66,18 @@ class WeatherMesh4Config:
 
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh4Config":
+        """Build a config from a JSON-compatible dict."""
         return dacite.from_dict(data_class=WeatherMesh4Config, data=json)
 
     def to_json(self) -> dict:
+        """Serialize the config to a JSON-compatible dict."""
         return dacite.asdict(self)
 
 
 @dataclass
 class WeatherMesh4Output:
+    """Output of a WeatherMesh-4 forward pass."""
+
     surface: torch.Tensor
     pressure: torch.Tensor
 
@@ -88,6 +92,8 @@ def _checkpoint(module: nn.Module, x: torch.Tensor, use_matepoint: bool) -> torc
 
 
 class WeatherMesh4(nn.Module):
+    """WeatherMesh-4 global weather model on a HEALPix mesh."""
+
     def __init__(
         self,
         weather_resolution: float = 0.25,
@@ -111,6 +117,7 @@ class WeatherMesh4(nn.Module):
         ensemble_size: int | None = 1,
         use_matepoint: bool | None = False,
     ):
+        """Initialize the WeatherMesh-4 encoder, processor, and decoder."""
         super().__init__()
         self.weather_resolution = weather_resolution
         self.latent_resolution = latent_resolution

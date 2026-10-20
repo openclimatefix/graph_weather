@@ -1,3 +1,5 @@
+"""Tests for the WeatherMesh-6 model."""
+
 import torch
 
 from graph_weather.models.weathermesh.weathermesh6 import (
@@ -8,6 +10,7 @@ from graph_weather.models.weathermesh.weathermesh6 import (
 
 
 def test_weathermesh6_forward():
+    """WM-6 forward pass produces correctly-shaped surface and pressure outputs."""
     model = WeatherMesh6(
         resolution=0.25,
         surface_channels=4,
@@ -38,6 +41,7 @@ def test_weathermesh6_forward():
 
 
 def test_weathermesh6_latent_rollout():
+    """WM-6 latent rollout over multiple forecast steps preserves output shapes."""
     model = WeatherMesh6(
         resolution=0.25,
         surface_channels=4,
@@ -67,6 +71,7 @@ def test_weathermesh6_latent_rollout():
 
 
 def test_weathermesh6_ensemble():
+    """WM-6 ensemble members produce stacked [B, E, ...] outputs."""
     model = WeatherMesh6(
         resolution=0.25,
         surface_channels=4,
@@ -96,6 +101,7 @@ def test_weathermesh6_ensemble():
 
 
 def test_weathermesh6_config_roundtrip():
+    """WM-6 config serializes to JSON and back without loss."""
     config = WeatherMesh6Config(
         resolution=0.1,
         surface_channels=8,
