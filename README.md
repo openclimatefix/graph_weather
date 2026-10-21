@@ -15,6 +15,10 @@ DeepMind's [GenCast](https://www.nature.com/articles/s41586-024-08252-9) for gra
 
 WindBorne's [WeatherMesh-3](https://arxiv.org/abs/2503.22235) for highly efficient forecasting with Neighborhood Attention
 
+WindBorne's [WeatherMesh-4](https://windbornesystems.com/blog/weathermesh-4-technical-blog) for HEALPix-mesh global forecasting, with the weather state at depth 8 (~0.25-deg) and a coarser depth 5 (~1.8-deg) latent space
+
+WindBorne's [WeatherMesh-6](https://windbornesystems.com/blog/introducing-wm-6) for 0.25-degree global forecasting with latent-space ensembles and matepoint activation offloading for long rollouts
+
 Microsoft's [Aurora](https://arxiv.org/abs/2405.13063) forecasting model
 
 And [FengWu-GHR](https://arxiv.org/abs/2402.00059) forecasting, using LoRA to correct for per-forecast step errors
