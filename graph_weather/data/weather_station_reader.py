@@ -681,14 +681,14 @@ class WeatherStationReader:
         return interpolated
 
     def resample_observations(
-        self, observations: Optional[xr.Dataset], freq: str = "1H", aggregation: str = "mean"
+        self, observations: Optional[xr.Dataset], freq: str = "1h", aggregation: str = "mean"
     ) -> Optional[xr.Dataset]:
         """
         Resample observations to a different time frequency.
 
         Args:
             observations: Dataset with observations.
-            freq: Target frequency ('1H', '1D', etc.).
+            freq: Target frequency ('1h', '1D', etc.).
             aggregation: Aggregation method ('mean', 'sum', 'min', 'max').
 
         Returns:
