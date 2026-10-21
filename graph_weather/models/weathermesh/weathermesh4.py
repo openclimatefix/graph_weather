@@ -21,7 +21,7 @@ This implementation reuses the Neighborhood Attention (NATTEN) encoder/processor
 from WeatherMesh-3 and adds the same latent rollout, ensemble, and matepoint features as WM-6.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import List, Optional
 
 import dacite
@@ -67,11 +67,13 @@ class WeatherMesh4Config:
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh4Config":
         """Build a config from a JSON-compatible dict."""
-        return dacite.from_dict(data_class=WeatherMesh4Config, data=json)
+        return dacite.from_dict(
+            data_class=WeatherMesh4Config, data=json, config=dacite.Config(cast=[tuple])
+        )
 
     def to_json(self) -> dict:
         """Serialize the config to a JSON-compatible dict."""
-        return dacite.asdict(self)
+        return asdict(self)
 
 
 @dataclass

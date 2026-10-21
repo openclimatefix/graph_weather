@@ -13,7 +13,7 @@ encoder/processor/decoder layers from WeatherMesh-3 and adds:
   rollouts on limited GPU VRAM (https://github.com/windborne/matepoint).
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import List, Optional
 
 import dacite
@@ -55,11 +55,13 @@ class WeatherMesh6Config:
     @staticmethod
     def from_json(json: dict) -> "WeatherMesh6Config":
         """Build a config from a JSON-compatible dict."""
-        return dacite.from_dict(data_class=WeatherMesh6Config, data=json)
+        return dacite.from_dict(
+            data_class=WeatherMesh6Config, data=json, config=dacite.Config(cast=[tuple])
+        )
 
     def to_json(self) -> dict:
         """Serialize the config to a JSON-compatible dict."""
-        return dacite.asdict(self)
+        return asdict(self)
 
 
 @dataclass
