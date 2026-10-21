@@ -598,3 +598,100 @@ def test_gradient_flow(model_config):
     output.sum().backward()  # Ensure gradients flow
     for param in model.parameters():
         assert param.grad is not None, "Gradient not flowing through the model."
+
+
+def _flat_spatial_correlation_loss(pred, target, points):
+    """The pre-fix body, which is only correct for a batch size of one."""
+    batch_size, num_points, _ = points.shape
+    points_flat = points.view(-1, 2)
+    dists = torch.cdist(points_flat, points_flat)
+    dists = dists.view(batch_size, num_points, num_points)
+    nearby_mask = (dists < 5.0).float().unsqueeze(-1)
+    pred_diff = pred.unsqueeze(2) - pred.unsqueeze(1)
+    target_diff = target.unsqueeze(2) - target.unsqueeze(1)
+    return torch.mean(nearby_mask * (pred_diff - target_diff).pow(2))
+
+
+def test_spatial_correlation_loss_accepts_batches():
+    """Distances must be computed per batch element, not across the flattened batch."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(0)
+    batch_size, num_points, num_features = 3, 6, 2
+    points = torch.rand(batch_size, num_points, 2) * 10
+    pred = torch.rand(batch_size, num_points, num_features)
+    target = torch.rand(batch_size, num_points, num_features)
+
+    batched = loss_fn.spatial_correlation_loss(pred, target, points)
+    assert batched.shape == ()
+
+    per_element = torch.stack(
+        [
+            loss_fn.spatial_correlation_loss(pred[i : i + 1], target[i : i + 1], points[i : i + 1])
+            for i in range(batch_size)
+        ]
+    ).mean()
+    assert torch.allclose(batched, per_element, atol=1e-6)
+
+
+def test_spatial_correlation_loss_unchanged_for_single_batch():
+    """The batch-size-one result, the only one that used to work, must not move."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(1)
+    num_points, num_features = 12, 3
+    points = torch.rand(1, num_points, 2) * 10
+    pred = torch.rand(1, num_points, num_features)
+    target = torch.rand(1, num_points, num_features)
+
+    assert torch.equal(
+        loss_fn.spatial_correlation_loss(pred, target, points),
+        _flat_spatial_correlation_loss(pred, target, points),
+    )
+
+
+def test_spatial_correlation_loss_ignores_other_batch_elements():
+    """A batch element must not be pulled towards points that belong to another one."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(2)
+    num_points, num_features = 5, 2
+
+    first = torch.rand(1, num_points, 2)
+    pred_first = torch.rand(1, num_points, num_features)
+    target_first = torch.rand(1, num_points, num_features)
+
+    alone = loss_fn.spatial_correlation_loss(pred_first, target_first, first)
+
+    # A second element sitting far away must not change the first element's own term.
+    second = first + 1000.0
+    points = torch.cat([first, second], dim=0)
+    pred = torch.cat([pred_first, pred_first], dim=0)
+    target = torch.cat([target_first, target_first], dim=0)
+
+    together = loss_fn.spatial_correlation_loss(pred, target, points)
+    assert torch.allclose(together, alone, atol=1e-6)
+
+
+def test_earth_system_loss_forward_accepts_batches():
+    """The full loss, not just the spatial term, must survive a batch size above one."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(3)
+    batch_size, num_points, num_features = 2, 8, 2
+    points = torch.rand(batch_size, num_points, 2) * 10
+    pred = torch.rand(batch_size, num_points, num_features) + 273.15
+    target = pred + torch.randn(batch_size, num_points, num_features)
+
+    losses = loss_fn(pred, target, points)
+    for value in losses.values():
+        assert torch.isfinite(value)
+
+
+def test_spatial_correlation_loss_rejects_unbatched_points():
+    """Un-batched points must still fail loudly rather than broadcast into a wrong number."""
+    loss_fn = EarthSystemLoss()
+    torch.manual_seed(4)
+    num_points = 4
+    points = torch.rand(num_points, 2) * 10
+    pred = torch.rand(num_points, num_points)
+    target = torch.rand(num_points, num_points)
+
+    with pytest.raises(ValueError, match="points must be"):
+        loss_fn.spatial_correlation_loss(pred, target, points)

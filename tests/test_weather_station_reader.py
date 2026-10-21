@@ -33,7 +33,7 @@ class TestWeatherStationReader:
     def sample_csv_file(self, temp_data_dir):
         """Create a sample CSV file with weather data."""
         # Create sample data
-        dates = pd.date_range(start="2023-01-01", periods=24, freq="H")
+        dates = pd.date_range(start="2023-01-01", periods=24, freq="h")
         stations = ["ST001", "ST002", "ST003"]
 
         data = []
@@ -264,7 +264,7 @@ class TestWeatherStationReader:
     def test_interpolate_missing_data(self, reader):
         """Test interpolation of missing data."""
         # Create a dataset with missing values
-        times = pd.date_range(start="2023-01-01", periods=5, freq="H")
+        times = pd.date_range(start="2023-01-01", periods=5, freq="h")
         stations = ["ST001"]
         temps = np.array([20.0, np.nan, 22.0, np.nan, 24.0])
         ds = xr.Dataset(
@@ -285,7 +285,7 @@ class TestWeatherStationReader:
     def test_resample_observations(self, reader):
         """Test resampling observations to different frequencies."""
         # Create hourly data
-        times = pd.date_range(start="2023-01-01", periods=24, freq="H")
+        times = pd.date_range(start="2023-01-01", periods=24, freq="h")
         stations = ["ST001"]
         temps = np.arange(24).reshape(-1, 1)
         ds = xr.Dataset(
@@ -294,7 +294,7 @@ class TestWeatherStationReader:
         )
 
         # Resample to 6-hour intervals
-        resampled = reader.resample_observations(ds, freq="6H", aggregation="mean")
+        resampled = reader.resample_observations(ds, freq="6h", aggregation="mean")
 
         # Check the resampling
         assert len(resampled.time) == 4  # 24 hours / 6 = 4 intervals
