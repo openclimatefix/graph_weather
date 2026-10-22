@@ -62,9 +62,7 @@ class MultiGridFGN(torch.nn.Module):
             raise ValueError("hidden_dims must not be empty.")
 
         self.num_grids = num_grids
-        self.grid_shapes = [
-            (len(lon), len(lat)) for lon, lat in zip(grid_lons, grid_lats)
-        ]
+        self.grid_shapes = [(len(lon), len(lat)) for lon, lat in zip(grid_lons, grid_lats)]
         self.input_features_dims = list(input_features_dims)
         self.output_features_dims = list(output_features_dims)
         self.noise_dimension = noise_dimension
@@ -97,9 +95,7 @@ class MultiGridFGN(torch.nn.Module):
 
             self.encoders.append(
                 Encoder(
-                    grid_dim=(
-                        self.input_features_dims[i] + graphs.grid_nodes_dim
-                    ),
+                    grid_dim=(self.input_features_dims[i] + graphs.grid_nodes_dim),
                     mesh_dim=graphs.mesh_nodes_dim,
                     edge_dim=graphs.g2m_edges_dim,
                     hidden_dims=hidden_dims,
@@ -120,9 +116,7 @@ class MultiGridFGN(torch.nn.Module):
 
         self.processor = Processor(
             latent_dim=self.latent_dim,
-            edges_dim=(
-                reference.mesh_edges_dim if use_edges_features else None
-            ),
+            edges_dim=(reference.mesh_edges_dim if use_edges_features else None),
             hidden_dims=hidden_dims,
             num_blocks=num_blocks,
             num_heads=num_heads,
@@ -152,12 +146,10 @@ class MultiGridFGN(torch.nn.Module):
                     if ref_value is None or other_value is None:
                         if ref_value is not other_value:
                             raise ValueError(
-                                "All grids must use identical shared mesh "
-                                "features and topology."
+                                "All grids must use identical shared mesh " "features and topology."
                             )
-                    elif (
-                        ref_value.shape != other_value.shape
-                        or not torch.equal(ref_value, other_value)
+                    elif ref_value.shape != other_value.shape or not torch.equal(
+                        ref_value, other_value
                     ):
                         raise ValueError(
                             "All grids must use identical shared mesh "
@@ -186,29 +178,21 @@ class MultiGridFGN(torch.nn.Module):
             (f"g2m_mesh_nodes_{index}", graphs.g2m_graph["mesh_nodes"].x),
             (
                 f"g2m_edge_attr_{index}",
-                graphs.g2m_graph[
-                    "grid_nodes", "to", "mesh_nodes"
-                ].edge_attr,
+                graphs.g2m_graph["grid_nodes", "to", "mesh_nodes"].edge_attr,
             ),
             (
                 f"g2m_edge_index_{index}",
-                graphs.g2m_graph[
-                    "grid_nodes", "to", "mesh_nodes"
-                ].edge_index,
+                graphs.g2m_graph["grid_nodes", "to", "mesh_nodes"].edge_index,
             ),
             (f"m2g_grid_nodes_{index}", graphs.m2g_graph["grid_nodes"].x),
             (f"m2g_mesh_nodes_{index}", graphs.m2g_graph["mesh_nodes"].x),
             (
                 f"m2g_edge_attr_{index}",
-                graphs.m2g_graph[
-                    "mesh_nodes", "to", "grid_nodes"
-                ].edge_attr,
+                graphs.m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_attr,
             ),
             (
                 f"m2g_edge_index_{index}",
-                graphs.m2g_graph[
-                    "mesh_nodes", "to", "grid_nodes"
-                ].edge_index,
+                graphs.m2g_graph["mesh_nodes", "to", "grid_nodes"].edge_index,
             ),
         )
         for name, value in entries:
@@ -293,9 +277,7 @@ class MultiGridFGN(torch.nn.Module):
         mesh_nodes, edge_index, edge_attr = self._batch_graph(
             self.khop_mesh_x,
             self.khop_mesh_edge_index,
-            getattr(self, "khop_mesh_edge_attr", None)
-            if self.use_edges_features
-            else None,
+            getattr(self, "khop_mesh_edge_attr", None) if self.use_edges_features else None,
             batch_size,
         )
 
@@ -337,9 +319,7 @@ class MultiGridFGN(torch.nn.Module):
             batched[edge_type].edge_attr,
             batched[edge_type].edge_index,
         )
-        return decoded.reshape(
-            batch_size, grid_count, self.output_features_dims[index]
-        )
+        return decoded.reshape(batch_size, grid_count, self.output_features_dims[index])
 
     @staticmethod
     def _fuse_mesh_latents(mesh_latents):
@@ -349,9 +329,7 @@ class MultiGridFGN(torch.nn.Module):
 
         reference_shape = mesh_latents[0].shape
         if any(latent.shape != reference_shape for latent in mesh_latents):
-            raise ValueError(
-                "All mesh representations must have the same shape to fuse."
-            )
+            raise ValueError("All mesh representations must have the same shape to fuse.")
         return torch.stack(mesh_latents, dim=0).sum(dim=0)
 
     def forward(self, grid_inputs, num_ensemble=2):
@@ -362,9 +340,7 @@ class MultiGridFGN(torch.nn.Module):
         [batch, ensemble, longitude, latitude, output_features].
         """
         if len(grid_inputs) != self.num_grids:
-            raise ValueError(
-                f"Expected {self.num_grids} grid inputs, got {len(grid_inputs)}."
-            )
+            raise ValueError(f"Expected {self.num_grids} grid inputs, got {len(grid_inputs)}.")
         if num_ensemble < 1:
             raise ValueError("num_ensemble must be at least 1.")
 
@@ -373,9 +349,7 @@ class MultiGridFGN(torch.nn.Module):
 
         for index, grid_input in enumerate(grid_inputs):
             if grid_input.ndim != 4:
-                raise ValueError(
-                    "Each grid input must have shape [batch, lon, lat, features]."
-                )
+                raise ValueError("Each grid input must have shape [batch, lon, lat, features].")
             if grid_input.shape[0] != batch_size:
                 raise ValueError("All grid inputs must share a batch size.")
 
@@ -391,13 +365,10 @@ class MultiGridFGN(torch.nn.Module):
                     f"expected {self.input_features_dims[index]}."
                 )
 
-            flattened_inputs.append(
-                rearrange(grid_input, "b lon lat f -> b (lon lat) f")
-            )
+            flattened_inputs.append(rearrange(grid_input, "b lon lat f -> b (lon lat) f"))
 
         encoded = [
-            self._encode_grid(index, features)
-            for index, features in enumerate(flattened_inputs)
+            self._encode_grid(index, features) for index, features in enumerate(flattened_inputs)
         ]
         latent_grids = [result[0] for result in encoded]
         mesh_latents = [result[1] for result in encoded]
@@ -414,9 +385,7 @@ class MultiGridFGN(torch.nn.Module):
             processed_mesh = self._process_mesh(fused_mesh, noise)
 
             for index, latent_grid in enumerate(latent_grids):
-                decoded = self._decode_grid(
-                    index, processed_mesh, latent_grid
-                )
+                decoded = self._decode_grid(index, processed_mesh, latent_grid)
                 lon_count, lat_count = self.grid_shapes[index]
                 decoded = decoded.reshape(
                     batch_size,
@@ -426,7 +395,4 @@ class MultiGridFGN(torch.nn.Module):
                 )
                 outputs[index].append(decoded)
 
-        return [
-            torch.stack(grid_outputs, dim=1)
-            for grid_outputs in outputs
-        ]
+        return [torch.stack(grid_outputs, dim=1) for grid_outputs in outputs]

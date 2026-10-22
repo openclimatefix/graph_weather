@@ -1,4 +1,5 @@
 """Tests for the multi-grid FGN model."""
+
 import numpy as np
 import torch
 
@@ -64,6 +65,7 @@ def test_multigrid_fgn_requires_multiple_grids():
         assert "at least two grids" in str(exc)
     else:
         raise AssertionError("Expected ValueError for a single grid")
+
 
 def test_multigrid_fgn_shares_information_between_grids():
     """Verify that one grid can influence another through the shared mesh."""
