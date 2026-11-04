@@ -9,7 +9,7 @@ models have now been added, as well as general models for assimilation and forec
 
 The models implemented include:
 
-DeepMind's [Functional Generative Network (FGN)](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/how-we-re-supporting-better-tropical-cyclone-prediction-with-ai/skillful-joint-probabilistic-weather-forecasting-from-marginals.pdf) for probablistic ensemble forecasting
+DeepMind's [Functional Generative Network (FGN)](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/how-we-re-supporting-better-tropical-cyclone-prediction-with-ai/skillful-joint-probabilistic-weather-forecasting-from-marginals.pdf) for probabilistic ensemble forecasting
 
 DeepMind's [GenCast](https://www.nature.com/articles/s41586-024-08252-9) for graph diffusion-based forecasting
 

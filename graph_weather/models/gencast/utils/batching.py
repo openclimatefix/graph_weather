@@ -35,7 +35,7 @@ def batch(senders, edge_index, edge_attr=None, batch_size=1):
 
 
 def hetero_batch(senders, receivers, edge_index, edge_attr=None, batch_size=1):
-    """Build big batched heterogenous graph.
+    """Build big batched heterogeneous graph.
 
     Returns nodes and edges of a big graph with batch_size disconnected copies of the original
     graph, with features shape [(b n) f].
