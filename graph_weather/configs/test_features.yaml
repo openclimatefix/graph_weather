@@ -1,0 +1,4 @@
+features:
+  - name: "2m_temperature"
+    type: "dynamic"
+    source: "era5"
