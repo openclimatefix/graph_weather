@@ -9,7 +9,7 @@ jobs:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Needed for trusted publishing to PyPI
+      id-token: write # Needed for trusted publishing to PyPI
     steps:
       - uses: actions/checkout@v4
 
