@@ -13,11 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.12"]
-        torch-version: [2.7.0]
         environment: ["default"]
-        include:
-          - torch-version: 2.7.0
-            torchvision-version: 0.21.0
     steps:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.8.10
@@ -27,7 +23,6 @@ jobs:
         run: |
           pixi run -e ${{ matrix.environment }} installpyg
           pixi run -e ${{ matrix.environment }} pip install coverage==7.4.3 pytest-cov
-          pixi run -e ${{ matrix.environment }} installnat
           pixi run -e ${{ matrix.environment }} install
       - name: Setup with pytest-cov
         run: |

@@ -6,39 +6,42 @@ description = "Graph-based AI Weather models"
 authors = [
     {name = "Jacob Prince-Bieker", email = "jacob@bieker.tech"},
 ]
-dependencies = ["torch-harmonics", "anemoi-datasets>=0.4.5,<0.5"]
+dependencies = []
 
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["linux-64", "osx-arm64"]
+platforms = [
+    {name = "linux64", platform = "linux-64"},
+    {name = "osxarm64", platform = "osx-arm64", macos = "13.5"},
+]
 
 [tool.pixi.feature.cuda]
 channels = ["nvidia",]
+platforms = ["linux64"]
 
-[tool.pixi.feature.cuda.system-requirements]
-cuda = "12"
-
-[tool.pixi.feature.cuda.target.linux-64.dependencies]
+[tool.pixi.feature.cuda.target.linux64.dependencies]
 cuda-version = "==12.8"
 
-#[tool.pixi.feature.cuda.target.linux-64.pypi-dependencies]
+#[tool.pixi.feature.cuda.target.linux64.pypi-dependencies]
 #natten = {url = "https://shi-labs.com/natten/wheels/cu124/torch2.4.0/natten-0.17.4%2Btorch240cu124-cp312-cp312-linux_x86_64.whl"}
 
 [tool.pixi.feature.mlx]
 # MLX is only available on macOS >=13.5 (>14.0 is recommended)
-system-requirements = {macos = "13.5"}
+platforms = ["osxarm64"]
 
-[tool.pixi.feature.mlx.target.osx-arm64.dependencies]
+[tool.pixi.feature.mlx.target.osxarm64.dependencies]
 mlx = {version = "*", channel = "conda-forge"}
 
-#[tool.pixi.feature.mlx.target.osx-arm64.pypi-dependencies]
+#[tool.pixi.feature.mlx.target.osxarm64.pypi-dependencies]
 #natten = "*"
+
 [tool.pixi.feature.cpu]
-platforms = ["linux-64", "osx-arm64"]
+platforms = ["linux64", "osxarm64"]
+
 
 #[tool.pixi.feature.cpu.pypi-dependencies]
 #natten = "*"
@@ -55,7 +58,6 @@ numcodecs = "*"
 scipy = "*"
 zarr = ">=3.0.0"
 tqdm = "*"
-lightning = "*"
 einops = "*"
 fsspec = "*"
 datasets = "*"
@@ -68,7 +70,6 @@ healpy = "*"
 dacite = "*"
 
 [tool.pixi.pypi-dependencies]
-torch_geometric = "*"
 pytest = "*"
 pytest-xdist = "*"
 h3 = "==4.3.1"
@@ -76,19 +77,31 @@ h3 = "==4.3.1"
 [tool.pixi.feature.cuda.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128" }
 torchvision = {version = "*", index = "https://download.pytorch.org/whl/cu128"}
+torch_geometric = "*"
+torch-harmonics = "*"
+anemoi-datasets = ">=0.4.5,<0.5"
+lightning = "*"
 
 [tool.pixi.feature.mlx.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu" }
 torchvision = {version = "*", index = "https://download.pytorch.org/whl/cpu"}
+torch_geometric = "*"
+torch-harmonics = "*"
+anemoi-datasets = ">=0.4.5,<0.5"
+lightning = "*"
 
 [tool.pixi.feature.cpu.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu" }
 torchvision = {version = "*", index = "https://download.pytorch.org/whl/cpu"}
+torch_geometric = "*"
+torch-harmonics = "*"
+anemoi-datasets = ">=0.4.5,<0.5"
+lightning = "*"
 
 [tool.pixi.environments]
-default = ["cpu"]
-cuda = ["cuda"]
-mlx = ["mlx"]
+default = {features = ["cpu"], solve-group = "default"}
+cuda = {features = ["cuda"], solve-group = "cuda"}
+mlx = {features = ["mlx"], solve-group = "mlx"}
 
 [tool.pixi.tasks]
 install = "pip install --editable ."
@@ -96,8 +109,8 @@ installnnja = "pip install git+https://github.com/brightbandtech/nnja-ai.git"
 installnat = "pip install natten"
 installnatcuda = "pip install natten==0.20.1+torch270cu128 -f https://whl.natten.org"
 installmatepoint = "pip install --index-url https://test.pypi.org/simple/ matepoint"
-installpyg = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cpu.html"
-installpygcuda = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.7.0+cuda128.html"
+installpyg = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.10.0%2Bcpu.html"
+installpygcuda = "pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.10.0%2Bcu128.html"
 test = "pytest"
 format = "ruff format"
 
@@ -140,7 +153,7 @@ output-format = "github"
 [tool.ruff.lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F", "D", "I"]
-ignore = ["D200","D202","D210","D212","D415","D105"]
+ignore = ["D200","D202","D210","D212","D415","D105","D102","D107"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "I"]
