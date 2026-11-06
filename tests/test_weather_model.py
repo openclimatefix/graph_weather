@@ -77,7 +77,9 @@ def test_weather_model_checkpointing():
         lat_lons, hidden_dim=64, num_processor_blocks=2, hidden_layers=1
     )
     stage = StageConfig(
-        encoder, processor, decoder,
+        encoder,
+        processor,
+        decoder,
         checkpoint_encoder=True,
         checkpoint_processor=True,
         checkpoint_decoder=True,
@@ -171,7 +173,9 @@ def test_processor_wrapper():
     features = torch.randn((batch_size, len(lat_lons), 78))
     with torch.no_grad():
         latent_features, edge_index, edge_attr = encoder(features)
-    data = Data(x=latent_features, edge_index=edge_index, edge_attr=edge_attr, batch_size=batch_size)
+    data = Data(
+        x=latent_features, edge_index=edge_index, edge_attr=edge_attr, batch_size=batch_size
+    )
 
     with torch.no_grad():
         out = wrapper(data)

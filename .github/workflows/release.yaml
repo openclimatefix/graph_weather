@@ -5,13 +5,72 @@ on:
       - main
 
 jobs:
-  bump-version-python-docker-release:
-    uses: openclimatefix/.github/.github/workflows/python-docker-release.yml@main
-    secrets:
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-      token: ${{ secrets.PYPI_API_TOKEN }}
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      image_base_name: graph_weather
-      docker_file: Dockerfile
+  release-pypi:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Needed for trusted publishing to PyPI
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check version changed
+        id: version-check
+        run: |
+          # Get current version from pyproject.toml
+          CURRENT_VERSION=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          # Get latest PyPI version
+          LATEST_PYPI=$(python -m pip index versions graph_weather 2>/dev/null | head -1 | sed 's/.*(\(.*\))/\1/' || echo "0.0.0")
+          echo "Current version: $CURRENT_VERSION"
+          echo "Latest PyPI version: $LATEST_PYPI"
+          # Skip if version already exists on PyPI
+          if [ "$CURRENT_VERSION" = "$LATEST_PYPI" ]; then
+            echo "Version $CURRENT_VERSION already exists on PyPI, skipping release"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to PyPI
+        if: steps.version-check.outputs.skip == 'false'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload dist/*
+
+  bump-version:
+    name: Bump patch version
+    needs: release-pypi
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        run: |
+          # Install bump2version
+          pip install bump2version
+          # Bump patch version
+          bumpversion patch --allow-dirty
+          # Push the version bump commit
+          git push origin main

@@ -200,34 +200,27 @@ def parse_args() -> argparse.Namespace:
         "--processor-blocks", type=int, default=9, help="Number of processor blocks"
     )
     parser.add_argument("--hidden-layers", type=int, default=2, help="MLP hidden layers")
-    parser.add_argument(
-        "--grid-resolution", type=int, default=5, help="Grid resolution in degrees"
-    )
+    parser.add_argument("--grid-resolution", type=int, default=5, help="Grid resolution in degrees")
     parser.add_argument("--h3-resolution", type=int, default=2, help="H3 resolution level")
 
     # Checkpointing arguments
     parser.add_argument(
         "--use-checkpointing", action="store_true", help="Enable fine-grained checkpointing"
     )
-    parser.add_argument(
-        "--checkpoint-model", action="store_true", help="Checkpoint entire model"
-    )
-    parser.add_argument(
-        "--checkpoint-encoder", action="store_true", help="Checkpoint encoder"
-    )
-    parser.add_argument(
-        "--checkpoint-processor", action="store_true", help="Checkpoint processor"
-    )
-    parser.add_argument(
-        "--checkpoint-decoder", action="store_true", help="Checkpoint decoder"
-    )
+    parser.add_argument("--checkpoint-model", action="store_true", help="Checkpoint entire model")
+    parser.add_argument("--checkpoint-encoder", action="store_true", help="Checkpoint encoder")
+    parser.add_argument("--checkpoint-processor", action="store_true", help="Checkpoint processor")
+    parser.add_argument("--checkpoint-decoder", action="store_true", help="Checkpoint decoder")
 
     # Training arguments
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
     parser.add_argument("--devices", type=int, default=1, help="Number of devices to use")
     parser.add_argument(
-        "--accelerator", type=str, default="auto", choices=["auto", "cpu", "gpu"],
+        "--accelerator",
+        type=str,
+        default="auto",
+        choices=["auto", "cpu", "gpu"],
         help="Accelerator type",
     )
     parser.add_argument(
@@ -246,12 +239,8 @@ def main():
     lightning_module = WeatherModelLightning(model, learning_rate=args.lr)
 
     # Build datasets
-    train_dataset = IcechunkDataset(
-        args.repo_path, split="train", max_samples=args.max_samples
-    )
-    val_dataset = IcechunkDataset(
-        args.repo_path, split="val", max_samples=args.max_samples
-    )
+    train_dataset = IcechunkDataset(args.repo_path, split="train", max_samples=args.max_samples)
+    val_dataset = IcechunkDataset(args.repo_path, split="val", max_samples=args.max_samples)
 
     # Build data loaders
     train_loader = DataLoader(
