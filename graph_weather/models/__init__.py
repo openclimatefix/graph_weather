@@ -14,4 +14,17 @@ from .layers.decoder import Decoder
 from .layers.encoder import Encoder
 from .layers.processor import Processor
 from .layers.stochastic_decomposition import StochasticDecompositionLayer
+from .adapters import (
+    DecoderWrapper,
+    EncoderWrapper,
+    ProcessorWrapper,
+    build_graphcast_stage,
+)
+from .protocols import (
+    DecoderProtocol,
+    EncoderProtocol,
+    ProcessorProtocol,
+    StageConfig,
+)
 from .regional_forecast import RegionalForecaster, RegionalForecasterConfig
+from .weather_model import WeatherModel, WeatherModelConfig
